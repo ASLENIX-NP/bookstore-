@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, ShoppingCart, Menu, X, User, LogOut, LogIn } from 'lucide-react';
+import { BookOpen, ShoppingCart, Menu, X, User, LogOut, LogIn, LayoutDashboard } from 'lucide-react'; // LayoutDashboard icon थपियो
 
 // 1. Commented out the broken import so Vite stops crashing
 // import { useAuth } from '../context/AuthContext';
@@ -38,6 +38,16 @@ export default function Layout() {
     navigate('/');
   };
 
+  // कार्ट बटन क्लिक हुँदा लगइन चेक गर्ने साझा फङ्ग्सन
+  const handleCartClick = () => {
+    if (isAuthenticated) {
+      navigate('/cart');
+    } else {
+      alert("Please login first to view your cart!");
+      navigate('/login');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header Navigation */}
@@ -48,7 +58,7 @@ export default function Layout() {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <BookOpen className="w-8 h-8 text-indigo-600" />
-              <span className="text-xl font-semibold text-gray-900">BookStore</span>
+              <span className="text-xl font-semibold text-gray-900">PatraPatrika Center</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -70,16 +80,17 @@ export default function Layout() {
 
             {/* Icons Tray */}
             <div className="flex items-center gap-4">
-              {/* Shopping Cart */}
-              <Link
-                to="/cart"
-                className="relative p-2 text-gray-600 hover:text-indigo-600 transition-colors"
+              
+              {/* Shopping Cart (बदलेर button बनाइयो र सुरक्षा थपियो) */}
+              <button
+                onClick={handleCartClick}
+                className="relative p-2 text-gray-600 hover:text-indigo-600 transition-colors cursor-pointer focus:outline-none"
               >
                 <ShoppingCart className="w-6 h-6" />
                 <span className="absolute top-0 right-0 bg-indigo-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   3
                 </span>
-              </Link>
+              </button>
 
               {/* Account Dropdown Desktop Profile Indicator */}
               <div className="hidden md:block relative">
@@ -87,20 +98,31 @@ export default function Layout() {
                   <>
                     <button
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center gap-2 p-2 text-gray-600 hover:text-indigo-600 transition-colors"
+                      className="flex items-center gap-2 p-2 text-gray-600 hover:text-indigo-600 transition-colors cursor-pointer"
                     >
                       <User className="w-6 h-6" />
                       <span className="text-sm font-medium">{user?.name}</span>
                     </button>
                     {userMenuOpen && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200">
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-50">
                         <div className="px-4 py-2 border-b border-gray-200">
                           <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                           <p className="text-xs text-gray-500">{user?.email}</p>
                         </div>
+                        
+                        {/* एडमिन प्यानल जाने लिंक - ड्रपडाउन भित्र थपियो */}
+                        <Link
+                          to="/admin"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full px-4 py-2 text-left text-sm text-amber-600 hover:bg-amber-50 font-semibold flex items-center gap-2 border-b border-gray-100"
+                        >
+                          <LayoutDashboard className="w-4 h-4" />
+                          Admin Dashboard
+                        </Link>
+
                         <button
                           onClick={handleLogout}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 cursor-pointer"
                         >
                           <LogOut className="w-4 h-4" />
                           Logout
@@ -122,7 +144,7 @@ export default function Layout() {
               {/* Mobile View Drawer Toggle Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 text-gray-600 hover:text-indigo-600"
+                className="md:hidden p-2 text-gray-600 hover:text-indigo-600 cursor-pointer"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -153,12 +175,23 @@ export default function Layout() {
                       <p className="text-sm font-medium text-gray-900">{user?.name}</p>
                       <p className="text-xs text-gray-500">{user?.email}</p>
                     </div>
+                    
+                    {/* मोबाइल मेनुमा पनि एडमिन ड्यासबोर्ड राखियो */}
+                    <Link
+                      to="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="w-full text-left px-2 py-2 text-sm font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-2 mb-2"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      Admin Dashboard
+                    </Link>
+
                     <button
                       onClick={() => {
                         handleLogout();
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full text-left px-2 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 flex items-center gap-2"
+                      className="w-full text-left px-2 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 flex items-center gap-2 cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       Logout
@@ -192,7 +225,7 @@ export default function Layout() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-6 h-6 text-indigo-400" />
-                <span className="text-lg font-semibold">BookStore</span>
+                <span className="text-lg font-semibold">PatraPatrika Center</span>
               </div>
               <p className="text-gray-400 text-sm">
                 Your one-stop shop for books, notebooks, and quality stationery.
@@ -214,7 +247,7 @@ export default function Layout() {
                 <li>123 Book Street</li>
                 <li>Reading City, RC 12345</li>
                 <li>Phone: (555) 123-4567</li>
-                <li>Email: info@bookstore.com</li>
+                <li>Email: info@PatraPatrika Center.com</li>
               </ul>
             </div>
 
@@ -229,7 +262,7 @@ export default function Layout() {
           </div>
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2026 BookStore. All rights reserved.</p>
+            <p>&copy; 2026 PatraPatrika Center. All rights reserved.</p>
           </div>
         </div>
       </footer>

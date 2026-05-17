@@ -33,7 +33,7 @@ const Login = () => {
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-indigo-600 font-bold text-3xl">
               <BookOpen size={36} strokeWidth={2.5} />
-              <span className="text-gray-900 tracking-tight">BookStore</span>
+              <span className="text-gray-900 tracking-tight">PatraPatrika Center</span>
             </div>
             <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
             <p className="text-sm text-gray-500 font-medium transition-all duration-200">

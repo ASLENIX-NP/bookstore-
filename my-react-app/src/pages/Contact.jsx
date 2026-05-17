@@ -18,7 +18,7 @@ const Contact = () => {
               <div className="bg-indigo-50 p-3 rounded-lg text-[#6366F1]"><Mail size={20}/></div>
               <div>
                 <h4 className="font-bold">Email Us</h4>
-                <p className="text-gray-500 text-sm">support@bookhaven.com</p>
+                <p className="text-gray-500 text-sm">support@PatraPatrika Center.com</p>
               </div>
             </div>
             <div className="flex items-start gap-4">

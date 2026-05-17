@@ -113,7 +113,7 @@ export default function Home() {
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="max-w-3xl py-32 lg:py-40">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 drop-shadow-lg">
-              Welcome to BookStore
+              Welcome to PatraPatrika Center
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-gray-200 drop-shadow-md">
               Premium books, notebooks, and stationery for readers, writers, and creative minds.
@@ -168,7 +168,7 @@ export default function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-            Why Choose BookStore?
+            Why Choose PatraPatrika Center?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6">
