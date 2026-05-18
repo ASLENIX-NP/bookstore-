@@ -1,15 +1,26 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, PlusCircle, ShoppingBag, Users, LogOut, ArrowLeft } from 'lucide-react';
+import { 
+  BookOpen, 
+  LayoutDashboard, 
+  PlusCircle, 
+  ShoppingBag, 
+  Users, 
+  LogOut, 
+  ArrowLeft, 
+  BarChart3 
+} from 'lucide-react';
 
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
   // Links mapped explicitly to match your App.jsx routing table paths
+  // UPDATED: Added the dedicated Reports navigation track link safely here
   const menuItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/books', label: 'Manage Books', icon: PlusCircle },
+    { path: '/admin/reports', label: 'Reports', icon: BarChart3 }, // 👈 NEW SEPARATE REPORTS LINK
     { path: '/admin/orders', label: 'Orders Status', icon: ShoppingBag },
     { path: '/admin/users', label: 'Users List', icon: Users },
   ];
