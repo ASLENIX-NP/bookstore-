@@ -1,16 +1,24 @@
 import React from 'react';
 import { Mail, Phone, MapPin, Send } from "lucide-react";
-import { ImageWithFallback } from "../components/ImageWithFallback";
 
 const Contact = () => {
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    alert("Thank you for reaching out! Patrapatrika Centre will get back to you soon.");
+  };
+
   return (
-    <div className="py-20 px-10 max-w-7xl mx-auto">
+    <div className="py-20 px-10 max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
         {/* Contact Info */}
         <div className="space-y-8">
           <div>
+            
             <h1 className="text-4xl font-bold text-gray-900 mb-4">Get in Touch</h1>
-            <p className="text-gray-600">Have a question about a book or an order? We'd love to hear from you.</p>
+            <p className="text-gray-600">
+              Have a question about a book, magazine, or a stationery order? We'd love to hear from you.
+            </p>
           </div>
 
           <div className="space-y-6">
@@ -18,21 +26,31 @@ const Contact = () => {
               <div className="bg-indigo-50 p-3 rounded-lg text-[#6366F1]"><Mail size={20}/></div>
               <div>
                 <h4 className="font-bold">Email Us</h4>
+
                 <p className="text-gray-500 text-sm">support@PatraPatrika Center.com</p>
+
+                
+                <p className="text-gray-500 text-sm">info@patrapatrikacentre.com</p>
+
               </div>
             </div>
+            
             <div className="flex items-start gap-4">
               <div className="bg-indigo-50 p-3 rounded-lg text-[#6366F1]"><Phone size={20}/></div>
               <div>
                 <h4 className="font-bold">Call Us</h4>
-                <p className="text-gray-500 text-sm">(555) 123-4567</p>
+                
+                <p className="text-gray-500 text-sm">+977-1-4XXXXXX</p>
               </div>
             </div>
+            
             <div className="flex items-start gap-4">
               <div className="bg-indigo-50 p-3 rounded-lg text-[#6366F1]"><MapPin size={20}/></div>
               <div>
                 <h4 className="font-bold">Visit Us</h4>
-                <p className="text-gray-500 text-sm">123 Book Street, Reading City, RC 12345</p>
+               
+                <p className="text-gray-600 text-sm font-semibold">Patrapatrika Centre</p>
+                <p className="text-gray-500 text-sm">Hetauda City, Nepal</p>
               </div>
             </div>
           </div>
@@ -40,26 +58,26 @@ const Contact = () => {
 
         {/* Contact Form */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-          <form className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">First Name</label>
-                <input type="text" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="John" />
+                <label className="text-sm font-medium text-gray-700">First Name</label>
+                <input type="text" required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="John" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Last Name</label>
-                <input type="text" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="Doe" />
+                <label className="text-sm font-medium text-gray-700">Last Name</label>
+                <input type="text" required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="Doe" />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Email</label>
-              <input type="email" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="john@example.com" />
+              <label className="text-sm font-medium text-gray-700">Email</label>
+              <input type="email" required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="john@example.com" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Message</label>
-              <textarea rows="4" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="How can we help?"></textarea>
+              <label className="text-sm font-medium text-gray-700">Message</label>
+              <textarea rows="4" required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#6366F1]" placeholder="How can we help you today?"></textarea>
             </div>
-            <button className="w-full bg-[#6366F1] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-[#4F46E5] transition-colors">
+            <button type="submit" className="w-full bg-[#6366F1] text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-[#4F46E5] transition-colors cursor-pointer">
               Send Message <Send size={18}/>
             </button>
           </form>

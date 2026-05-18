@@ -38,7 +38,11 @@ export default function Layout() {
     navigate('/');
   };
 
-  // कार्ट बटन क्लिक हुँदा लगइन चेक गर्ने साझा फङ्ग्सन
+
+ 
+
+  
+
   const handleCartClick = () => {
     if (isAuthenticated) {
       navigate('/cart');
@@ -58,7 +62,11 @@ export default function Layout() {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <BookOpen className="w-8 h-8 text-indigo-600" />
+
               <span className="text-xl font-semibold text-gray-900">PatraPatrika Center</span>
+
+              
+
             </Link>
 
             {/* Desktop Navigation */}
@@ -81,7 +89,11 @@ export default function Layout() {
             {/* Icons Tray */}
             <div className="flex items-center gap-4">
               
+
               {/* Shopping Cart (बदलेर button बनाइयो र सुरक्षा थपियो) */}
+
+             
+
               <button
                 onClick={handleCartClick}
                 className="relative p-2 text-gray-600 hover:text-indigo-600 transition-colors cursor-pointer focus:outline-none"
@@ -110,7 +122,11 @@ export default function Layout() {
                           <p className="text-xs text-gray-500">{user?.email}</p>
                         </div>
                         
+
                         {/* एडमिन प्यानल जाने लिंक - ड्रपडाउन भित्र थपियो */}
+
+                        
+
                         <Link
                           to="/admin"
                           onClick={() => setUserMenuOpen(false)}
@@ -176,8 +192,11 @@ export default function Layout() {
                       <p className="text-xs text-gray-500">{user?.email}</p>
                     </div>
                     
+
                     {/* मोबाइल मेनुमा पनि एडमिन ड्यासबोर्ड राखियो */}
-                    <Link
+
+                    
+                  <Link
                       to="/admin"
                       onClick={() => setMobileMenuOpen(false)}
                       className="w-full text-left px-2 py-2 text-sm font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-2 mb-2"
@@ -225,7 +244,11 @@ export default function Layout() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-6 h-6 text-indigo-400" />
+
                 <span className="text-lg font-semibold">PatraPatrika Center</span>
+
+                
+
               </div>
               <p className="text-gray-400 text-sm">
                 Your one-stop shop for books, notebooks, and quality stationery.
@@ -244,7 +267,7 @@ export default function Layout() {
             <div>
               <h3 className="font-semibold mb-4">Contact</h3>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>123 Book Street</li>
+                <li>Parijat Marg</li>
                 <li>Reading City, RC 12345</li>
                 <li>Phone: (555) 123-4567</li>
                 <li>Email: info@PatraPatrika Center.com</li>
@@ -262,7 +285,11 @@ export default function Layout() {
           </div>
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+
             <p>&copy; 2026 PatraPatrika Center. All rights reserved.</p>
+
+            
+
           </div>
         </div>
       </footer>
