@@ -69,14 +69,18 @@ const Login = () => {
               <BookOpen size={36} strokeWidth={2.5} />
               <span className="text-gray-900 tracking-tight">PatraPatrika Center</span>
             </div>
-            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
+
+            <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+              Welcome back
+            </h2>
+
             <p className="text-sm text-gray-500 font-medium transition-all duration-200">
               {isAdmin ? (
                 <span className="text-orange-600 flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider bg-orange-50 p-2 rounded-lg border border-orange-100">
                   <ShieldAlert size={16} /> Management Portal Access
                 </span>
               ) : (
-                "Sign in to your account"
+                'Sign in to your account'
               )}
             </p>
           </div>
@@ -87,20 +91,21 @@ const Login = () => {
               type="button"
               onClick={() => { setIsAdmin(false); setErrorMsg(''); }}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
-                !isAdmin 
-                  ? "bg-white text-indigo-600 shadow-sm" 
-                  : "text-gray-500 hover:text-gray-900"
+                !isAdmin
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               Customer Login
             </button>
+
             <button
               type="button"
               onClick={() => { setIsAdmin(true); setErrorMsg(''); }}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
-                isAdmin 
-                  ? "bg-white text-orange-600 shadow-sm font-bold" 
-                  : "text-gray-500 hover:text-gray-900"
+                isAdmin
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               Admin Access
@@ -116,19 +121,22 @@ const Login = () => {
 
           {/* Interactive Form Processing Layer */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            
-            {/* Email Field Element */}
+            {/* Email Field */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Email address</label>
+              <label className="text-sm font-semibold text-gray-700">
+                Email address
+              </label>
+
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
                   <Mail size={18} />
                 </span>
+
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={isAdmin ? "admin@bookstore.com" : "you@example.com"}
+                  placeholder={isAdmin ? 'admin@bookstore.com' : 'you@example.com'}
                   required
                   className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all text-sm font-medium"
                 />
@@ -137,19 +145,24 @@ const Login = () => {
 
             {/* Password Field Element */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Password</label>
+              <label className="text-sm font-semibold text-gray-700">
+                Password
+              </label>
+
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
                   <Lock size={18} />
                 </span>
+
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   className="w-full pl-11 pr-12 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all text-sm font-medium"
                 />
+
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -171,7 +184,11 @@ const Login = () => {
                 />
                 Remember me
               </label>
-              <a href="#forgot" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+
+              <a
+                href="#forgot"
+                className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors"
+              >
                 Forgot password?
               </a>
             </div>
@@ -201,8 +218,11 @@ const Login = () => {
           {/* Account Creation Redirect Link */}
           {!isAdmin && (
             <p className="text-center text-sm font-medium text-gray-600 animate-fadeIn">
-              Don't have an account?{' '}
-              <Link to="/signup" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
+              Don&apos;t have an account?{' '}
+              <Link
+                to="/signup"
+                className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors"
+              >
                 Sign up
               </Link>
             </p>
@@ -210,12 +230,14 @@ const Login = () => {
 
           {/* Return Anchor Route Node */}
           <div className="pt-4 text-center">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors"
+            >
               <ArrowLeft size={16} />
               Back to store
             </Link>
           </div>
-
         </div>
       </div>
 
@@ -226,14 +248,24 @@ const Login = () => {
           : "bg-gradient-to-tr from-purple-600 via-indigo-600 to-indigo-500"
       }`}>
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1000')] bg-cover bg-center mix-blend-overlay opacity-20" />
-        
-        <div className={`absolute top-1/4 left-1/4 w-72 h-72 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse transition-colors duration-500 ${isAdmin ? "bg-amber-400" : "bg-purple-400"}`} />
-        <div className={`absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse transition-colors duration-500 ${isAdmin ? "bg-orange-400" : "bg-indigo-400"}`} />
+
+        <div
+          className={`absolute top-1/4 left-1/4 w-72 h-72 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse transition-colors duration-500 ${
+            isAdmin ? 'bg-amber-400' : 'bg-purple-400'
+          }`}
+        />
+
+        <div
+          className={`absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-pulse transition-colors duration-500 ${
+            isAdmin ? 'bg-orange-400' : 'bg-indigo-400'
+          }`}
+        />
 
         <div className="relative text-center max-w-md space-y-4 z-10">
           <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight transition-all duration-300">
-            {isAdmin ? "Control Center" : "Welcome to BookStore"}
+            {isAdmin ? 'Control Center' : 'Welcome to Patrapatrika Center'}
           </h1>
+
           <p className="text-indigo-100 text-base lg:text-lg font-medium leading-relaxed opacity-90 transition-all duration-300">
             {isAdmin 
               ? "Access data logs, track analytics, update stock levels, and coordinate user groups securely."
@@ -241,7 +273,6 @@ const Login = () => {
           </p>
         </div>
       </div>
-
     </div>
   );
 };

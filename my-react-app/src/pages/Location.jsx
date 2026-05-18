@@ -18,7 +18,7 @@ const Location = () => {
         {/* Left Side: Store Info */}
         <div className="space-y-8">
           <div className="bg-gray-50 p-8 rounded-2xl border border-gray-100">
-            <h2 className="text-2xl font-bold mb-6 text-[#6366F1]">BookHaven Main Store</h2>
+            <h2 className="text-2xl font-bold mb-6 text-[#6366F1]">Patrapatrika Centre Main Store</h2>
             
             <div className="space-y-6">
               <div className="flex items-start gap-4">

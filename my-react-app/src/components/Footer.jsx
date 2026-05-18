@@ -22,7 +22,7 @@ const Footer = () => {
         </div>
         <div>
           <h4 className="text-white font-bold mb-4">Contact</h4>
-          <p className="text-sm">123 Book Street, Reading City<br/>(555) 123-4567</p>
+          <p className="text-sm">Parijat Marg<br/>(555) 123-4567</p>
         </div>
         <div>
           <h4 className="text-white font-bold mb-4">Hours</h4>

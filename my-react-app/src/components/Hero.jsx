@@ -2,7 +2,7 @@ function Hero() {
   return (
     <div className="text-center py-20 bg-gray-100">
       <h1 className="text-5xl font-bold">
-        Welcome to BookStore 📚
+        Welcome to Patrapatrika Centre 📚
       </h1>
 
       <p className="mt-4 text-gray-600">
