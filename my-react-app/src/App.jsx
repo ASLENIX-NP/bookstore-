@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./layout/Layout";
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -8,9 +8,12 @@ import Location from "./pages/Location";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
-// ADMIN IMPORTS थपियो
+// ADMIN PANEL IMPORTS
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
+import ManageBooks from "./pages/ManageBooks"; 
+import ManageOrders from "./pages/ManageOrders"; 
+import ManageUsers from "./pages/ManageUsers"; 
 
 export default function App() {
   return (
@@ -30,10 +33,16 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* NEW ADMIN PANEL ROUTES STRUCTURE */}
+        {/* ADMIN PANEL ROUTES STRUCTURE */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          {/* भविष्यमा थपिने एडमिनका अरु पेजहरू (जस्तै म्यानेज अर्डर, युजर्स) यहाँ भित्र राख्न सकिन्छ */}
+          {/* Automatically redirect base /admin to /admin/dashboard */}
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          
+          {/* Explicit dashboard route matching your browser address */}
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="books" element={<ManageBooks />} />
+          <Route path="orders" element={<ManageOrders />} />
+          <Route path="users" element={<ManageUsers />} />
         </Route>
 
       </Routes>

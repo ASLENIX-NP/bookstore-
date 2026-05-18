@@ -1,93 +1,88 @@
 import React from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, PlusCircle, ShoppingBag, Users, LogOut, ArrowLeft } from 'lucide-react';
+import { BookOpen, ShoppingCart, Users, DollarSign, TrendingUp, Package } from 'lucide-react';
 
-export default function AdminLayout() {
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const menuItems = [
-    { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/admin/products', label: 'Manage Books', icon: PlusCircle },
-    { path: '/admin/orders', label: 'Orders Status', icon: ShoppingBag },
-    { path: '/admin/users', label: 'Users List', icon: Users },
+export default function AdminDashboard() {
+  
+  // Cleaned up color rendering format to avoid string-splitting runtime errors
+  const statistics = [
+    { label: 'Total Revenue', value: 'NPR 42,500', icon: DollarSign, bgColor: 'bg-emerald-100', textColor: 'text-emerald-600' },
+    { label: 'Books Active', value: '25 Products', icon: BookOpen, bgColor: 'bg-indigo-100', textColor: 'text-indigo-600' },
+    { label: 'Orders Processed', value: '148 Orders', icon: ShoppingCart, bgColor: 'bg-amber-100', textColor: 'text-amber-600' },
+    { label: 'Registered Clients', value: '1,240 Users', icon: Users, bgColor: 'bg-cyan-100', textColor: 'text-cyan-600' },
   ];
 
-  const handleLogout = () => {
-    // यहाँ ब्याकइन्ड लगआउट वा टोकन क्लियर गर्ने कोड हाल्न सकिन्छ
-    console.log("Admin Logged Out");
-    navigate('/login');
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* SIDEBAR */}
-      <aside className="w-64 bg-gray-900 text-white flex flex-col fixed h-full z-10">
-        {/* Branding */}
-        <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-800 bg-gray-950">
-          <BookOpen className="w-7 h-7 text-amber-500" />
-          <span className="text-lg font-bold tracking-wider text-amber-500">ADMIN PANEL</span>
-        </div>
-
-        {/* Navigation Menus */}
-        <nav className="flex-grow p-4 space-y-2">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                  isActive
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-gray-800 space-y-2 bg-gray-950">
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Shop
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 hover:text-white hover:bg-red-900/40 transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout Account
-          </button>
-        </div>
-      </aside>
-
-      {/* RIGHT SIDE MAIN CONTENT SPACE */}
-      <div className="flex-grow ml-64 flex flex-col min-h-screen">
-        {/* Top Navbar */}
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-8 sticky top-0 z-5">
-          <h1 className="text-lg font-bold text-gray-800">Management Dashboard</h1>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-500 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-              A
-            </div>
-            <span className="text-sm font-semibold text-gray-700">System Admin</span>
-          </div>
-        </header>
-
-        {/* Main Workspace Dynamic Area */}
-        <main className="flex-grow p-8">
-          <Outlet />
-        </main>
+    <div className="space-y-8">
+      
+      {/* Header View */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">System Metrics Overview</h2>
+        <p className="text-sm text-gray-500 mt-1">Real-time store management diagnostic reports and catalog summaries.</p>
       </div>
+
+      {/* Statistics Cards Grid Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statistics.map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{stat.label}</p>
+                <h3 className="text-2xl font-black text-gray-800">{stat.value}</h3>
+              </div>
+              {/* Clean, direct class application */}
+              <div className={`p-3.5 rounded-xl ${stat.bgColor} ${stat.textColor}`}>
+                <Icon className="w-6 h-6" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Analytics Workspace Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Column: Log Tracking Activity */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <h4 className="font-bold text-gray-800 flex items-center gap-2">
+              <TrendingUp className="text-amber-500 w-5 h-5" /> Recent Activity Stream
+            </h4>
+            <span className="text-xs bg-amber-50 px-2.5 py-1 text-amber-700 font-bold rounded-full">Live Logs</span>
+          </div>
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-500">System handshakes connected efficiently. Database transaction operations executing smoothly over connected clusters.</p>
+            <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center text-sm font-medium text-gray-400 bg-gray-50">
+              [ Transaction Tracking Graph Visualization Canvas Area ]
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Inventory Stock Status alerts */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <h4 className="font-bold text-gray-800 flex items-center gap-2">
+              <Package className="text-indigo-500 w-5 h-5" /> Inventory Warnings
+            </h4>
+          </div>
+          <ul className="space-y-3 pt-2">
+            <li className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100 text-xs">
+              <span className="font-bold text-red-700">Atomic Habits</span>
+              <span className="font-semibold text-red-600 bg-white px-2 py-0.5 rounded-md border border-red-200">Out of Stock</span>
+            </li>
+            <li className="flex items-center justify-between p-3 rounded-xl bg-orange-50 border border-orange-100 text-xs">
+              <span className="font-bold text-orange-700">Apsara Erasers (Pack of 5)</span>
+              <span className="font-semibold text-orange-600 bg-white px-2 py-0.5 rounded-md border border-orange-200">2 Items Left</span>
+            </li>
+            <li className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 text-xs">
+              <span className="font-bold text-gray-700">Premium HB Pencils</span>
+              <span className="font-semibold text-gray-500 bg-white px-2 py-0.5 rounded-md border border-gray-200">Optimal Stock</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
     </div>
   );
 }

@@ -1,35 +1,69 @@
 import React, { useState } from 'react';
-import { BookOpen, Mail, Lock, Eye, EyeOff, ArrowLeft, ShieldAlert } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { BookOpen, Mail, Lock, Eye, EyeOff, ArrowLeft, ShieldAlert, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Login = () => {
-  const [isAdmin, setIsAdmin] = useState(false); // Handles customer vs admin state
+  const navigate = useNavigate();
+
+  // Core Form Input Variables
+  const [isAdmin, setIsAdmin] = useState(false); // Handles customer vs admin toggle state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleSubmit = (e) => {
+  // Status & Exception Management Variables
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // This payload sends the role information alongside credentials to your auth backend later
-    console.log({ 
-      email, 
-      password, 
-      rememberMe, 
-      role: isAdmin ? 'admin' : 'customer' 
-    });
+    setErrorMsg('');
+    setLoading(true);
+
+    // 1. Placeholder Simulation Block for Regular Customers
+    if (!isAdmin) {
+      setTimeout(() => {
+        setLoading(false);
+        console.log("Customer payload simulated:", { email, password, rememberMe });
+        navigate('/'); // Bounce customers right back onto standard storefront homepage
+      }, 1000);
+      return;
+    }
+
+    // 2. Full-Stack Backend Communication Link Routine for Admins
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/admin-login', {
+        email,
+        password
+      });
+
+      if (response.status === 200) {
+        // Cache data response tokens inside storage layers safely
+        localStorage.setItem('adminToken', JSON.stringify(response.data.admin));
+        setLoading(false);
+        
+        // Pass user into layout nested path address safely
+        navigate('/admin/dashboard');
+      }
+    } catch (error) {
+      setLoading(false);
+      setErrorMsg(
+        error.response?.data?.message || 
+        "Cannot establish server contact link handshake. Is your backend server up?"
+      );
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
       
-      {/* LEFT SIDE: Login Form Column */}
+      {/* LEFT SIDE: Login Form Layout Frame Column */}
       <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-16 lg:px-24 py-12 relative">
-        
-        {/* Main Content Container */}
         <div className="w-full max-w-md mx-auto space-y-8">
           
-          {/* Logo & Header */}
+          {/* Typography Header Node Element */}
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-indigo-600 font-bold text-3xl">
               <BookOpen size={36} strokeWidth={2.5} />
@@ -38,7 +72,7 @@ const Login = () => {
             <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
             <p className="text-sm text-gray-500 font-medium transition-all duration-200">
               {isAdmin ? (
-                <span className="text-amber-600 flex items-center justify-center gap-1.5 font-semibold">
+                <span className="text-orange-600 flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider bg-orange-50 p-2 rounded-lg border border-orange-100">
                   <ShieldAlert size={16} /> Management Portal Access
                 </span>
               ) : (
@@ -47,11 +81,11 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Admin vs Customer Switcher Toggle Tabs */}
+          {/* Interactive Toggle Switch Tab Controls */}
           <div className="flex bg-gray-100 p-1 rounded-xl">
             <button
               type="button"
-              onClick={() => setIsAdmin(false)}
+              onClick={() => { setIsAdmin(false); setErrorMsg(''); }}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 !isAdmin 
                   ? "bg-white text-indigo-600 shadow-sm" 
@@ -62,10 +96,10 @@ const Login = () => {
             </button>
             <button
               type="button"
-              onClick={() => setIsAdmin(true)}
+              onClick={() => { setIsAdmin(true); setErrorMsg(''); }}
               className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 isAdmin 
-                  ? "bg-white text-indigo-600 shadow-sm" 
+                  ? "bg-white text-orange-600 shadow-sm font-bold" 
                   : "text-gray-500 hover:text-gray-900"
               }`}
             >
@@ -73,10 +107,17 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Form */}
+          {/* Inline Notification Banner Component */}
+          {errorMsg && (
+            <div className="bg-red-50 text-red-600 border border-red-100 p-3.5 rounded-xl text-sm font-semibold shadow-sm animate-fadeIn">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* Interactive Form Processing Layer */}
           <form onSubmit={handleSubmit} className="space-y-5">
             
-            {/* Email Field */}
+            {/* Email Field Element */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Email address</label>
               <div className="relative">
@@ -94,7 +135,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password Field */}
+            {/* Password Field Element */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Password</label>
               <div className="relative">
@@ -119,7 +160,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
+            {/* Secondary Option Actions */}
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 cursor-pointer select-none font-medium text-gray-600">
                 <input
@@ -135,20 +176,29 @@ const Login = () => {
               </a>
             </div>
 
-            {/* Dynamic Action Button */}
+            {/* Dynamic Submission Control Action Strip Button */}
             <button
               type="submit"
-              className={`w-full py-3 px-4 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 cursor-pointer ${
-                isAdmin 
-                  ? "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500" 
-                  : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500"
+              disabled={loading}
+              className={`w-full py-3 px-4 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+                loading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : isAdmin 
+                    ? "bg-orange-500 hover:bg-orange-600 focus:ring-orange-500 cursor-pointer" 
+                    : "bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 cursor-pointer"
               }`}
             >
-              {isAdmin ? "Verify Admin Credentials" : "Sign in"}
+              {loading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : isAdmin ? (
+                "Verify Admin Credentials"
+              ) : (
+                "Sign in"
+              )}
             </button>
           </form>
 
-          {/* Conditional Signup Link Wrapper */}
+          {/* Account Creation Redirect Link */}
           {!isAdmin && (
             <p className="text-center text-sm font-medium text-gray-600 animate-fadeIn">
               Don't have an account?{' '}
@@ -158,7 +208,7 @@ const Login = () => {
             </p>
           )}
 
-          {/* Back to Store Link */}
+          {/* Return Anchor Route Node */}
           <div className="pt-4 text-center">
             <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
               <ArrowLeft size={16} />
@@ -169,10 +219,10 @@ const Login = () => {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Visual Banner Column */}
+      {/* RIGHT SIDE: Rich Gradient Graphic Side Presentation Banner */}
       <div className={`hidden md:flex md:w-1/2 items-center justify-center p-12 relative overflow-hidden transition-all duration-500 ${
         isAdmin 
-          ? "bg-gradient-to-tr from-amber-700 via-orange-600 to-amber-500" 
+          ? "bg-gradient-to-tr from-amber-600 via-orange-600 to-amber-500"
           : "bg-gradient-to-tr from-purple-600 via-indigo-600 to-indigo-500"
       }`}>
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1000')] bg-cover bg-center mix-blend-overlay opacity-20" />
@@ -186,7 +236,7 @@ const Login = () => {
           </h1>
           <p className="text-indigo-100 text-base lg:text-lg font-medium leading-relaxed opacity-90 transition-all duration-300">
             {isAdmin 
-              ? "Access data logs, track analytics, update stock levels, and coordinate user groups securely." 
+              ? "Access data logs, track analytics, update stock levels, and coordinate user groups securely."
               : "Your one-stop shop for books, notebooks, and premium stationery."}
           </p>
         </div>

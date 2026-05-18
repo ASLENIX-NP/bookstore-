@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Pen, Notebook, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Pen, Notebook, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import axios from 'axios'; // Imported Axios
 
 const heroImages = [
   {
@@ -29,37 +30,6 @@ const heroImages = [
   }
 ];
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: 'Classic Leather Journal',
-    category: 'Notebooks',
-    price: 24.99,
-    image: 'https://images.unsplash.com/photo-1518226203301-8e7f833c6a94?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
-  },
-  {
-    id: 2,
-    name: 'Premium Book Collection',
-    category: 'Books',
-    price: 45.99,
-    image: 'https://images.unsplash.com/photo-1528208079124-a2387f039c99?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
-  },
-  {
-    id: 3,
-    name: 'Designer Notebook Set',
-    category: 'Stationery',
-    price: 19.99,
-    image: 'https://images.unsplash.com/photo-1610088660962-3f85d27cadc7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
-  },
-  {
-    id: 4,
-    name: 'Executive Desk Set',
-    category: 'Stationery',
-    price: 34.99,
-    image: 'https://images.unsplash.com/photo-1495465798138-718f86d1a4bc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080'
-  }
-];
-
 const LocalImageWithFallback = ({ src, alt, className }) => {
   const fallbackUrl = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&q=80';
   const handleError = (e) => { e.target.src = fallbackUrl; };
@@ -68,13 +38,34 @@ const LocalImageWithFallback = ({ src, alt, className }) => {
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  
+  // States for live database synchronization
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Auto-slide logic looping every 3.5 seconds
+  // 1. Dual-purpose Effect Hook: Manages Slider AND Fetches Live Cloud Data
   useEffect(() => {
-    const timer = setInterval(() => {
+    // Slider Timer
+    const sliderTimer = setInterval(() => {
       setCurrentSlide((prev) => (prev === heroImages.length - 1 ? 0 : prev + 1));
     }, 3500);
-    return () => clearInterval(timer);
+
+    // Fetch up to 4 latest items from your backend database
+    const fetchFeaturedData = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/products');
+        // Grab only the first 4 items to keep the homepage layout looking clean
+        setFeaturedProducts(response.data.slice(0, 4));
+        setLoading(false);
+      } catch (error) {
+        console.error("Error connecting to Express server container:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedData();
+
+    return () => clearInterval(sliderTimer);
   }, []);
 
   const nextSlide = () => {
@@ -89,8 +80,6 @@ export default function Home() {
     <div>
       {/* Hero Section with Custom Image Slider */}
       <section className="relative bg-gray-900 text-white overflow-hidden h-[600px] lg:h-[700px] group">
-        
-        {/* Built-in Custom Animated Slider Canvas */}
         <div className="absolute inset-0 z-0">
           {heroImages.map((image, index) => (
             <div
@@ -109,7 +98,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Hero Content Overlay */}
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
           <div className="max-w-3xl py-32 lg:py-40">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 drop-shadow-lg">
@@ -136,7 +124,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Manual Arrow Navigations */}
         <button
           onClick={prevSlide}
           className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 hover:bg-indigo-600 text-white transition-all cursor-pointer opacity-0 group-hover:opacity-100 hidden md:block"
@@ -150,7 +137,6 @@ export default function Home() {
           <ChevronRight size={28} />
         </button>
 
-        {/* Slide Indicator Dots */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
           {heroImages.map((_, index) => (
             <button
@@ -202,7 +188,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* Featured Products Loaded Dynamically from MongoDB */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-12">
@@ -216,29 +202,43 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                <div className="aspect-square overflow-hidden rounded-t-lg">
-                  <LocalImageWithFallback
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">{product.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{product.category}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-indigo-600">${product.price}</span>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
+              <p className="text-sm text-gray-500">Connecting to cloud warehouse...</p>
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+              <p className="text-gray-500 mb-2">No items inside your cloud database collection yet.</p>
+              <p className="text-xs text-indigo-600 font-mono">Use Thunder Client to send a POST payload request!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
+                <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                  <div>
+                    <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-50">
+                      <LocalImageWithFallback
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
+                      <p className="text-xs text-indigo-600 font-medium uppercase tracking-wider mb-3">{product.subcategory || product.category}</p>
+                    </div>
+                  </div>
+                  <div className="p-4 pt-0 flex justify-between items-center mt-auto">
+                    <span className="text-lg font-bold text-indigo-600">NPR {product.price}</span>
                     <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition-colors">
                       Add to Cart
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -249,7 +249,7 @@ export default function Home() {
             Visit Our Store Today
           </h2>
           <p className="text-xl mb-8 text-indigo-100">
-            Experience our full collection in person. We're located in the heart of Reading City.
+            Experience our full collection in person. We're located in the heart of Kathmandu.
           </p>
           <Link
             to="/location"
