@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-<<<<<<< HEAD
 import { BookOpen, Pen, Notebook, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import axios from 'axios'; // Imported Axios
-=======
-import {
-  BookOpen,
-  Pen,
-  Notebook,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
->>>>>>> 5f8f3051cbecc10b36e22b5f172fd69178cf3a5b
+import axios from 'axios';
 
 const heroImages = [
   {
@@ -41,44 +30,6 @@ const heroImages = [
   },
 ];
 
-<<<<<<< HEAD
-=======
-const featuredProducts = [
-  {
-    id: 1,
-    name: 'Classic Leather Journal',
-    category: 'Notebooks',
-    price: 24.99,
-    image:
-      'https://images.unsplash.com/photo-1518226203301-8e7f833c6a94?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-  },
-  {
-    id: 2,
-    name: 'Premium Book Collection',
-    category: 'Books',
-    price: 45.99,
-    image:
-      'https://images.unsplash.com/photo-1528208079124-a2387f039c99?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-  },
-  {
-    id: 3,
-    name: 'Designer Notebook Set',
-    category: 'Stationery',
-    price: 19.99,
-    image:
-      'https://images.unsplash.com/photo-1610088660962-3f85d27cadc7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-  },
-  {
-    id: 4,
-    name: 'Executive Desk Set',
-    category: 'Stationery',
-    price: 34.99,
-    image:
-      'https://images.unsplash.com/photo-1495465798138-718f86d1a4bc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
-  },
-];
-
->>>>>>> 5f8f3051cbecc10b36e22b5f172fd69178cf3a5b
 const LocalImageWithFallback = ({ src, alt, className }) => {
   const fallbackUrl =
     'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&q=80';
@@ -104,8 +55,7 @@ export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-<<<<<<< HEAD
-  // 1. Dual-purpose Effect Hook: Manages Slider AND Fetches Live Cloud Data
+  // Manages Slider AND Fetches Live Cloud Data from backend
   useEffect(() => {
     // Slider Timer
     const sliderTimer = setInterval(() => {
@@ -128,16 +78,6 @@ export default function Home() {
     fetchFeaturedData();
 
     return () => clearInterval(sliderTimer);
-=======
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) =>
-        prev === heroImages.length - 1 ? 0 : prev + 1
-      );
-    }, 3500);
-
-    return () => clearInterval(timer);
->>>>>>> 5f8f3051cbecc10b36e22b5f172fd69178cf3a5b
   }, []);
 
   const nextSlide = () => {
@@ -283,11 +223,7 @@ export default function Home() {
         </div>
       </section>
 
-<<<<<<< HEAD
       {/* Featured Products Loaded Dynamically from MongoDB */}
-=======
-      {/* Featured Products Section */}
->>>>>>> 5f8f3051cbecc10b36e22b5f172fd69178cf3a5b
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-12">
@@ -304,7 +240,6 @@ export default function Home() {
             </Link>
           </div>
 
-<<<<<<< HEAD
           {loading ? (
             <div className="flex flex-col items-center justify-center py-10">
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
@@ -313,14 +248,14 @@ export default function Home() {
           ) : featuredProducts.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
               <p className="text-gray-500 mb-2">No items inside your cloud database collection yet.</p>
-              <p className="text-xs text-indigo-600 font-mono">Use Thunder Client to send a POST payload request!</p>
+              <p className="text-xs text-indigo-600 font-mono">Add products in the admin panel to see them here!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredProducts.map((product) => (
-                <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden">
                   <div>
-                    <div className="aspect-square overflow-hidden rounded-t-lg bg-gray-50">
+                    <div className="aspect-square overflow-hidden bg-gray-50">
                       <LocalImageWithFallback
                         src={product.image}
                         alt={product.name}
@@ -334,35 +269,6 @@ export default function Home() {
                   </div>
                   <div className="p-4 pt-0 flex justify-between items-center mt-auto">
                     <span className="text-lg font-bold text-indigo-600">NPR {product.price}</span>
-=======
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="aspect-square overflow-hidden rounded-t-lg">
-                  <LocalImageWithFallback
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-
-                <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    {product.category}
-                  </p>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-indigo-600">
-                      ${product.price}
-                    </span>
-
->>>>>>> 5f8f3051cbecc10b36e22b5f172fd69178cf3a5b
                     <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition-colors">
                       Add to Cart
                     </button>
@@ -382,12 +288,7 @@ export default function Home() {
           </h2>
 
           <p className="text-xl mb-8 text-indigo-100">
-<<<<<<< HEAD
             Experience our full collection in person. We're located in the heart of Kathmandu.
-=======
-            Experience our full collection in person. We&apos;re located in the
-            heart of Reading City.
->>>>>>> 5f8f3051cbecc10b36e22b5f172fd69178cf3a5b
           </p>
 
           <Link
