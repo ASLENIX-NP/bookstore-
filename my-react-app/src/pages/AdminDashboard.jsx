@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { BookOpen, ShoppingCart, DollarSign, TrendingUp, Package, Layers } from 'lucide-react';
+import { BookOpen, ShoppingCart, DollarSign, TrendingUp, Package } from 'lucide-react';
 
 export default function AdminDashboard() {
+  // Metrics & Backend Live States
   const [totals, setTotals] = useState({ revenue: 0, itemsSold: 0, itemsAdded: 0 });
   const [stockAlerts, setStockAlerts] = useState([]);
 
+  // Load telemetry report data directly from MongoDB logs loop
   useEffect(() => {
-    // 1. Load telemetry report data directly from MongoDB logs loop
+    // 1. Fetch dashboard quick-load telemetry KPIs
     axios.get('http://localhost:5000/api/admin/daily-report?timeframe=daily')
       .then(res => {
         if (res.data?.success) setTotals(res.data.metrics);
@@ -25,13 +27,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* SECTION HEADER PANEL */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900">System Metrics Overview</h2>
         <p className="text-sm text-gray-500 mt-1">Real-time storefront management diagnostics and dynamic catalog indicators.</p>
       </div>
 
-      {/* KPI Balance Cards Row */}
+      {/* KPI BALANCE CARDS ROW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Card 1: Revenue Ledger */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Today's Revenue</p>
@@ -42,6 +46,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Card 2: Units Dispatched */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Today's Sales Volume</p>
@@ -52,6 +57,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Card 3: Accessions Count */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">New Items Cataloged</p>
@@ -63,6 +69,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* LOWER VISUALIZATION GRID FRAME */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tracking Canvas Block */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">

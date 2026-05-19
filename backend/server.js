@@ -11,6 +11,43 @@ require("dotenv").config();
 const Product = require("./models/product");
 const AdminModel = require("./models/Admin");
 
+// CREATE INLINE ORDER SCHEMA & MODEL TO AVOID ROUTE CRASHES
+const orderSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+    },
+    customerName: {
+      type: String,
+      default: "Guest Customer"
+    },
+    orderItems: [
+      {
+        title: { type: String, required: true },
+        qty: { type: Number, required: true, default: 1 },
+        price: { type: Number, required: true },
+      },
+    ],
+    totalPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    status: {
+      type: String,
+      required: true,
+      default: "Processing", // Processing, Completed, Cancelled
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// Prevent mongoose overwrite error if compiling multiple times
+const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+
 // IMPORT ROUTES
 const authRoutes = require("./routes/authRoutes");
 
@@ -282,6 +319,69 @@ app.delete("/api/products/:id", async (req, res) => {
     });
   }
 });
+
+
+// ==========================================
+// ORDER REGISTRY MANAGEMENT ENDPOINTS
+// ==========================================
+
+/**
+ * @route   GET /api/orders
+ * @desc    Fetch all transaction logs back to the React Admin Table
+ */
+app.get("/api/orders", async (req, res) => {
+  try {
+    const allOrders = await Order.find({}).sort({ createdAt: -1 });
+    res.status(200).json(allOrders);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch store database transaction history registers.",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/orders
+ * @desc    Creates an order transaction log record entry
+ */
+app.post("/api/orders", async (req, res) => {
+  try {
+    const newOrder = new Order(req.body);
+    const savedOrder = await newOrder.save();
+    res.status(201).json(savedOrder);
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to process order invoice logic stack.",
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   PATCH /api/orders/:id/status
+ * @desc    Toggles an order's status between Processing and Completed
+ */
+app.patch("/api/orders/:id/status", async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Toggle logic
+    order.status = order.status === "Processing" ? "Completed" : "Processing";
+    const updatedOrder = await order.save();
+
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    res.status(400).json({
+      message: "Failed to modify status attribute.",
+      error: error.message,
+    });
+  }
+});
+
 
 // START SERVER
 app.listen(PORT, () => {
