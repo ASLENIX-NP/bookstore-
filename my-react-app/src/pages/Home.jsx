@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Pen, Notebook, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { BookOpen, Pen, Notebook, ArrowRight, ChevronLeft, ChevronRight, Loader2, ShoppingCart } from 'lucide-react';
 import axios from 'axios';
 
 const heroImages = [
@@ -50,23 +50,19 @@ const LocalImageWithFallback = ({ src, alt, className }) => {
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  
-  // States for live database synchronization
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Manages Slider AND Fetches Live Cloud Data from backend
   useEffect(() => {
     // Slider Timer
     const sliderTimer = setInterval(() => {
       setCurrentSlide((prev) => (prev === heroImages.length - 1 ? 0 : prev + 1));
     }, 3500);
 
-    // Fetch up to 4 latest items from your backend database
+    // Fetch up to 4 latest items from backend database
     const fetchFeaturedData = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/products');
-        // Grab only the first 4 items to keep the homepage layout looking clean
         setFeaturedProducts(response.data.slice(0, 4));
         setLoading(false);
       } catch (error) {
@@ -79,6 +75,29 @@ export default function Home() {
 
     return () => clearInterval(sliderTimer);
   }, []);
+
+  // ADD TO CART STORAGE HANDLER MATRIX
+  const addToCart = (product) => {
+    if (!product) return;
+
+    const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItem = currentCart.find(item => item._id === product._id);
+    
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      currentCart.push({
+        _id: product._id,
+        title: product.name, // Maps your schema 'name' to the cart's expected 'title' field
+        price: product.price,
+        image: product.image,
+        quantity: 1
+      });
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(currentCart));
+    alert(`"${product.name}" successfully added to your cart! 🛒`);
+  };
 
   const nextSlide = () => {
     setCurrentSlide((prev) =>
@@ -251,27 +270,56 @@ export default function Home() {
               <p className="text-xs text-indigo-600 font-mono">Add products in the admin panel to see them here!</p>
             </div>
           ) : (
+            /* COMPLETELY ALIGNED AND UNIFIED DESIGN PATHWAY GRID */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {featuredProducts.map((product) => (
-                <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden">
-                  <div>
-                    <div className="aspect-square overflow-hidden bg-gray-50">
-                      <LocalImageWithFallback
-                        src={product.image}
-                        alt={product.name}
-                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">{product.name}</h3>
-                      <p className="text-xs text-indigo-600 font-medium uppercase tracking-wider mb-3">{product.subcategory || product.category}</p>
-                    </div>
+                <div 
+                  key={product._id} 
+                  className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
+                >
+                  {/* Book Cover Image Wrapper Container */}
+                  <div className="w-full aspect-[3/4] bg-slate-50 overflow-hidden rounded-2xl border border-gray-100">
+                    <LocalImageWithFallback
+                      src={product.image}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <div className="p-4 pt-0 flex justify-between items-center mt-auto">
-                    <span className="text-lg font-bold text-indigo-600">NPR {product.price}</span>
-                    <button className="bg-indigo-600 text-white px-4 py-2 rounded text-sm hover:bg-indigo-700 transition-colors">
-                      Add to Cart
-                    </button>
+
+                  {/* Description Details Layout Block */}
+                  <div className="mt-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md inline-block">
+                        {product.subcategory || product.category || 'Books'}
+                      </span>
+                      <h4 className="font-bold text-gray-900 text-sm tracking-tight line-clamp-1 pt-1">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                        {product.description || 'No descriptive summary details added.'}
+                      </p>
+                    </div>
+
+                    {/* Pricing details and Click Actions Footer Row matching your /products setup exactly */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                      <span className="text-sm font-black text-slate-900 tracking-tight">
+                        NPR {Number(product.price).toLocaleString()}
+                      </span>
+                      
+                      {/* FULLY MATCHED ORANGE 'BUY' TRIGGER BUTTON */}
+                      <button
+                        type="button"
+                        disabled={product.statusFlag === 'Out of Stock'}
+                        onClick={() => addToCart(product)}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm text-white ${
+                          product.statusFlag === 'Out of Stock' 
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                            : 'bg-orange-500 hover:bg-orange-600 active:scale-95'
+                        }`}
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" /> Buy
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
