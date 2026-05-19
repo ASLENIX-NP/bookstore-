@@ -1,13 +1,27 @@
 import React from 'react';
 import { BookOpen, ShoppingCart, Menu } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+
+  const handleCartClick = () => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      alert('Please login first to view your cart.');
+      navigate('/login', { state: { from: '/cart' } });
+      return;
+    }
+
+    navigate('/cart');
+  };
+
   return (
     <nav className="flex items-center justify-between px-10 py-5 bg-white border-b border-gray-100 sticky top-0 z-50">
       <Link to="/" className="flex items-center gap-2 text-[#6366F1] font-bold text-2xl">
         <BookOpen size={28} />
-        <span className="text-gray-900">Patrapatrika Centre</span>
+        <span className="text-gray-900">PatraPatrika Center</span>
       </Link>
 
       <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
@@ -19,10 +33,15 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-5">
-        <div className="relative">
-          <ShoppingCart className="text-gray-700" size={24} />
-         
-        </div>
+        <button
+          type="button"
+          onClick={handleCartClick}
+          className="relative cursor-pointer"
+          title="Cart"
+        >
+          <ShoppingCart className="text-gray-700 hover:text-[#6366F1] transition-colors" size={24} />
+        </button>
+
         <Menu className="md:hidden text-gray-700" size={24} />
       </div>
     </nav>

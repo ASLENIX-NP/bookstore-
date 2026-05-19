@@ -7,49 +7,43 @@ import Products from "./pages/Products";
 import Location from "./pages/Location";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import Cart from "./pages/Cart";
 
 // ADMIN PANEL IMPORTS
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
-import ManageBooks from "./pages/ManageBooks"; 
-import Reports from "./pages/Reports"; // 👈 NEW: Imported your dedicated Reports screen component
-import ManageOrders from "./pages/ManageOrders"; 
-import ManageUsers from "./pages/ManageUsers"; 
+import ManageBooks from "./pages/ManageBooks";
+import Reports from "./pages/Reports";
+import ManageOrders from "./pages/ManageOrders";
+import ManageUsers from "./pages/ManageUsers";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        
-        {/* CUSTOMER SIDE SITES */}
+        {/* CUSTOMER SIDE ROUTES */}
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
           <Route path="products" element={<Products />} />
           <Route path="location" element={<Location />} />
+          <Route path="cart" element={<Cart />} />
         </Route>
 
-        {/* AUTH WRAPPERS */}
+        {/* AUTH ROUTES */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* ADMIN PANEL ROUTES STRUCTURE */}
+        {/* ADMIN PANEL ROUTES */}
         <Route path="/admin" element={<AdminLayout />}>
-          {/* Automatically redirect base /admin to /admin/dashboard */}
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          
-          {/* Explicit dashboard route matching your browser address */}
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="books" element={<ManageBooks />} />
-          
-          {/* 📊 NEW: Independent path matching your layout routing table */}
-          <Route path="reports" element={<Reports />} /> 
-          
+          <Route path="reports" element={<Reports />} />
           <Route path="orders" element={<ManageOrders />} />
           <Route path="users" element={<ManageUsers />} />
         </Route>
-
       </Routes>
     </BrowserRouter>
   );

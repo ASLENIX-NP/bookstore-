@@ -9,11 +9,15 @@ import {
   ShieldAlert,
   Loader2,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If user came from cart, send them back to cart after login
+  const redirectPath = location.state?.from || '/';
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [email, setEmail] = useState('');
@@ -44,6 +48,7 @@ const Login = () => {
         return;
       }
 
+      // This is what cart/navbar should check
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
 
@@ -58,7 +63,7 @@ const Login = () => {
       if (data.user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
-        navigate('/');
+        navigate(redirectPath);
       }
     } catch (error) {
       setLoading(false);
@@ -72,10 +77,9 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
-      {/* LEFT SIDE: Login Form Layout Frame Column */}
+      {/* LEFT SIDE */}
       <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-16 lg:px-24 py-12 relative">
         <div className="w-full max-w-md mx-auto space-y-8">
-          {/* Typography Header Node Element */}
           <div className="text-center space-y-3">
             <div className="flex items-center justify-center gap-2 text-indigo-600 font-bold text-3xl">
               <BookOpen size={36} strokeWidth={2.5} />
@@ -99,7 +103,7 @@ const Login = () => {
             </p>
           </div>
 
-          {/* Interactive Toggle Switch Tab Controls */}
+          {/* Toggle */}
           <div className="flex bg-gray-100 p-1 rounded-xl">
             <button
               type="button"
@@ -132,16 +136,14 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Inline Notification Banner Component */}
           {errorMsg && (
             <div className="bg-red-50 text-red-600 border border-red-100 p-3.5 rounded-xl text-sm font-semibold shadow-sm animate-fadeIn">
               {errorMsg}
             </div>
           )}
 
-          {/* Interactive Form Processing Layer */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email Field */}
+            {/* Email */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">
                 Email address
@@ -163,7 +165,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password Field Element */}
+            {/* Password */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">
                 Password
@@ -193,7 +195,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Secondary Option Actions */}
+            {/* Remember / Forgot */}
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 cursor-pointer select-none font-medium text-gray-600">
                 <input
@@ -213,7 +215,6 @@ const Login = () => {
               </a>
             </div>
 
-            {/* Dynamic Submission Control Action Strip Button */}
             <button
               type="submit"
               disabled={loading}
@@ -235,7 +236,6 @@ const Login = () => {
             </button>
           </form>
 
-          {/* Account Creation Redirect Link */}
           {!isAdmin && (
             <p className="text-center text-sm font-medium text-gray-600 animate-fadeIn">
               Don&apos;t have an account?{' '}
@@ -248,7 +248,6 @@ const Login = () => {
             </p>
           )}
 
-          {/* Return Anchor Route Node */}
           <div className="pt-4 text-center">
             <Link
               to="/"
@@ -261,7 +260,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Rich Gradient Graphic Side Presentation Banner */}
+      {/* RIGHT SIDE */}
       <div
         className={`hidden md:flex md:w-1/2 items-center justify-center p-12 relative overflow-hidden transition-all duration-500 ${
           isAdmin

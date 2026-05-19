@@ -1,19 +1,28 @@
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Trash2, Plus, Minus } from "lucide-react";
-import { Link } from "react-router-dom";
-import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Cart() {
+  const navigate = useNavigate();
+
   const [cartItems, setCartItems] = useState([
     {
       id: 1,
       name: "Journal",
       price: 24.99,
       quantity: 1,
-      image:
-        "https://images.unsplash.com/photo-1518226203301-8e7f833c6a94",
+      image: "https://images.unsplash.com/photo-1518226203301-8e7f833c6a94",
     },
   ]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login first to view your cart.");
+      navigate("/login", { state: { from: "/cart" } });
+    }
+  }, [navigate]);
 
   const updateQty = (id, delta) => {
     setCartItems((items) =>
@@ -65,12 +74,14 @@ export default function Cart() {
 
                 <div className="flex-1">
                   <h3 className="font-semibold">{item.name}</h3>
+
                   <p className="text-indigo-600 font-medium">
                     ${item.price}
                   </p>
 
                   <div className="flex items-center gap-3 mt-3">
                     <button
+                      type="button"
                       onClick={() => updateQty(item.id, -1)}
                       className="p-1 border rounded"
                     >
@@ -80,6 +91,7 @@ export default function Cart() {
                     <span>{item.quantity}</span>
 
                     <button
+                      type="button"
                       onClick={() => updateQty(item.id, 1)}
                       className="p-1 border rounded"
                     >
@@ -87,6 +99,7 @@ export default function Cart() {
                     </button>
 
                     <button
+                      type="button"
                       onClick={() => removeItem(item.id)}
                       className="ml-4 text-red-600 flex items-center gap-1"
                     >
