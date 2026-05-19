@@ -16,7 +16,8 @@ import ManageBooks from "./pages/ManageBooks";
 import Reports from "./pages/Reports";
 import ManageOrders from "./pages/ManageOrders";
 import ManageUsers from "./pages/ManageUsers";
-import AdminSettings from "./pages/Settings"; // <-- 1. IMPORT YOUR NEW SETTINGS COMPONENT HERE
+import AdminSettings from "./pages/Settings";
+import ManageMessages from "./pages/ManageMessages"; // <-- 1. IMPORT YOUR NEW MESSAGES COMPONENT HERE
 
 export default function App() {
   return (
@@ -44,7 +45,8 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="orders" element={<ManageOrders />} />
           <Route path="users" element={<ManageUsers />} />
-          <Route path="settings" element={<AdminSettings />} /> {/* <-- 2. ADDED THE SETTINGS ROUTE HERE */}
+          <Route path="settings" element={<AdminSettings />} />
+          <Route path="messages" element={<ManageMessages />} /> {/* <-- 2. ADDED THE MESSAGES ROUTE HERE */}
         </Route>
       </Routes>
     </BrowserRouter>
