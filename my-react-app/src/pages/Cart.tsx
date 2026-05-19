@@ -4,16 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 export default function Cart() {
   const navigate = useNavigate();
-
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Journal",
-      price: 24.99,
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1518226203301-8e7f833c6a94",
-    },
-  ]);
+  const [cartItems, setCartItems] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -21,25 +12,35 @@ export default function Cart() {
     if (!token) {
       alert("Please login first to view your cart.");
       navigate("/login", { state: { from: "/cart" } });
+      return;
     }
+
+    const savedCart = JSON.parse(localStorage.getItem("cart")) || [];
+    setCartItems(savedCart);
   }, [navigate]);
 
+  const saveCart = (updatedCart) => {
+    setCartItems(updatedCart);
+    localStorage.setItem("cart", JSON.stringify(updatedCart));
+  };
+
   const updateQty = (id, delta) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
+    const updatedCart = cartItems.map((item) =>
+      item.id === id
+        ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+        : item
     );
+
+    saveCart(updatedCart);
   };
 
   const removeItem = (id) => {
-    setCartItems((items) => items.filter((item) => item.id !== id));
+    const updatedCart = cartItems.filter((item) => item.id !== id);
+    saveCart(updatedCart);
   };
 
   const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
     0
   );
 
@@ -63,36 +64,38 @@ export default function Cart() {
           <div className="space-y-4">
             {cartItems.map((item) => (
               <div
-                key={item.id}
-                className="flex items-center gap-4 border p-4 rounded"
+                key={item.id || item._id}
+                className="flex items-center gap-4 border p-4 rounded bg-white"
               >
                 <img
                   src={item.image}
-                  alt={item.name}
+                  alt={item.name || item.title}
                   className="w-20 h-20 object-cover rounded"
                 />
 
                 <div className="flex-1">
-                  <h3 className="font-semibold">{item.name}</h3>
+                  <h3 className="font-semibold">
+                    {item.name || item.title}
+                  </h3>
 
                   <p className="text-indigo-600 font-medium">
-                    ${item.price}
+                    ${Number(item.price || 0).toFixed(2)}
                   </p>
 
                   <div className="flex items-center gap-3 mt-3">
                     <button
                       type="button"
-                      onClick={() => updateQty(item.id, -1)}
+                      onClick={() => updateQty(item.id || item._id, -1)}
                       className="p-1 border rounded"
                     >
                       <Minus size={16} />
                     </button>
 
-                    <span>{item.quantity}</span>
+                    <span>{item.quantity || 1}</span>
 
                     <button
                       type="button"
-                      onClick={() => updateQty(item.id, 1)}
+                      onClick={() => updateQty(item.id || item._id, 1)}
                       className="p-1 border rounded"
                     >
                       <Plus size={16} />
@@ -100,7 +103,7 @@ export default function Cart() {
 
                     <button
                       type="button"
-                      onClick={() => removeItem(item.id)}
+                      onClick={() => removeItem(item.id || item._id)}
                       className="ml-4 text-red-600 flex items-center gap-1"
                     >
                       <Trash2 size={16} />
