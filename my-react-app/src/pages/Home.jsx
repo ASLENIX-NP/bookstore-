@@ -10,6 +10,12 @@ import {
   Loader2,
   ShoppingCart,
   Eye,
+  Star,
+  Sparkles,
+  BadgeCheck,
+  Layers,
+  MapPin,
+  ShieldCheck,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -90,6 +96,10 @@ export default function Home() {
     navigate(`/products/${productId}`);
   };
 
+  const getStatus = (product) => {
+    return product.stockStatus || product.statusFlag || 'In Stock';
+  };
+
   const addToCart = (product) => {
     if (!product) return;
 
@@ -113,10 +123,6 @@ export default function Home() {
     alert(`"${product.name}" successfully added to your cart! 🛒`);
   };
 
-  const getStatus = (product) => {
-    return product.stockStatus || product.statusFlag || 'In Stock';
-  };
-
   const nextSlide = () => {
     setCurrentSlide((prev) =>
       prev === heroImages.length - 1 ? 0 : prev + 1
@@ -130,9 +136,9 @@ export default function Home() {
   };
 
   return (
-    <div>
+    <div className="bg-slate-950 overflow-hidden">
       {/* Hero Section */}
-      <section className="relative bg-gray-900 text-white overflow-hidden h-[600px] lg:h-[700px] group">
+      <section className="relative bg-slate-950 text-white overflow-hidden min-h-[680px] lg:min-h-[760px] group">
         <div className="absolute inset-0 z-0">
           {heroImages.map((image, index) => (
             <div
@@ -144,66 +150,136 @@ export default function Home() {
               <LocalImageWithFallback
                 src={image.url}
                 alt={image.alt}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
+
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/35" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
             </div>
           ))}
         </div>
 
-        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
-          <div className="max-w-3xl py-32 lg:py-40">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 drop-shadow-lg">
-              Welcome to PatraPatrika Center
-            </h1>
+        <div className="absolute top-24 right-10 w-72 h-72 bg-indigo-600/30 rounded-full blur-[100px] z-10" />
+        <div className="absolute bottom-10 left-10 w-72 h-72 bg-orange-500/20 rounded-full blur-[100px] z-10" />
 
-            <p className="text-xl md:text-2xl mb-8 text-gray-200 drop-shadow-md">
-              Premium books, notebooks, and stationery for readers, writers, and
-              creative minds.
-            </p>
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-[680px] lg:min-h-[760px] flex items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full">
+            <div className="max-w-3xl py-28">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 backdrop-blur-xl text-white px-4 py-2 rounded-full text-sm font-bold mb-6 shadow-lg">
+                <Sparkles className="w-4 h-4 text-yellow-300" />
+                Books, Stationery, Magazines & More
+              </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                to="/products"
-                className="bg-indigo-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-indigo-700 transition-colors inline-flex items-center justify-center gap-2 shadow-lg"
-              >
-                Shop Now
-                <ArrowRight className="w-5 h-5" />
-              </Link>
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6 drop-shadow-lg leading-[1.05]">
+                Welcome to
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-white to-orange-200">
+                  PatraPatrika Center
+                </span>
+              </h1>
 
-              <Link
-                to="/about"
-                className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-gray-900 transition-colors inline-flex items-center justify-center shadow-lg"
-              >
-                Learn More
-              </Link>
+              <p className="text-lg md:text-2xl mb-8 text-slate-200 drop-shadow-md leading-relaxed max-w-2xl">
+                Premium books, notebooks, and stationery for readers, writers,
+                and creative minds.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  to="/products"
+                  className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-8 py-4 rounded-2xl font-black hover:from-indigo-700 hover:to-violet-700 transition-all inline-flex items-center justify-center gap-2 shadow-2xl shadow-indigo-900/40 hover:-translate-y-1"
+                >
+                  Shop Now
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+
+                <Link
+                  to="/about"
+                  className="border border-white/30 bg-white/10 backdrop-blur-xl text-white px-8 py-4 rounded-2xl font-black hover:bg-white hover:text-gray-900 transition-all inline-flex items-center justify-center shadow-xl"
+                >
+                  Learn More
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mt-10 max-w-xl">
+                <div className="bg-white/10 border border-white/15 backdrop-blur-xl rounded-2xl p-4 shadow-lg">
+                  <p className="text-2xl font-black text-white">7+</p>
+                  <p className="text-xs font-semibold text-slate-300 mt-1">
+                    Categories
+                  </p>
+                </div>
+
+                <div className="bg-white/10 border border-white/15 backdrop-blur-xl rounded-2xl p-4 shadow-lg">
+                  <p className="text-2xl font-black text-white">Fresh</p>
+                  <p className="text-xs font-semibold text-slate-300 mt-1">
+                    New Arrivals
+                  </p>
+                </div>
+
+                <div className="bg-white/10 border border-white/15 backdrop-blur-xl rounded-2xl p-4 shadow-lg">
+                  <p className="text-2xl font-black text-white">Local</p>
+                  <p className="text-xs font-semibold text-slate-300 mt-1">
+                    Store Service
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden lg:block relative">
+              <div className="absolute -inset-6 bg-gradient-to-r from-indigo-500/30 to-orange-500/20 rounded-[3rem] blur-2xl" />
+
+              <div className="relative bg-white/10 backdrop-blur-2xl border border-white/15 rounded-[2rem] p-5 shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-500">
+                <div className="bg-white rounded-[1.5rem] p-4 shadow-xl">
+                  <LocalImageWithFallback
+                    src={heroImages[currentSlide].url}
+                    alt={heroImages[currentSlide].alt}
+                    className="w-full h-[430px] object-cover rounded-[1.2rem]"
+                  />
+
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BadgeCheck className="w-5 h-5 text-indigo-600" />
+                      <p className="text-sm font-black text-indigo-600 uppercase tracking-wider">
+                        Featured Store
+                      </p>
+                    </div>
+
+                    <h3 className="text-2xl font-black text-slate-900">
+                      Books & Stationery Hub
+                    </h3>
+
+                    <p className="text-sm text-slate-500 mt-2">
+                      Explore academic books, novels, notebooks, magazines, and
+                      everyday stationery items.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <button
           onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 hover:bg-indigo-600 text-white transition-all cursor-pointer opacity-0 group-hover:opacity-100 hidden md:block"
+          className="absolute left-5 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 hover:bg-indigo-600 text-white transition-all cursor-pointer opacity-0 group-hover:opacity-100 hidden md:block backdrop-blur-xl border border-white/10"
         >
           <ChevronLeft size={28} />
         </button>
 
         <button
           onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-black/30 hover:bg-indigo-600 text-white transition-all cursor-pointer opacity-0 group-hover:opacity-100 hidden md:block"
+          className="absolute right-5 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-white/10 hover:bg-indigo-600 text-white transition-all cursor-pointer opacity-0 group-hover:opacity-100 hidden md:block backdrop-blur-xl border border-white/10"
         >
           <ChevronRight size={28} />
         </button>
 
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-2">
           {heroImages.map((_, index) => (
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
               className={`h-2.5 rounded-full transition-all cursor-pointer ${
                 index === currentSlide
-                  ? 'w-8 bg-indigo-600'
-                  : 'w-2.5 bg-white/50 hover:bg-white'
+                  ? 'w-10 bg-indigo-500'
+                  : 'w-2.5 bg-white/40 hover:bg-white'
               }`}
             />
           ))}
@@ -211,47 +287,73 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-            Why Choose PatraPatrika Center?
-          </h2>
+      <section className="relative py-24 bg-white overflow-hidden">
+        <div className="absolute top-0 left-0 w-80 h-80 bg-indigo-50 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-orange-50 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <p className="text-indigo-600 text-xs font-black uppercase tracking-[0.3em] mb-4">
+              Why Choose Us
+            </p>
+
+            <h2 className="text-3xl md:text-5xl font-black text-gray-900">
+              Why Choose PatraPatrika Center?
+            </h2>
+
+            <p className="text-gray-500 mt-5 text-base md:text-lg leading-relaxed">
+              A complete place for books, stationery, notebooks, magazines, and
+              academic materials.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="group relative bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 to-violet-500" />
+
+              <div className="bg-indigo-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <BookOpen className="w-8 h-8 text-indigo-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">
+
+              <h3 className="text-xl font-black mb-3 text-gray-900">
                 Curated Collection
               </h3>
-              <p className="text-gray-600">
+
+              <p className="text-gray-600 leading-relaxed">
                 Carefully selected books across all genres, from bestsellers to
                 hidden gems.
               </p>
             </div>
 
-            <div className="text-center p-6">
-              <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Pen className="w-8 h-8 text-indigo-600" />
+            <div className="group relative bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-amber-500" />
+
+              <div className="bg-orange-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Pen className="w-8 h-8 text-orange-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">
+
+              <h3 className="text-xl font-black mb-3 text-gray-900">
                 Premium Stationery
               </h3>
-              <p className="text-gray-600">
+
+              <p className="text-gray-600 leading-relaxed">
                 High-quality pens, pencils, and writing instruments for every
                 occasion.
               </p>
             </div>
 
-            <div className="text-center p-6">
-              <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Notebook className="w-8 h-8 text-indigo-600" />
+            <div className="group relative bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+
+              <div className="bg-emerald-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Notebook className="w-8 h-8 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">
+
+              <h3 className="text-xl font-black mb-3 text-gray-900">
                 Notebooks & Journals
               </h3>
-              <p className="text-gray-600">
+
+              <p className="text-gray-600 leading-relaxed">
                 Beautiful notebooks perfect for journaling, planning, and
                 creative work.
               </p>
@@ -261,16 +363,30 @@ export default function Home() {
       </section>
 
       {/* Featured Products Loaded Dynamically from MongoDB */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">
-              Featured Products
-            </h2>
+      <section className="relative py-24 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+        <div className="absolute top-10 right-0 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-70 translate-x-1/2" />
+        <div className="absolute bottom-10 left-0 w-96 h-96 bg-orange-100 rounded-full blur-3xl opacity-70 -translate-x-1/2" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-6 mb-14">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
+                <Layers className="w-4 h-4" />
+                Latest Picks
+              </div>
+
+              <h2 className="text-3xl md:text-5xl font-black text-gray-900">
+                Featured Products
+              </h2>
+
+              <p className="text-gray-500 mt-3 text-base">
+                Explore products recently added to the store.
+              </p>
+            </div>
 
             <Link
               to="/products"
-              className="text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-2"
+              className="text-indigo-600 hover:text-white font-black inline-flex items-center gap-2 bg-white hover:bg-indigo-600 border border-indigo-100 px-6 py-3 rounded-2xl shadow-sm hover:shadow-xl transition-all w-fit"
             >
               View All
               <ArrowRight className="w-5 h-5" />
@@ -278,14 +394,14 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-              <p className="text-sm text-gray-500">
+            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[2rem] shadow-sm border border-gray-100">
+              <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-3" />
+              <p className="text-sm text-gray-500 font-semibold">
                 Connecting to cloud warehouse...
               </p>
             </div>
           ) : featuredProducts.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="text-center py-16 bg-white rounded-[2rem] shadow-sm border border-gray-100">
               <p className="text-gray-500 mb-2">
                 No items inside your cloud database collection yet.
               </p>
@@ -294,7 +410,7 @@ export default function Home() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {featuredProducts.map((product) => {
                 const status = getStatus(product);
                 const isOutOfStock = status === 'Out of Stock';
@@ -302,33 +418,54 @@ export default function Home() {
                 return (
                   <div
                     key={product._id}
-                    className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
+                    className="group bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-2xl hover:-translate-y-2 transition-all duration-300"
                   >
-                    {/* Clickable Product Image */}
                     <button
                       type="button"
                       onClick={() => openProductDetails(product._id)}
-                      className="w-full aspect-[3/4] bg-slate-50 overflow-hidden rounded-2xl border border-gray-100 relative group cursor-pointer"
+                      className="relative w-full aspect-[3/4] bg-slate-50 overflow-hidden cursor-pointer"
                     >
                       <LocalImageWithFallback
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
+
+                      <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest bg-white/95 backdrop-blur-md text-orange-600 px-3 py-1 rounded-full shadow-sm">
+                          Featured
+                        </span>
+
+                        <span
+                          className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm ${
+                            isOutOfStock
+                              ? 'bg-red-600 text-white'
+                              : 'bg-emerald-600 text-white'
+                          }`}
+                        >
+                          {status}
+                        </span>
+                      </div>
+
+                      <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="inline-flex items-center gap-2 text-white text-xs font-black">
+                          <Eye className="w-4 h-4" />
+                          View Product Details
+                        </span>
+                      </div>
 
                       {isOutOfStock && (
                         <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
-                          <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                          <span className="bg-red-600 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
                             Sold Out
                           </span>
                         </div>
                       )}
                     </button>
 
-                    {/* Description Details Layout Block */}
-                    <div className="mt-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div>
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md inline-block">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md inline-block">
                           {product.subcategory || product.category || 'Books'}
                         </span>
 
@@ -337,28 +474,37 @@ export default function Home() {
                           onClick={() => openProductDetails(product._id)}
                           className="text-left w-full"
                         >
-                          <h4 className="font-bold text-gray-900 text-sm tracking-tight line-clamp-1 pt-1 hover:text-orange-600 transition-colors">
+                          <h4 className="font-black text-gray-900 text-base tracking-tight line-clamp-1 pt-2 hover:text-orange-600 transition-colors">
                             {product.name}
                           </h4>
                         </button>
 
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                        <p className="text-sm text-gray-500 mt-2 line-clamp-2 min-h-[40px]">
                           {product.description ||
                             'No descriptive summary details added.'}
                         </p>
+
+                        <div className="flex items-center gap-1 mt-3">
+                          <Star className="w-4 h-4 text-amber-500 fill-current" />
+                          <span className="text-sm font-black text-gray-800">
+                            {Number(product.rating || 0).toFixed(1)}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            ({product.numReviews || 0} reviews)
+                          </span>
+                        </div>
                       </div>
 
-                      {/* Pricing details and Click Actions Footer Row */}
-                      <div className="flex items-center justify-between pt-2 border-t border-gray-50 gap-2">
-                        <span className="text-sm font-black text-slate-900 tracking-tight">
-                          NPR {Number(product.price).toLocaleString()}
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-100 gap-2">
+                        <span className="text-lg font-black text-slate-900 tracking-tight">
+                          NPR {Number(product.price || 0).toLocaleString()}
                         </span>
 
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => openProductDetails(product._id)}
-                            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-black bg-slate-100 text-slate-600 hover:bg-slate-200"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             Details
@@ -368,7 +514,7 @@ export default function Home() {
                             type="button"
                             disabled={isOutOfStock}
                             onClick={() => addToCart(product)}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-all shadow-sm ${
                               isOutOfStock
                                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                 : 'bg-orange-500 hover:bg-orange-600 active:scale-95 text-white cursor-pointer'
@@ -389,23 +535,40 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-indigo-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+      <section className="relative py-24 bg-gradient-to-r from-indigo-700 via-violet-700 to-indigo-700 text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute -top-32 -left-32 w-96 h-96 bg-white rounded-full blur-3xl" />
+          <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-white rounded-full blur-3xl" />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/15 border border-white/20 backdrop-blur-md mb-6">
+            <MapPin className="w-8 h-8" />
+          </div>
+
+          <h2 className="text-3xl md:text-5xl font-black mb-4">
             Visit Our Store Today
           </h2>
 
-          <p className="text-xl mb-8 text-indigo-100">
+          <p className="text-lg md:text-xl mb-8 text-indigo-100 leading-relaxed">
             Experience our full collection in person. We're located in the heart
             of Kathmandu.
           </p>
 
-          <Link
-            to="/location"
-            className="bg-white text-indigo-600 px-8 py-3 rounded-lg font-semibold hover:bg-indigo-50 transition-colors inline-block"
-          >
-            Find Us
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/location"
+              className="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black hover:bg-indigo-50 transition-colors inline-flex items-center gap-2 shadow-xl"
+            >
+              Find Us
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+
+            <div className="inline-flex items-center gap-2 text-indigo-100 font-semibold">
+              <ShieldCheck className="w-5 h-5" />
+              Trusted local bookstore experience
+            </div>
+          </div>
         </div>
       </section>
     </div>
