@@ -293,9 +293,6 @@ export default function Home() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <p className="text-indigo-600 text-xs font-black uppercase tracking-[0.3em] mb-4">
-              Why Choose Us
-            </p>
 
             <h2 className="text-3xl md:text-5xl font-black text-gray-900">
               Why Choose PatraPatrika Center?
