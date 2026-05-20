@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { BookOpen, Pen, Notebook, ArrowRight, ChevronLeft, ChevronRight, Loader2, ShoppingCart } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  BookOpen,
+  Pen,
+  Notebook,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  ShoppingCart,
+  Eye,
+} from 'lucide-react';
 import axios from 'axios';
 
 const heroImages = [
@@ -49,24 +59,24 @@ const LocalImageWithFallback = ({ src, alt, className }) => {
 };
 
 export default function Home() {
+  const navigate = useNavigate();
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Slider Timer
     const sliderTimer = setInterval(() => {
       setCurrentSlide((prev) => (prev === heroImages.length - 1 ? 0 : prev + 1));
     }, 3500);
 
-    // Fetch up to 4 latest items from backend database
     const fetchFeaturedData = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/products');
         setFeaturedProducts(response.data.slice(0, 4));
         setLoading(false);
       } catch (error) {
-        console.error("Error connecting to Express server container:", error);
+        console.error('Error connecting to Express server container:', error);
         setLoading(false);
       }
     };
@@ -76,27 +86,35 @@ export default function Home() {
     return () => clearInterval(sliderTimer);
   }, []);
 
-  // ADD TO CART STORAGE HANDLER MATRIX
+  const openProductDetails = (productId) => {
+    navigate(`/products/${productId}`);
+  };
+
   const addToCart = (product) => {
     if (!product) return;
 
     const currentCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = currentCart.find(item => item._id === product._id);
-    
+    const existingItem = currentCart.find((item) => item._id === product._id);
+
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
       currentCart.push({
         _id: product._id,
-        title: product.name, // Maps your schema 'name' to the cart's expected 'title' field
+        title: product.name,
+        name: product.name,
         price: product.price,
         image: product.image,
-        quantity: 1
+        quantity: 1,
       });
     }
-    
+
     localStorage.setItem('cart', JSON.stringify(currentCart));
     alert(`"${product.name}" successfully added to your cart! 🛒`);
+  };
+
+  const getStatus = (product) => {
+    return product.stockStatus || product.statusFlag || 'In Stock';
   };
 
   const nextSlide = () => {
@@ -262,67 +280,109 @@ export default function Home() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-10">
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-              <p className="text-sm text-gray-500">Connecting to cloud warehouse...</p>
+              <p className="text-sm text-gray-500">
+                Connecting to cloud warehouse...
+              </p>
             </div>
           ) : featuredProducts.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-100">
-              <p className="text-gray-500 mb-2">No items inside your cloud database collection yet.</p>
-              <p className="text-xs text-indigo-600 font-mono">Add products in the admin panel to see them here!</p>
+              <p className="text-gray-500 mb-2">
+                No items inside your cloud database collection yet.
+              </p>
+              <p className="text-xs text-indigo-600 font-mono">
+                Add products in the admin panel to see them here!
+              </p>
             </div>
           ) : (
-            /* COMPLETELY ALIGNED AND UNIFIED DESIGN PATHWAY GRID */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product) => (
-                <div 
-                  key={product._id} 
-                  className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
-                >
-                  {/* Book Cover Image Wrapper Container */}
-                  <div className="w-full aspect-[3/4] bg-slate-50 overflow-hidden rounded-2xl border border-gray-100">
-                    <LocalImageWithFallback
-                      src={product.image}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+              {featuredProducts.map((product) => {
+                const status = getStatus(product);
+                const isOutOfStock = status === 'Out of Stock';
 
-                  {/* Description Details Layout Block */}
-                  <div className="mt-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md inline-block">
-                        {product.subcategory || product.category || 'Books'}
-                      </span>
-                      <h4 className="font-bold text-gray-900 text-sm tracking-tight line-clamp-1 pt-1">
-                        {product.name}
-                      </h4>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-1">
-                        {product.description || 'No descriptive summary details added.'}
-                      </p>
-                    </div>
+                return (
+                  <div
+                    key={product._id}
+                    className="bg-white border border-gray-100 rounded-3xl shadow-sm p-5 flex flex-col justify-between hover:shadow-md transition-shadow"
+                  >
+                    {/* Clickable Product Image */}
+                    <button
+                      type="button"
+                      onClick={() => openProductDetails(product._id)}
+                      className="w-full aspect-[3/4] bg-slate-50 overflow-hidden rounded-2xl border border-gray-100 relative group cursor-pointer"
+                    >
+                      <LocalImageWithFallback
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
 
-                    {/* Pricing details and Click Actions Footer Row matching your /products setup exactly */}
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                      <span className="text-sm font-black text-slate-900 tracking-tight">
-                        NPR {Number(product.price).toLocaleString()}
-                      </span>
-                      
-                      {/* FULLY MATCHED ORANGE 'BUY' TRIGGER BUTTON */}
-                      <button
-                        type="button"
-                        disabled={product.statusFlag === 'Out of Stock'}
-                        onClick={() => addToCart(product)}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm text-white ${
-                          product.statusFlag === 'Out of Stock' 
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                            : 'bg-orange-500 hover:bg-orange-600 active:scale-95'
-                        }`}
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" /> Buy
-                      </button>
+                      {isOutOfStock && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center">
+                          <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                            Sold Out
+                          </span>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Description Details Layout Block */}
+                    <div className="mt-4 flex-1 flex flex-col justify-between space-y-3">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-orange-500 bg-orange-50 px-2 py-0.5 rounded-md inline-block">
+                          {product.subcategory || product.category || 'Books'}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => openProductDetails(product._id)}
+                          className="text-left w-full"
+                        >
+                          <h4 className="font-bold text-gray-900 text-sm tracking-tight line-clamp-1 pt-1 hover:text-orange-600 transition-colors">
+                            {product.name}
+                          </h4>
+                        </button>
+
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                          {product.description ||
+                            'No descriptive summary details added.'}
+                        </p>
+                      </div>
+
+                      {/* Pricing details and Click Actions Footer Row */}
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-50 gap-2">
+                        <span className="text-sm font-black text-slate-900 tracking-tight">
+                          NPR {Number(product.price).toLocaleString()}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openProductDetails(product._id)}
+                            className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Details
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isOutOfStock}
+                            onClick={() => addToCart(product)}
+                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                              isOutOfStock
+                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                : 'bg-orange-500 hover:bg-orange-600 active:scale-95 text-white cursor-pointer'
+                            }`}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            Buy
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -336,7 +396,8 @@ export default function Home() {
           </h2>
 
           <p className="text-xl mb-8 text-indigo-100">
-            Experience our full collection in person. We're located in the heart of Kathmandu.
+            Experience our full collection in person. We're located in the heart
+            of Kathmandu.
           </p>
 
           <Link

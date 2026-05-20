@@ -54,6 +54,10 @@ export default function ProductDetails() {
     return product?.stockStatus || product?.statusFlag || 'In Stock';
   };
 
+  const handleBack = () => {
+    navigate(-1);
+  };
+
   const addToCart = () => {
     const token = localStorage.getItem('token');
 
@@ -193,13 +197,14 @@ export default function ProductDetails() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-8 min-h-screen">
-      <Link
-        to="/products"
-        className="inline-flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-orange-600"
+      <button
+        type="button"
+        onClick={handleBack}
+        className="inline-flex items-center gap-2 text-sm font-bold text-gray-600 hover:text-orange-600 cursor-pointer"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Products
-      </Link>
+        Back
+      </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
