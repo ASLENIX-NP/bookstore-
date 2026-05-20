@@ -213,6 +213,24 @@ export default function ManageBooks() {
     }
   };
 
+  const handleToggleStock = async (book) => {
+    const currentStatus = book.stockStatus || book.statusFlag || 'In Stock';
+    const newStatus = currentStatus === 'In Stock' ? 'Out of Stock' : 'In Stock';
+
+    try {
+      const res = await axios.patch(`http://localhost:5000/api/products/${book._id}`, {
+        stockStatus: newStatus,
+      });
+
+      setBooks((prev) =>
+        prev.map((item) => (item._id === book._id ? res.data : item))
+      );
+    } catch (err) {
+      console.error('Error updating stock status:', err);
+      alert('Failed to update stock status.');
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -475,13 +493,27 @@ export default function ManageBooks() {
                             NPR {book.price}
                           </p>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(book._id)}
-                            className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStock(book)}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors ${
+                                status === 'In Stock'
+                                  ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {status === 'In Stock' ? 'Mark Out' : 'Mark In'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(book._id)}
+                              className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -564,13 +596,27 @@ export default function ManageBooks() {
                         </td>
 
                         <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(book._id)}
-                            className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStock(book)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+                                status === 'In Stock'
+                                  ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                  : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {status === 'In Stock' ? 'Mark Out' : 'Mark In'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(book._id)}
+                              className="text-red-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
