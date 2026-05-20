@@ -35,7 +35,7 @@ const Location = () => {
                 <Phone className="text-[#6366F1] shrink-0" size={24} />
                 <div>
                   <h4 className="font-bold">Phone</h4>
-                  <p className="text-gray-600">(555) 123-4567</p>
+                  <p className="text-gray-600">000000</p>
                 </div>
               </div>
             </div>
@@ -43,19 +43,14 @@ const Location = () => {
 
           <div className="bg-[#6366F1] text-white p-8 rounded-2xl shadow-lg">
             <h3 className="text-xl font-bold mb-2">Planning a visit?</h3>
-            <p className="opacity-90 text-sm mb-0">We offer free parking for customers and a cozy reading nook with fresh coffee.</p>
+            <p className="opacity-90 text-sm mb-0">We offer free parking for customers.</p>
           </div>
         </div>
 
         {/* Right Side: Embedded Google Map */}
         <div className="h-full min-h-[400px] rounded-2xl overflow-hidden shadow-inner border border-gray-200">
           <iframe 
-            /* TO GET THE CORRECT MAP:
-               1. Go to Google Maps (maps.google.com)
-               2. Search for "Parijat Marg, Hetauda"
-               3. Click 'Share' -> 'Embed a map'
-               4. Copy the URL inside the src="..." and paste it below
-            */
+          
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3535.157929424843!2d85.03176717546366!3d27.428914638706348!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb49e29f8601ad%3A0xb35e3962b322a36d!2sParijat%20Marg%2C%20Hetauda%2044107!5e0!3m2!1sen!2snp!4v1716200000000!5m2!1sen!2snp" 
             width="100%" 
             height="100%" 
