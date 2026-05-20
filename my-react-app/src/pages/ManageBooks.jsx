@@ -9,6 +9,71 @@ import {
   Upload,
 } from 'lucide-react';
 
+const categoryOptions = {
+  'Academic Books': [
+    'School Books',
+    'College Books',
+    'Guide Books',
+    'Question Banks',
+  ],
+
+  'Novels & Literature': [
+    'Nepali Novels',
+    'English Novels',
+    'Self Help',
+    'Biography',
+    'Poetry',
+    'Romance',
+    'Mystery / Thriller',
+    'History',
+  ],
+
+  "Children's Books": [
+    'Story Books',
+    'Comics',
+    'Coloring Books',
+    'Alphabet Books',
+    'Activity Books',
+    'Picture Books',
+  ],
+
+  'Religious Books': [
+    'General Religious Books',
+  ],
+
+  'Notebooks, Copies & Files': [
+    'Single Line Copies',
+    'Four Line Copies',
+    'Drawing Copies',
+    'Register Copies',
+    'Practical Copies',
+    'Diaries / Journals',
+    'Files',
+    'Folders',
+  ],
+
+  'Magazines & Newspapers': [
+    'Newspapers',
+    'Educational Magazines',
+    'Monthly Magazines',
+    'Comics Magazines',
+    'Current Affairs Magazines',
+  ],
+
+  'Stationery Items': [
+    'Pens',
+    'Pencils',
+    'Erasers',
+    'Sharpeners',
+    'Markers',
+    'Highlighters',
+    'Geometry Box',
+    'Scales',
+    'Art Supplies',
+    'Office Supplies',
+  ],
+};
+
 export default function ManageBooks() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,25 +81,16 @@ export default function ManageBooks() {
 
   const [formData, setFormData] = useState({
     name: '',
-    category: 'novels',
-    subcategory: 'General',
+    category: 'Academic Books',
+    subcategory: 'School Books',
     price: '',
     stockStatus: 'In Stock',
     description: '',
     image: '',
   });
 
-  const categories = [
-    { value: 'novels', label: 'Novels' },
-    { value: 'books', label: 'Books' },
-    { value: 'notebooks', label: 'Notebooks' },
-    { value: 'pens', label: 'Pens' },
-    { value: 'pencils', label: 'Pencils' },
-    { value: 'scales', label: 'Scales' },
-    { value: 'erasers', label: 'Erasers' },
-    { value: 'geometry-box', label: 'Geometry Box' },
-    { value: 'art-supplies', label: 'Art Supplies' },
-  ];
+  const categories = Object.keys(categoryOptions);
+  const subcategories = categoryOptions[formData.category] || [];
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -85,8 +141,8 @@ export default function ManageBooks() {
   const resetForm = () => {
     setFormData({
       name: '',
-      category: 'novels',
-      subcategory: 'General',
+      category: 'Academic Books',
+      subcategory: 'School Books',
       price: '',
       stockStatus: 'In Stock',
       description: '',
@@ -97,10 +153,20 @@ export default function ManageBooks() {
     if (fileInput) fileInput.value = '';
   };
 
+  const handleCategoryChange = (selectedCategory) => {
+    const firstSubcategory = categoryOptions[selectedCategory]?.[0] || 'General';
+
+    setFormData({
+      ...formData,
+      category: selectedCategory,
+      subcategory: firstSubcategory,
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.price || !formData.subcategory) {
+    if (!formData.name || !formData.price || !formData.category || !formData.subcategory) {
       alert('Please complete all required fields.');
       return;
     }
@@ -128,7 +194,8 @@ export default function ManageBooks() {
     } catch (err) {
       console.error('Error creating product:', err);
       alert(
-        err.response?.data?.message ||
+        err.response?.data?.error ||
+          err.response?.data?.message ||
           'Failed to create new item. Check your backend logs.'
       );
     }
@@ -156,7 +223,7 @@ export default function ManageBooks() {
           </h2>
 
           <p className="text-sm text-gray-500 mt-1">
-            Manage live items, control stock flags, and upload custom covers.
+            Manage products, categories, stock flags, and custom covers.
           </p>
         </div>
       </div>
@@ -184,7 +251,7 @@ export default function ManageBooks() {
                     name: e.target.value,
                   })
                 }
-                placeholder="Atomic Habits"
+                placeholder="Example: Mathematics Grade 10"
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:bg-white text-gray-700 font-medium"
               />
             </div>
@@ -192,22 +259,17 @@ export default function ManageBooks() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Category
+                  Category *
                 </label>
 
                 <select
                   value={formData.category}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      category: e.target.value,
-                    })
-                  }
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none font-bold text-gray-600 cursor-pointer"
                 >
                   {categories.map((category) => (
-                    <option key={category.value} value={category.value}>
-                      {category.label}
+                    <option key={category} value={category}>
+                      {category}
                     </option>
                   ))}
                 </select>
@@ -239,8 +301,7 @@ export default function ManageBooks() {
                 Subcategory *
               </label>
 
-              <input
-                type="text"
+              <select
                 value={formData.subcategory}
                 onChange={(e) =>
                   setFormData({
@@ -248,9 +309,14 @@ export default function ManageBooks() {
                     subcategory: e.target.value,
                   })
                 }
-                placeholder="Self-Help, Academic, Ballpoint Pens..."
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none text-gray-700 font-medium"
-              />
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none font-bold text-gray-600 cursor-pointer"
+              >
+                {subcategories.map((subcategory) => (
+                  <option key={subcategory} value={subcategory}>
+                    {subcategory}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -315,7 +381,7 @@ export default function ManageBooks() {
                     description: e.target.value,
                   })
                 }
-                placeholder="Transform your life with tiny changes..."
+                placeholder="Write short product description..."
                 rows="3"
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none text-gray-700 font-medium resize-none"
               />
@@ -335,7 +401,7 @@ export default function ManageBooks() {
         <section className="xl:col-span-2 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4 min-w-0">
           <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2 border-b border-gray-50 pb-3">
             <BookOpen className="w-4 h-4 text-indigo-500" />
-            Currently Active Matrix Items ({books.length})
+            Currently Active Items ({books.length})
           </h3>
 
           {loading && (
@@ -389,6 +455,10 @@ export default function ManageBooks() {
                             {book.category}
                           </span>
 
+                          <span className="bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                            {book.subcategory}
+                          </span>
+
                           <span
                             className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                               status === 'In Stock'
@@ -424,11 +494,12 @@ export default function ManageBooks() {
           {/* Desktop Table View */}
           {!loading && !error && books.length > 0 && (
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left border-collapse">
+              <table className="w-full min-w-[760px] text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
                     <th className="px-4 py-3">Product Details</th>
                     <th className="px-4 py-3">Category</th>
+                    <th className="px-4 py-3">Subcategory</th>
                     <th className="px-4 py-3">Price</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -467,6 +538,12 @@ export default function ManageBooks() {
                         <td className="px-4 py-3">
                           <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold text-slate-500">
                             {book.category}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                            {book.subcategory || 'General'}
                           </span>
                         </td>
 
