@@ -36,6 +36,56 @@ const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ADMIN SEED FUNCTION
+const seedAdminAccount = async () => {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase().trim();
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminEmail || !adminPassword) {
+      console.log("ADMIN_EMAIL or ADMIN_PASSWORD missing in .env");
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    const existingAdmin = await AdminModel.findOne({ email: adminEmail });
+
+    if (!existingAdmin) {
+      await AdminModel.create({
+        email: adminEmail,
+        password: hashedPassword,
+      });
+
+      console.log("Admin account created in your MongoDB ✅");
+      return;
+    }
+
+    let passwordMatches = false;
+
+    try {
+      passwordMatches = await bcrypt.compare(
+        adminPassword,
+        existingAdmin.password
+      );
+    } catch {
+      passwordMatches = false;
+    }
+
+    if (!passwordMatches) {
+      existingAdmin.password = hashedPassword;
+      await existingAdmin.save();
+
+      console.log("Admin password updated in your MongoDB ✅");
+      return;
+    }
+
+    console.log("Admin account already exists ✅");
+  } catch (error) {
+    console.error("Admin seed error:", error.message);
+  }
+};
+
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -242,11 +292,11 @@ app.get("/api/admin/daily-report", async (req, res) => {
   }
 });
 
-// INITIALIZE
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("Connected to MongoDB Atlas! ✅");
+    await seedAdminAccount();
   })
   .catch((err) => console.error("Connection error:", err));
 
