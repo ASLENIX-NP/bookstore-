@@ -110,15 +110,29 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
+// UPDATED: This now changes both stockStatus and statusFlag
 app.patch("/api/products/:id", async (req, res) => {
   try {
-    res.status(200).json(
-      await Product.findByIdAndUpdate(
-        req.params.id,
-        { stockStatus: req.body.stockStatus },
-        { new: true }
-      )
+    const { stockStatus } = req.body;
+
+    if (!stockStatus) {
+      return res.status(400).json({ error: "stockStatus is required" });
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      {
+        stockStatus: stockStatus,
+        statusFlag: stockStatus,
+      },
+      { new: true }
     );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.status(200).json(updatedProduct);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
