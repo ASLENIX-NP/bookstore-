@@ -10,6 +10,39 @@ const productCategories = [
   'Stationery Items',
 ];
 
+const reviewSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    email: {
+      type: String,
+      required: false,
+      trim: true,
+      lowercase: true,
+    },
+
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+    },
+
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -55,11 +88,25 @@ const productSchema = new mongoose.Schema(
       enum: ['In Stock', 'Out of Stock'],
     },
 
-    // Kept for compatibility with older frontend code
     statusFlag: {
       type: String,
       default: 'In Stock',
       enum: ['In Stock', 'Out of Stock'],
+    },
+
+    rating: {
+      type: Number,
+      default: 0,
+    },
+
+    numReviews: {
+      type: Number,
+      default: 0,
+    },
+
+    reviews: {
+      type: [reviewSchema],
+      default: [],
     },
   },
   {
