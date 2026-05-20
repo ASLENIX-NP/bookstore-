@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import Products from "./pages/Products";
+import ProductDetails from "./pages/ProductDetails";
 import Location from "./pages/Location";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -17,7 +18,7 @@ import Reports from "./pages/Reports";
 import ManageOrders from "./pages/ManageOrders";
 import ManageUsers from "./pages/ManageUsers";
 import AdminSettings from "./pages/Settings";
-import ManageMessages from "./pages/ManageMessages"; // <-- 1. IMPORT YOUR NEW MESSAGES COMPONENT HERE
+import ManageMessages from "./pages/ManageMessages";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="about" element={<About />} />
           <Route path="contact" element={<Contact />} />
           <Route path="products" element={<Products />} />
+          <Route path="products/:id" element={<ProductDetails />} />
           <Route path="location" element={<Location />} />
           <Route path="cart" element={<Cart />} />
         </Route>
@@ -46,7 +48,7 @@ export default function App() {
           <Route path="orders" element={<ManageOrders />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="settings" element={<AdminSettings />} />
-          <Route path="messages" element={<ManageMessages />} /> {/* <-- 2. ADDED THE MESSAGES ROUTE HERE */}
+          <Route path="messages" element={<ManageMessages />} />
         </Route>
       </Routes>
     </BrowserRouter>

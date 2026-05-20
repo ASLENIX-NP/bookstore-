@@ -96,9 +96,23 @@ app.use("/api/auth", require("./routes/authRoutes"));
 // --- PRODUCT ROUTES ---
 app.get("/api/products", async (req, res) => {
   try {
-    res.status(200).json(await Product.find({}));
+    res.status(200).json(await Product.find({}).sort({ createdAt: -1 }));
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/products/:id", async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -110,7 +124,53 @@ app.post("/api/products", async (req, res) => {
   }
 });
 
-// UPDATED: This now changes both stockStatus and statusFlag
+app.post("/api/products/:id/reviews", async (req, res) => {
+  try {
+    const { name, email, rating, comment } = req.body;
+
+    if (!name || !rating || !comment) {
+      return res.status(400).json({
+        error: "Name, rating, and comment are required",
+      });
+    }
+
+    const numericRating = Number(rating);
+
+    if (numericRating < 1 || numericRating > 5) {
+      return res.status(400).json({
+        error: "Rating must be between 1 and 5",
+      });
+    }
+
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const review = {
+      name,
+      email,
+      rating: numericRating,
+      comment,
+    };
+
+    product.reviews.push(review);
+    product.numReviews = product.reviews.length;
+
+    product.rating =
+      product.reviews.reduce((total, item) => total + Number(item.rating || 0), 0) /
+      product.reviews.length;
+
+    const updatedProduct = await product.save();
+
+    res.status(201).json(updatedProduct);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// UPDATED: This changes both stockStatus and statusFlag
 app.patch("/api/products/:id", async (req, res) => {
   try {
     const { stockStatus } = req.body;
