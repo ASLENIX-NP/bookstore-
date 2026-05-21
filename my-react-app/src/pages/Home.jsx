@@ -330,10 +330,17 @@ export default function Home() {
                         {product.name}
                       </h3>
 
-                      <p className="text-sm text-gray-500 mb-4 line-clamp-2">
-                        {product.description ||
-                          'Premium quality product'}
-                      </p>
+                     <p
+  className="text-sm text-gray-500 mb-4 leading-relaxed min-h-[40px]"
+  style={{
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  }}
+>
+  {product.description || 'Premium quality product'}
+</p>
 
                       <div className="flex flex-col gap-2 pt-4 border-t border-gray-100">
                         <span className="text-lg font-black text-slate-900 tracking-tight mb-2">

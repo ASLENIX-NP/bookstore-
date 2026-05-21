@@ -9,6 +9,8 @@ import Location from "./pages/Location";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Cart from "./pages/Cart";
+import CheckoutDelivery from "./pages/CheckoutDelivery";
+import CheckoutPayment from "./pages/CheckoutPayment";
 
 // ADMIN PANEL IMPORTS
 import AdminLayout from "./layout/AdminLayout";
@@ -33,6 +35,8 @@ export default function App() {
           <Route path="products/:id" element={<ProductDetails />} />
           <Route path="location" element={<Location />} />
           <Route path="cart" element={<Cart />} />
+          <Route path="checkout/delivery" element={<CheckoutDelivery />} />
+          <Route path="checkout/payment" element={<CheckoutPayment />} />
         </Route>
 
         {/* AUTH ROUTES */}
