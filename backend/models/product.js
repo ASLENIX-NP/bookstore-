@@ -70,6 +70,12 @@ const productSchema = new mongoose.Schema(
       min: [0, 'Price cannot be negative'],
     },
 
+    // FLASH SALE PRICE
+    salePrice: {
+      type: Number,
+      default: 0,
+    },
+
     image: {
       type: String,
       required: false,
@@ -84,8 +90,26 @@ const productSchema = new mongoose.Schema(
         'No description provided for this catalog entry.',
     },
 
-    // FEATURED PRODUCT FIELD
+    // FEATURED PRODUCT
     featured: {
+      type: Boolean,
+      default: false,
+    },
+
+    // FLASH SALE
+    flashSale: {
+      type: Boolean,
+      default: false,
+    },
+
+    // BEST SELLER
+    bestSeller: {
+      type: Boolean,
+      default: false,
+    },
+
+    // NEW ARRIVAL
+    newArrival: {
       type: Boolean,
       default: false,
     },
