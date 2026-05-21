@@ -73,13 +73,21 @@ const productSchema = new mongoose.Schema(
     image: {
       type: String,
       required: false,
-      default: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500',
+      default:
+        'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500',
     },
 
     description: {
       type: String,
       required: false,
-      default: 'No description provided for this catalog entry.',
+      default:
+        'No description provided for this catalog entry.',
+    },
+
+    // FEATURED PRODUCT FIELD
+    featured: {
+      type: Boolean,
+      default: false,
     },
 
     stockStatus: {
@@ -114,6 +122,8 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-const Product = mongoose.models.Product || mongoose.model('Product', productSchema);
+const Product =
+  mongoose.models.Product ||
+  mongoose.model('Product', productSchema);
 
 module.exports = Product;

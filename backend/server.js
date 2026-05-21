@@ -81,10 +81,17 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // AUTH ROUTES
 app.use("/api/auth", require("./routes/authRoutes"));
 
-// --- PRODUCT ROUTES ---
+// --- PRODUCT ROUTES (UPDATED FOR FEATURED FILTER) ---
 app.get("/api/products", async (req, res) => {
-  try { res.status(200).json(await Product.find({}).sort({ createdAt: -1 })); } 
-  catch (error) { res.status(500).json({ error: error.message }); }
+  try {
+    const { featured } = req.query;
+    // Check if featured=true is requested, otherwise return all
+    const filter = featured === 'true' ? { isFeatured: true } : {};
+    const products = await Product.find(filter).sort({ createdAt: -1 });
+    res.status(200).json(products);
+  } catch (error) { 
+    res.status(500).json({ error: error.message }); 
+  }
 });
 
 app.get("/api/products/:id", async (req, res) => {
@@ -154,7 +161,6 @@ app.get("/api/users", async (req, res) => {
   catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Heartbeat endpoint to track online status
 app.post("/api/users/ping", async (req, res) => {
   try {
     const { userId } = req.body;
