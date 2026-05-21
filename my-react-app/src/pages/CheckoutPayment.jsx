@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   ArrowLeft,
   MapPin,
@@ -12,10 +13,13 @@ import {
   Banknote,
   CheckCircle2,
   ShieldCheck,
+  Loader2,
+  ReceiptText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const DELIVERY_CHARGE = 100;
+const VAT_RATE = 13;
 
 const paymentMethods = [
   {
@@ -48,12 +52,17 @@ const paymentMethods = [
   },
 ];
 
+const roundMoney = (value) => {
+  return Math.round(Number(value || 0) * 100) / 100;
+};
+
 export default function CheckoutPayment() {
   const navigate = useNavigate();
 
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [deliveryAddress, setDeliveryAddress] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cod");
+  const [orderLoading, setOrderLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -85,16 +94,59 @@ export default function CheckoutPayment() {
     setDeliveryAddress(address);
   }, [navigate]);
 
-  const productSubtotal = checkoutItems.reduce((total, item) => {
-    return (
-      total +
-      Number(item.price || 0) * Number(item.quantity || item.qty || 1)
+  const getLoggedUser = () => {
+    try {
+      const user =
+        JSON.parse(localStorage.getItem("user") || "null") ||
+        JSON.parse(localStorage.getItem("currentUser") || "null") ||
+        JSON.parse(localStorage.getItem("authUser") || "null");
+
+      return user;
+    } catch {
+      return null;
+    }
+  };
+
+  const productSubtotal = roundMoney(
+    checkoutItems.reduce((total, item) => {
+      return (
+        total +
+        Number(item.price || 0) * Number(item.quantity || item.qty || 1)
+      );
+    }, 0)
+  );
+
+  const taxableAmount = roundMoney(productSubtotal + DELIVERY_CHARGE);
+  const vatAmount = roundMoney((taxableAmount * VAT_RATE) / 100);
+  const grandTotal = roundMoney(taxableAmount + vatAmount);
+
+  const removePurchasedItemsFromCart = () => {
+    const checkoutType = localStorage.getItem("checkoutType") || "Cart";
+
+    if (checkoutType !== "Cart") return;
+
+    const cartItems = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    const purchasedIds = checkoutItems.map((item) =>
+      String(item._id || item.productId)
     );
-  }, 0);
 
-  const grandTotal = productSubtotal + DELIVERY_CHARGE;
+    const remainingCartItems = cartItems.filter(
+      (item) => !purchasedIds.includes(String(item._id || item.productId))
+    );
 
-  const handleConfirmPaymentMethod = () => {
+    localStorage.setItem("cart", JSON.stringify(remainingCartItems));
+  };
+
+  const clearCheckoutStorage = () => {
+    localStorage.removeItem("checkoutItems");
+    localStorage.removeItem("checkoutType");
+    localStorage.removeItem("selectedDeliveryAddress");
+    localStorage.removeItem("checkoutSummary");
+    localStorage.removeItem("buyNowItem");
+  };
+
+  const handleConfirmPaymentMethod = async () => {
     if (!selectedPaymentMethod) {
       alert("Please select a payment method.");
       return;
@@ -104,22 +156,102 @@ export default function CheckoutPayment() {
       (method) => method.id === selectedPaymentMethod
     );
 
-    const checkoutSummary = {
-      deliveryAddress,
-      orderItems: checkoutItems,
+    if (!selectedMethod) {
+      alert("Invalid payment method selected.");
+      return;
+    }
+
+    const loggedUser = getLoggedUser();
+
+    const orderPayload = {
+      customerName:
+        deliveryAddress.fullName ||
+        loggedUser?.name ||
+        loggedUser?.firstName ||
+        "Guest Customer",
+
+      email:
+        loggedUser?.email ||
+        localStorage.getItem("email") ||
+        "customer@patrapatrikacenter.local",
+
+      phone: deliveryAddress.phone || "",
+
+      deliveryInfo: {
+        fullName: deliveryAddress.fullName || "",
+        phone: deliveryAddress.phone || "",
+        region: deliveryAddress.region || "",
+        city: deliveryAddress.city || "",
+        building: deliveryAddress.building || "",
+        area: deliveryAddress.area || "",
+        address: deliveryAddress.address || "",
+        label: deliveryAddress.label || "Home",
+      },
+
+      orderItems: checkoutItems.map((item) => {
+        const qty = Number(item.quantity || item.qty || 1);
+        const price = Number(item.price || 0);
+
+        return {
+          productId: item.productId || item._id,
+          title: item.title || item.name || "Product",
+          image: item.image || "",
+          qty,
+          price,
+          subtotal: roundMoney(price * qty),
+        };
+      }),
+
       productSubtotal,
       deliveryCharge: DELIVERY_CHARGE,
+      taxableAmount,
+      vatRate: VAT_RATE,
+      vatAmount,
       grandTotal,
-      paymentMethod: selectedMethod?.title || "Cash on Delivery",
-      paymentMethodId: selectedPaymentMethod,
+      totalPrice: grandTotal,
+
       checkoutType: localStorage.getItem("checkoutType") || "Cart",
+
+      paymentMethod: selectedMethod.title,
+      paymentMethodId: selectedMethod.id,
+
+      paymentStatus: selectedMethod.id === "cod" ? "Pending" : "Pending",
+
+      orderStatus: "Processing",
+      transactionId: "",
+      paymentProof: "",
     };
 
-    localStorage.setItem("checkoutSummary", JSON.stringify(checkoutSummary));
+    try {
+      setOrderLoading(true);
 
-    alert(
-      `Payment method selected: ${selectedMethod?.title}. Next step will save this order to admin orders.`
-    );
+      const response = await axios.post(
+        "http://localhost:5000/api/orders",
+        orderPayload
+      );
+
+      if (response.data.success) {
+        localStorage.setItem("lastOrder", JSON.stringify(response.data.order));
+
+        removePurchasedItemsFromCart();
+        clearCheckoutStorage();
+
+        alert("Order placed successfully! Admin can now see this order.");
+
+        navigate("/order-success");
+      } else {
+        alert("Failed to place order. Please try again.");
+      }
+    } catch (error) {
+      console.error("Order creation error:", error);
+
+      alert(
+        error.response?.data?.error ||
+          "Failed to create order. Please make sure backend is running."
+      );
+    } finally {
+      setOrderLoading(false);
+    }
   };
 
   if (!deliveryAddress) {
@@ -129,7 +261,6 @@ export default function CheckoutPayment() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-7">
-        {/* Header */}
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
           <button
             type="button"
@@ -152,14 +283,13 @@ export default function CheckoutPayment() {
               </h1>
 
               <p className="text-gray-500 mt-2">
-                Review your selected products, delivery address, and choose a
-                payment method.
+                Review your products, delivery address, VAT, and payment method.
               </p>
             </div>
 
             <div className="bg-slate-950 text-white rounded-2xl px-6 py-4">
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-                Grand Total
+                Grand Total With VAT
               </p>
               <p className="text-3xl font-black">
                 NPR {grandTotal.toLocaleString()}
@@ -169,9 +299,7 @@ export default function CheckoutPayment() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-7">
-          {/* Left Side */}
           <div className="lg:col-span-2 space-y-7">
-            {/* Delivery Address */}
             <section className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6">
               <div className="flex items-start justify-between gap-4 mb-5">
                 <div>
@@ -229,7 +357,6 @@ export default function CheckoutPayment() {
               </div>
             </section>
 
-            {/* Product Items */}
             <section className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
               <div className="p-6 border-b border-gray-100">
                 <p className="text-xs font-black uppercase tracking-widest text-orange-500">
@@ -245,7 +372,7 @@ export default function CheckoutPayment() {
                 {checkoutItems.map((item) => {
                   const qty = Number(item.quantity || item.qty || 1);
                   const price = Number(item.price || 0);
-                  const subtotal = price * qty;
+                  const subtotal = roundMoney(price * qty);
 
                   return (
                     <div
@@ -275,14 +402,14 @@ export default function CheckoutPayment() {
                           </p>
 
                           <p className="text-gray-500">
-                            Price:{" "}
+                            Rate:{" "}
                             <span className="font-black text-gray-800">
                               NPR {price.toLocaleString()}
                             </span>
                           </p>
 
                           <p className="text-gray-500">
-                            Subtotal:{" "}
+                            Amount:{" "}
                             <span className="font-black text-gray-800">
                               NPR {subtotal.toLocaleString()}
                             </span>
@@ -296,9 +423,7 @@ export default function CheckoutPayment() {
             </section>
           </div>
 
-          {/* Right Side */}
           <div className="space-y-7">
-            {/* Payment Methods */}
             <section className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6">
               <p className="text-xs font-black uppercase tracking-widest text-indigo-600">
                 Payment Method
@@ -366,11 +491,10 @@ export default function CheckoutPayment() {
               </div>
             </section>
 
-            {/* Price Summary */}
             <section className="bg-slate-950 text-white rounded-[2rem] shadow-xl p-6">
               <div className="flex items-center gap-2 mb-5">
-                <PackageCheck className="w-5 h-5 text-orange-300" />
-                <h2 className="text-xl font-black">Payment Summary</h2>
+                <ReceiptText className="w-5 h-5 text-orange-300" />
+                <h2 className="text-xl font-black">VAT Summary</h2>
               </div>
 
               <div className="space-y-4 text-sm">
@@ -391,8 +515,24 @@ export default function CheckoutPayment() {
                   </span>
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Taxable Amount</span>
+                  <span className="font-black">
+                    NPR {taxableAmount.toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">VAT {VAT_RATE}%</span>
+                  <span className="font-black">
+                    NPR {vatAmount.toLocaleString()}
+                  </span>
+                </div>
+
                 <div className="border-t border-white/10 pt-4 flex items-center justify-between">
-                  <span className="text-white font-black">Grand Total</span>
+                  <span className="text-white font-black">
+                    Grand Total
+                  </span>
                   <span className="text-3xl font-black">
                     NPR {grandTotal.toLocaleString()}
                   </span>
@@ -402,13 +542,25 @@ export default function CheckoutPayment() {
               <button
                 type="button"
                 onClick={handleConfirmPaymentMethod}
-                className="mt-6 w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl transition-all"
+                disabled={orderLoading}
+                className={`mt-6 w-full text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 ${
+                  orderLoading
+                    ? "bg-gray-500 cursor-not-allowed"
+                    : "bg-orange-500 hover:bg-orange-600"
+                }`}
               >
-                Confirm Payment Method
+                {orderLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Placing Order...
+                  </>
+                ) : (
+                  "Place Order"
+                )}
               </button>
 
               <p className="text-xs text-gray-400 mt-3 text-center">
-                Order creation will be connected in the next step.
+                VAT invoice will be available to customer after payment is marked Paid.
               </p>
             </section>
           </div>

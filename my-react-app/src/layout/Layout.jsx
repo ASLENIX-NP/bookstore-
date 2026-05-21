@@ -9,6 +9,7 @@ import {
   LogOut,
   LogIn,
   LayoutDashboard,
+  PackageCheck,
 } from 'lucide-react';
 
 export default function Layout() {
@@ -75,6 +76,20 @@ export default function Layout() {
     navigate('/cart');
   };
 
+  const handleMyOrdersClick = () => {
+    const currentToken = localStorage.getItem('token');
+
+    if (!currentToken) {
+      alert('Please login first to view your orders!');
+      navigate('/login', { state: { from: '/my-orders' } });
+      return;
+    }
+
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+    navigate('/my-orders');
+  };
+
   const getCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -115,6 +130,20 @@ export default function Layout() {
                   {item.label}
                 </Link>
               ))}
+
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={handleMyOrdersClick}
+                  className={`text-sm font-medium transition-colors ${
+                    isActive('/my-orders')
+                      ? 'text-indigo-600'
+                      : 'text-gray-600 hover:text-indigo-600'
+                  }`}
+                >
+                  My Orders
+                </button>
+              )}
             </nav>
 
             {/* Icons Tray */}
@@ -159,6 +188,15 @@ export default function Layout() {
                             {user?.email}
                           </p>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={handleMyOrdersClick}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 font-semibold flex items-center gap-2 border-b border-gray-100"
+                        >
+                          <PackageCheck className="w-4 h-4" />
+                          My Orders
+                        </button>
 
                         {user?.role === 'admin' && (
                           <Link
@@ -236,6 +274,15 @@ export default function Layout() {
                       <p className="text-xs text-gray-500">{user?.email}</p>
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={handleMyOrdersClick}
+                      className="w-full text-left px-2 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-2 mb-2"
+                    >
+                      <PackageCheck className="w-4 h-4" />
+                      My Orders
+                    </button>
+
                     {user?.role === 'admin' && (
                       <Link
                         to="/admin"
@@ -301,6 +348,15 @@ export default function Layout() {
                   <Link to="/products" className="hover:text-white">
                     Products
                   </Link>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={handleMyOrdersClick}
+                    className="hover:text-white text-left"
+                  >
+                    My Orders
+                  </button>
                 </li>
                 <li>
                   <Link to="/about" className="hover:text-white">

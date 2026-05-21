@@ -24,6 +24,20 @@ import {
   useParams,
 } from 'react-router-dom';
 
+const CART_IMAGE_PLACEHOLDER =
+  'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500';
+
+const getSafeCartImage = (image) => {
+  if (!image) return CART_IMAGE_PLACEHOLDER;
+
+  // Do not save huge base64 images into localStorage cart/checkout data
+  if (String(image).startsWith('data:image')) {
+    return CART_IMAGE_PLACEHOLDER;
+  }
+
+  return image;
+};
+
 export default function ProductDetails() {
   const { id } = useParams();
 
@@ -106,7 +120,7 @@ export default function ProductDetails() {
       localStorage.getItem('token');
 
     if (!token) {
-      alert('Please login first.');
+      alert('Please login first to add products to cart.');
 
       navigate('/login', {
         state: {
@@ -140,10 +154,11 @@ export default function ProductDetails() {
     } else {
       currentCart.push({
         _id: product._id,
+        productId: product._id,
         title: product.name,
         name: product.name,
-        price: product.price,
-        image: product.image,
+        price: Number(product.price || 0),
+        image: getSafeCartImage(product.image),
         quantity: 1,
       });
     }
@@ -153,7 +168,6 @@ export default function ProductDetails() {
       JSON.stringify(currentCart)
     );
 
-    // NO REDIRECT
     alert(
       `${product.name} added to cart`
     );
@@ -165,7 +179,7 @@ export default function ProductDetails() {
       localStorage.getItem('token');
 
     if (!token) {
-      alert('Please login first.');
+      alert('Please login first to buy products.');
 
       navigate('/login', {
         state: {
@@ -187,20 +201,27 @@ export default function ProductDetails() {
     const buyNowItem = [
       {
         _id: product._id,
+        productId: product._id,
         title: product.name,
         name: product.name,
-        price: product.price,
-        image: product.image,
+        price: Number(product.price || 0),
+        image: getSafeCartImage(product.image),
         quantity: 1,
+        subtotal: Number(product.price || 0),
       },
     ];
 
     localStorage.setItem(
-      'buyNowItem',
+      'checkoutItems',
       JSON.stringify(buyNowItem)
     );
 
-    navigate('/checkout');
+    localStorage.setItem(
+      'checkoutType',
+      'Buy Now'
+    );
+
+    navigate('/checkout/delivery');
   };
 
   // SUBMIT REVIEW
@@ -423,7 +444,7 @@ export default function ProductDetails() {
                 <img
                   src={
                     product.image ||
-                    'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500'
+                    CART_IMAGE_PLACEHOLDER
                   }
                   alt={product.name}
                   className="w-full h-[430px] sm:h-[580px] lg:h-[680px] object-cover group-hover:scale-105 transition-transform duration-700"

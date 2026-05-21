@@ -25,6 +25,20 @@ const heroImages = [
   },
 ];
 
+const CART_IMAGE_PLACEHOLDER =
+  'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500';
+
+const getSafeCartImage = (image) => {
+  if (!image) return CART_IMAGE_PLACEHOLDER;
+
+  // Do not save huge base64 images into localStorage cart/checkout data
+  if (String(image).startsWith('data:image')) {
+    return CART_IMAGE_PLACEHOLDER;
+  }
+
+  return image;
+};
+
 const LocalImageWithFallback = ({ src, alt, className }) => {
   const fallbackUrl =
     'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&q=80';
@@ -115,6 +129,22 @@ export default function Home() {
   const addToCart = (product) => {
     if (!product) return;
 
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      alert('Please login first to add products to cart.');
+      navigate('/login', { state: { from: '/' } });
+      return;
+    }
+
+    const isOutOfStock =
+      getStatus(product).toLowerCase() === 'out of stock';
+
+    if (isOutOfStock) {
+      alert('This product is out of stock.');
+      return;
+    }
+
     const currentCart = JSON.parse(
       localStorage.getItem('cart') || '[]'
     );
@@ -128,10 +158,11 @@ export default function Home() {
     } else {
       currentCart.push({
         _id: product._id,
+        productId: product._id,
         title: product.name,
         name: product.name,
-        price: product.price,
-        image: product.image,
+        price: Number(product.price || 0),
+        image: getSafeCartImage(product.image),
         quantity: 1,
       });
     }
@@ -141,95 +172,168 @@ export default function Home() {
     alert(`"${product.name}" successfully added to your cart! 🛒`);
   };
 
-  const ProductCard = ({ product, type }) => (
-    <div className="bg-white rounded-[2rem] overflow-hidden shadow-xl border">
-      <div className="relative">
-        <LocalImageWithFallback
-          src={product.image}
-          alt={product.name}
-          className="w-full h-64 object-cover"
-        />
+  const handleBuyNow = (product) => {
+    if (!product) return;
 
-        <div className="absolute top-4 left-4">
-          <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-600">
-            {getStatus(product)}
-          </span>
-        </div>
-      </div>
+    const token = localStorage.getItem('token');
 
-      <div className="p-5">
-        {type === 'featured' && (
-          <div className="flex items-center gap-2 mb-2">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+    if (!token) {
+      alert('Please login first to buy products.');
+      navigate('/login', { state: { from: '/' } });
+      return;
+    }
 
-            <span className="text-sm font-bold text-gray-500">
-              Featured Product
+    const isOutOfStock =
+      getStatus(product).toLowerCase() === 'out of stock';
+
+    if (isOutOfStock) {
+      alert('This product is out of stock.');
+      return;
+    }
+
+    const buyNowItem = [
+      {
+        _id: product._id,
+        productId: product._id,
+        title: product.name,
+        name: product.name,
+        price: Number(product.price || 0),
+        image: getSafeCartImage(product.image),
+        quantity: 1,
+        subtotal: Number(product.price || 0),
+      },
+    ];
+
+    localStorage.setItem(
+      'checkoutItems',
+      JSON.stringify(buyNowItem)
+    );
+
+    localStorage.setItem('checkoutType', 'Buy Now');
+
+    navigate('/checkout/delivery');
+  };
+
+  const ProductCard = ({ product, type }) => {
+    const isOutOfStock =
+      getStatus(product).toLowerCase() === 'out of stock';
+
+    return (
+      <div className="bg-white rounded-[2rem] overflow-hidden shadow-xl border">
+        <div className="relative">
+          <LocalImageWithFallback
+            src={product.image}
+            alt={product.name}
+            className="w-full h-64 object-cover"
+          />
+
+          <div className="absolute top-4 left-4">
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-black ${
+                isOutOfStock
+                  ? 'bg-red-100 text-red-600'
+                  : 'bg-emerald-100 text-emerald-600'
+              }`}
+            >
+              {getStatus(product)}
             </span>
           </div>
-        )}
+        </div>
 
-        <h3 className="text-xl font-black mb-2">
-          {product.name}
-        </h3>
+        <div className="p-5">
+          {type === 'featured' && (
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
 
-        <p className="text-gray-500 text-sm mb-4">
-          {product.description ||
-            'Premium quality product'}
-        </p>
-
-        <div className="mb-4">
-          {type === 'flash' ? (
-            <>
-              <span className="text-red-600 font-black text-2xl">
-                NPR {product.salePrice || product.price}
+              <span className="text-sm font-bold text-gray-500">
+                Featured Product
               </span>
-
-              {product.salePrice && (
-                <span className="line-through text-gray-400 ml-2">
-                  NPR {product.price}
-                </span>
-              )}
-            </>
-          ) : (
-            <div className="text-2xl font-black">
-              NPR {product.price}
             </div>
           )}
-        </div>
 
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={() =>
-              openProductDetails(product._id)
-            }
-            className="bg-slate-100 py-2 rounded-xl font-bold"
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Eye className="w-4 h-4" />
-              Details
-            </div>
-          </button>
+          <h3 className="text-xl font-black mb-2">
+            {product.name}
+          </h3>
 
-          <button
-            onClick={() => addToCart(product)}
-            className="bg-blue-600 text-white py-2 rounded-xl font-bold"
+          <p
+            className="text-gray-500 text-sm mb-4 leading-relaxed min-h-[40px]"
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
           >
-            <div className="flex items-center justify-center gap-2">
-              <ShoppingCart className="w-4 h-4" />
-              Add to Cart
-            </div>
-          </button>
+            {product.description || 'Premium quality product'}
+          </p>
 
-          <button
-            onClick={() => navigate('/checkout')}
-            className="bg-orange-600 text-white py-2 rounded-xl font-bold"
-          >
-            Buy Now
-          </button>
+          <div className="mb-4">
+            {type === 'flash' ? (
+              <>
+                <span className="text-red-600 font-black text-2xl">
+                  NPR {product.salePrice || product.price}
+                </span>
+
+                {product.salePrice && (
+                  <span className="line-through text-gray-400 ml-2">
+                    NPR {product.price}
+                  </span>
+                )}
+              </>
+            ) : (
+              <div className="text-2xl font-black">
+                NPR {product.price}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                openProductDetails(product._id)
+              }
+              className="bg-slate-100 py-2 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Eye className="w-4 h-4" />
+                Details
+              </div>
+            </button>
+
+            <button
+              type="button"
+              disabled={isOutOfStock}
+              onClick={() => addToCart(product)}
+              className={`py-2 rounded-xl font-bold transition-colors ${
+                isOutOfStock
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                Add to Cart
+              </div>
+            </button>
+
+            <button
+              type="button"
+              disabled={isOutOfStock}
+              onClick={() => handleBuyNow(product)}
+              className={`py-2 rounded-xl font-bold transition-colors ${
+                isOutOfStock
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-orange-600 hover:bg-orange-700 text-white'
+              }`}
+            >
+              Buy Now
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="bg-slate-950 overflow-hidden">
