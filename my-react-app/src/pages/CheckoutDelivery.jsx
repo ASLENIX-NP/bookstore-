@@ -32,6 +32,61 @@ export default function CheckoutDelivery() {
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [formData, setFormData] = useState(emptyAddress);
 
+ const getCheckoutItems = () => {
+  try {
+    const checkoutItems = JSON.parse(
+      localStorage.getItem("checkoutItems") || "[]"
+    );
+
+    if (Array.isArray(checkoutItems) && checkoutItems.length > 0) {
+      return checkoutItems;
+    }
+
+    const cartItems = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    if (Array.isArray(cartItems) && cartItems.length > 0) {
+      const fixedCartItems = cartItems.map((item) => {
+        const qty = Number(item.quantity || item.qty || 1);
+        const price = Number(item.price || 0);
+
+        return {
+          _id: item._id || item.productId || item.id,
+          productId: item.productId || item._id || item.id,
+          title: item.title || item.name || "Product",
+          name: item.name || item.title || "Product",
+          price,
+          image: item.image || "",
+          quantity: qty,
+          qty,
+          subtotal: price * qty,
+        };
+      });
+
+      localStorage.setItem("checkoutItems", JSON.stringify(fixedCartItems));
+      localStorage.setItem("checkoutType", "Cart");
+
+      return fixedCartItems;
+    }
+
+    const buyNowItem = JSON.parse(localStorage.getItem("buyNowItem") || "null");
+
+    if (buyNowItem) {
+      const fixedBuyNowItems = Array.isArray(buyNowItem)
+        ? buyNowItem
+        : [buyNowItem];
+
+      localStorage.setItem("checkoutItems", JSON.stringify(fixedBuyNowItems));
+      localStorage.setItem("checkoutType", "Buy Now");
+
+      return fixedBuyNowItems;
+    }
+
+    return [];
+  } catch {
+    return [];
+  }
+};
+
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -41,9 +96,7 @@ export default function CheckoutDelivery() {
       return;
     }
 
-    const checkoutItems = JSON.parse(
-      localStorage.getItem("checkoutItems") || "[]"
-    );
+    const checkoutItems = getCheckoutItems();
 
     if (!checkoutItems || checkoutItems.length === 0) {
       alert("Please select products before checkout.");
@@ -119,6 +172,7 @@ export default function CheckoutDelivery() {
       };
 
       const updatedAddresses = [...addresses, newAddress];
+
       saveAddresses(updatedAddresses);
       setSelectedAddressId(newAddress.id);
     }
@@ -135,6 +189,7 @@ export default function CheckoutDelivery() {
 
   const handleEdit = (address) => {
     setEditingAddressId(address.id);
+
     setFormData({
       fullName: address.fullName || "",
       phone: address.phone || "",
@@ -145,10 +200,19 @@ export default function CheckoutDelivery() {
       address: address.address || "",
       label: address.label || "Home",
     });
+
     setShowForm(true);
   };
 
   const proceedToPay = () => {
+    const checkoutItems = getCheckoutItems();
+
+    if (!checkoutItems || checkoutItems.length === 0) {
+      alert("No checkout products found. Please select products first.");
+      navigate("/cart");
+      return;
+    }
+
     const selectedAddress = addresses.find(
       (address) => address.id === selectedAddressId
     );
@@ -169,6 +233,7 @@ export default function CheckoutDelivery() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 space-y-7">
+        {/* Header */}
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div>
@@ -197,17 +262,22 @@ export default function CheckoutDelivery() {
           </div>
         </div>
 
+        {/* Address Cards */}
         {addresses.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {addresses.map((address) => {
               const isSelected = selectedAddressId === address.id;
 
               return (
-                <button
+                <div
                   key={address.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedAddressId(address.id)}
-                  className={`text-left bg-white border rounded-[2rem] p-5 shadow-sm transition-all ${
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setSelectedAddressId(address.id);
+                  }}
+                  className={`text-left bg-white border rounded-[2rem] p-5 shadow-sm transition-all cursor-pointer ${
                     isSelected
                       ? "border-indigo-500 ring-4 ring-indigo-100"
                       : "border-gray-100 hover:border-indigo-200"
@@ -246,7 +316,7 @@ export default function CheckoutDelivery() {
                       </div>
                     </div>
 
-                    <span
+                    <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -256,160 +326,147 @@ export default function CheckoutDelivery() {
                     >
                       <Edit3 className="w-4 h-4" />
                       Edit
-                    </span>
+                    </button>
                   </div>
 
-                  <div className="mt-5 space-y-2 text-sm text-gray-600">
-                    <p className="flex items-start gap-2">
-                      <Phone className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                      {address.phone}
-                    </p>
+                  <div className="mt-5 space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4 text-orange-500" />
+                      <span>{address.phone}</span>
+                    </div>
 
-                    <p className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                      {address.region}, {address.city}, {address.area}
-                    </p>
-
-                    <p className="text-gray-500">
-                      {address.building}, {address.address}
-                    </p>
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 text-emerald-500 mt-0.5" />
+                      <span>
+                        {address.building}, {address.area}, {address.city},{" "}
+                        {address.region}
+                        {address.address ? `, ${address.address}` : ""}
+                      </span>
+                    </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
         )}
 
+        {/* Address Form */}
         {showForm && (
-          <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
-            <div className="mb-6">
-              <h2 className="text-2xl font-black text-gray-950">
-                {editingAddressId ? "Edit Delivery Address" : "Add New Location"}
-              </h2>
-
-              <p className="text-gray-500 mt-1">
-                Fill in the correct delivery details for your order.
+          <form
+            onSubmit={handleSaveAddress}
+            className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8 space-y-5"
+          >
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-orange-500">
+                {editingAddressId ? "Edit Delivery Location" : "New Delivery Location"}
               </p>
+
+              <h2 className="text-2xl font-black text-gray-950 mt-1">
+                Delivery Details
+              </h2>
             </div>
 
-            <form onSubmit={handleSaveAddress} className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                    Full Name
-                  </label>
-
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      className="w-full bg-slate-50 border border-gray-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      placeholder="Enter full name"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                    Phone Number
-                  </label>
-
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="w-full bg-slate-50 border border-gray-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                      placeholder="98XXXXXXXX"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                    Region
-                  </label>
-
-                  <input
-                    type="text"
-                    name="region"
-                    value={formData.region}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="Example: Bagmati"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                    City
-                  </label>
-
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="Example: Hetauda"
-                  />
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Enter full name"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                  Building / House No / Street / Floor
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                  Phone Number
                 </label>
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Enter phone number"
+                />
+              </div>
 
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                  Region
+                </label>
+                <input
+                  type="text"
+                  name="region"
+                  value={formData.region}
+                  onChange={handleChange}
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Example: Bagmati"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                  City
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Example: Kathmandu"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                  Building / House / Street / Floor
+                </label>
                 <input
                   type="text"
                   name="building"
                   value={formData.building}
                   onChange={handleChange}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="Example: House 12, Parijat Marg, Floor 2"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="House no, street, floor"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Area
                 </label>
-
                 <input
                   type="text"
                   name="area"
                   value={formData.area}
                   onChange={handleChange}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="Example: Near main road"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  placeholder="Area name"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
-                  Full Address
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                  Address Details
                 </label>
-
                 <textarea
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
                   rows="4"
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
-                  placeholder="Write complete delivery address..."
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                  placeholder="Nearby landmark or additional delivery instruction"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-black text-gray-500 uppercase tracking-wider mb-2">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Address Label
                 </label>
 
@@ -422,10 +479,10 @@ export default function CheckoutDelivery() {
                         label: "Home",
                       })
                     }
-                    className={`px-4 py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 ${
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black border ${
                       formData.label === "Home"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 text-slate-700"
+                        ? "bg-indigo-50 text-indigo-600 border-indigo-200"
+                        : "bg-slate-50 text-gray-600 border-gray-100"
                     }`}
                   >
                     <Home className="w-5 h-5" />
@@ -440,10 +497,10 @@ export default function CheckoutDelivery() {
                         label: "Office",
                       })
                     }
-                    className={`px-4 py-3 rounded-2xl text-sm font-black flex items-center justify-center gap-2 ${
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black border ${
                       formData.label === "Office"
-                        ? "bg-orange-500 text-white"
-                        : "bg-slate-100 text-slate-700"
+                        ? "bg-orange-50 text-orange-600 border-orange-200"
+                        : "bg-slate-50 text-gray-600 border-gray-100"
                     }`}
                   >
                     <Building2 className="w-5 h-5" />
@@ -451,40 +508,53 @@ export default function CheckoutDelivery() {
                   </button>
                 </div>
               </div>
+            </div>
 
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 type="submit"
-                className="w-full bg-slate-950 hover:bg-slate-800 text-white font-black py-4 rounded-2xl transition-all"
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl text-sm font-black transition-all"
               >
                 {editingAddressId ? "Update Address" : "Save Address"}
               </button>
-            </form>
-          </div>
-        )}
 
-        {addresses.length > 0 && !showForm && (
-          <div className="bg-slate-950 text-white rounded-[2rem] p-6 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-                Selected Delivery Location
-              </p>
-
-              <h3 className="text-2xl font-black mt-1">
-                {addresses.find((address) => address.id === selectedAddressId)
-                  ?.label || "No address selected"}
-              </h3>
+              {addresses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingAddressId(null);
+                    setFormData(emptyAddress);
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-4 rounded-2xl text-sm font-black transition-all"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
-
-            <button
-              type="button"
-              onClick={proceedToPay}
-              className="bg-orange-500 hover:bg-orange-600 text-white font-black px-7 py-4 rounded-2xl inline-flex items-center justify-center gap-2"
-            >
-              Proceed to Pay
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
+          </form>
         )}
+
+        {/* Proceed Button */}
+        <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p className="text-sm font-black text-gray-950">
+              Ready to continue?
+            </p>
+            <p className="text-sm text-gray-500">
+              Your selected delivery address will be used for this order.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={proceedToPay}
+            className="inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-7 py-4 rounded-2xl text-sm font-black transition-all"
+          >
+            Proceed to Pay
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
     </div>
   );

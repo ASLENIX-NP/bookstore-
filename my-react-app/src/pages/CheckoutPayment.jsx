@@ -5,7 +5,6 @@ import {
   MapPin,
   Phone,
   User,
-  PackageCheck,
   Truck,
   CreditCard,
   Wallet,
@@ -14,7 +13,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Loader2,
-  ReceiptText,
+  Receipt,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -32,9 +31,9 @@ const paymentMethods = [
   {
     id: "khalti",
     title: "Khalti",
-    description: "Pay using Khalti wallet.",
+    description: "Pay now using Khalti wallet or Khalti gateway.",
     icon: <Wallet className="w-6 h-6" />,
-    status: "Available Soon",
+    status: "Ready",
   },
   {
     id: "esewa",
@@ -56,6 +55,14 @@ const roundMoney = (value) => {
   return Math.round(Number(value || 0) * 100) / 100;
 };
 
+const safeJsonParse = (value, fallback) => {
+  try {
+    return JSON.parse(value || "");
+  } catch {
+    return fallback;
+  }
+};
+
 export default function CheckoutPayment() {
   const navigate = useNavigate();
 
@@ -73,9 +80,38 @@ export default function CheckoutPayment() {
       return;
     }
 
-    const items = JSON.parse(localStorage.getItem("checkoutItems") || "[]");
-    const address = JSON.parse(
-      localStorage.getItem("selectedDeliveryAddress") || "null"
+    let items = safeJsonParse(localStorage.getItem("checkoutItems"), []);
+
+    // Safety fallback: if checkoutItems is missing, recover from cart.
+    if (!Array.isArray(items) || items.length === 0) {
+      const cartItems = safeJsonParse(localStorage.getItem("cart"), []);
+
+      if (Array.isArray(cartItems) && cartItems.length > 0) {
+        items = cartItems.map((item) => {
+          const qty = Number(item.quantity || item.qty || 1);
+          const price = Number(item.price || 0);
+
+          return {
+            _id: item._id || item.productId || item.id,
+            productId: item.productId || item._id || item.id,
+            title: item.title || item.name || "Product",
+            name: item.name || item.title || "Product",
+            price,
+            image: item.image || "",
+            quantity: qty,
+            qty,
+            subtotal: roundMoney(price * qty),
+          };
+        });
+
+        localStorage.setItem("checkoutItems", JSON.stringify(items));
+        localStorage.setItem("checkoutType", "Cart");
+      }
+    }
+
+    const address = safeJsonParse(
+      localStorage.getItem("selectedDeliveryAddress"),
+      null
     );
 
     if (!items || items.length === 0) {
@@ -120,50 +156,10 @@ export default function CheckoutPayment() {
   const vatAmount = roundMoney((taxableAmount * VAT_RATE) / 100);
   const grandTotal = roundMoney(taxableAmount + vatAmount);
 
-  const removePurchasedItemsFromCart = () => {
-    const checkoutType = localStorage.getItem("checkoutType") || "Cart";
-
-    if (checkoutType !== "Cart") return;
-
-    const cartItems = JSON.parse(localStorage.getItem("cart") || "[]");
-
-    const purchasedIds = checkoutItems.map((item) =>
-      String(item._id || item.productId)
-    );
-
-    const remainingCartItems = cartItems.filter(
-      (item) => !purchasedIds.includes(String(item._id || item.productId))
-    );
-
-    localStorage.setItem("cart", JSON.stringify(remainingCartItems));
-  };
-
-  const clearCheckoutStorage = () => {
-    localStorage.removeItem("checkoutItems");
-    localStorage.removeItem("checkoutType");
-    localStorage.removeItem("selectedDeliveryAddress");
-    localStorage.removeItem("checkoutSummary");
-    localStorage.removeItem("buyNowItem");
-  };
-
-  const handleConfirmPaymentMethod = async () => {
-    if (!selectedPaymentMethod) {
-      alert("Please select a payment method.");
-      return;
-    }
-
-    const selectedMethod = paymentMethods.find(
-      (method) => method.id === selectedPaymentMethod
-    );
-
-    if (!selectedMethod) {
-      alert("Invalid payment method selected.");
-      return;
-    }
-
+  const createOrderPayload = (selectedMethod) => {
     const loggedUser = getLoggedUser();
 
-    const orderPayload = {
+    return {
       customerName:
         deliveryAddress.fullName ||
         loggedUser?.name ||
@@ -215,40 +211,91 @@ export default function CheckoutPayment() {
       paymentMethod: selectedMethod.title,
       paymentMethodId: selectedMethod.id,
 
-      paymentStatus: selectedMethod.id === "cod" ? "Pending" : "Pending",
-
+      paymentStatus: "Pending",
       orderStatus: "Processing",
       transactionId: "",
       paymentProof: "",
     };
+  };
+
+  const getErrorMessage = (error) => {
+    const serverError = error.response?.data?.error;
+
+    if (typeof serverError === "string") return serverError;
+
+    if (serverError?.detail) return serverError.detail;
+
+    if (serverError) return JSON.stringify(serverError);
+
+    return "Failed to create order/payment. Your cart is still saved.";
+  };
+
+  const handleConfirmPaymentMethod = async () => {
+    if (!selectedPaymentMethod) {
+      alert("Please select a payment method.");
+      return;
+    }
+
+    const selectedMethod = paymentMethods.find(
+      (method) => method.id === selectedPaymentMethod
+    );
+
+    if (!selectedMethod) {
+      alert("Invalid payment method selected.");
+      return;
+    }
+
+    if (!["cod", "khalti"].includes(selectedMethod.id)) {
+      alert(`${selectedMethod.title} is not available yet. Please use COD or Khalti.`);
+      return;
+    }
 
     try {
       setOrderLoading(true);
 
-      const response = await axios.post(
+      const orderPayload = createOrderPayload(selectedMethod);
+
+      const orderResponse = await axios.post(
         "http://localhost:5000/api/orders",
         orderPayload
       );
 
-      if (response.data.success) {
-        localStorage.setItem("lastOrder", JSON.stringify(response.data.order));
-
-        removePurchasedItemsFromCart();
-        clearCheckoutStorage();
-
-        alert("Order placed successfully! Admin can now see this order.");
-
-        navigate("/order-success");
-      } else {
+      if (!orderResponse.data.success) {
         alert("Failed to place order. Please try again.");
+        return;
       }
-    } catch (error) {
-      console.error("Order creation error:", error);
 
-      alert(
-        error.response?.data?.error ||
-          "Failed to create order. Please make sure backend is running."
-      );
+      const createdOrder = orderResponse.data.order;
+      localStorage.setItem("lastOrder", JSON.stringify(createdOrder));
+
+      // KHALTI FLOW:
+      // Do not clear cart or checkoutItems here.
+      // Payment must be verified by backend callback first.
+      if (selectedMethod.id === "khalti") {
+        const khaltiResponse = await axios.post(
+          "http://localhost:5000/api/payments/khalti/initiate",
+          {
+            orderId: createdOrder._id,
+          }
+        );
+
+        if (!khaltiResponse.data.success || !khaltiResponse.data.payment_url) {
+          alert("Khalti payment could not be started. Your cart is still saved.");
+          return;
+        }
+
+        window.location.href = khaltiResponse.data.payment_url;
+        return;
+      }
+
+      // CASH ON DELIVERY FLOW:
+      // Do not clear cart or checkoutItems here.
+      // This prevents your cart becoming empty during testing.
+      alert("Order placed successfully! Admin can now see this order.");
+      navigate("/order-success");
+    } catch (error) {
+      console.error("Order/payment creation error:", error);
+      alert(getErrorMessage(error));
     } finally {
       setOrderLoading(false);
     }
@@ -493,7 +540,7 @@ export default function CheckoutPayment() {
 
             <section className="bg-slate-950 text-white rounded-[2rem] shadow-xl p-6">
               <div className="flex items-center gap-2 mb-5">
-                <ReceiptText className="w-5 h-5 text-orange-300" />
+                <Receipt className="w-5 h-5 text-orange-300" />
                 <h2 className="text-xl font-black">VAT Summary</h2>
               </div>
 
@@ -530,9 +577,7 @@ export default function CheckoutPayment() {
                 </div>
 
                 <div className="border-t border-white/10 pt-4 flex items-center justify-between">
-                  <span className="text-white font-black">
-                    Grand Total
-                  </span>
+                  <span className="text-white font-black">Grand Total</span>
                   <span className="text-3xl font-black">
                     NPR {grandTotal.toLocaleString()}
                   </span>
@@ -552,15 +597,17 @@ export default function CheckoutPayment() {
                 {orderLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Placing Order...
+                    Processing...
                   </>
+                ) : selectedPaymentMethod === "khalti" ? (
+                  "Pay with Khalti"
                 ) : (
                   "Place Order"
                 )}
               </button>
 
               <p className="text-xs text-gray-400 mt-3 text-center">
-                VAT invoice will be available to customer after payment is marked Paid.
+                Cart and checkout data will remain saved while payment is being processed.
               </p>
             </section>
           </div>
