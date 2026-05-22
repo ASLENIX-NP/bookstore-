@@ -13,8 +13,8 @@ import {
   XCircle,
   ShoppingBag,
   AlertCircle,
-  ReceiptText,
-  Lock,
+  Receipt,
+  Ban,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -25,6 +25,7 @@ export default function MyOrders() {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState(null);
   const [error, setError] = useState("");
 
   const getLoggedUserEmail = () => {
@@ -38,11 +39,14 @@ export default function MyOrders() {
     for (const key of possibleUserKeys) {
       try {
         const value = localStorage.getItem(key);
+
         if (!value) continue;
+
         const parsed = JSON.parse(value);
+
         if (parsed?.email) return parsed.email;
       } catch {
-        // ignore
+        // ignore invalid stored value
       }
     }
 
@@ -52,9 +56,10 @@ export default function MyOrders() {
       try {
         const value = localStorage.getItem(key);
         const parsed = JSON.parse(value);
+
         if (parsed?.email) return parsed.email;
       } catch {
-        // ignore
+        // ignore non-json values
       }
     }
 
@@ -145,6 +150,54 @@ export default function MyOrders() {
     return <Clock className="w-4 h-4" />;
   };
 
+  const canCancelOrder = (order) => {
+    const orderStatus = getOrderStatus(order);
+    const paymentStatus = getPaymentStatus(order);
+
+    if (orderStatus === "Cancelled") return false;
+    if (orderStatus === "Confirmed") return false;
+    if (orderStatus === "Completed") return false;
+    if (paymentStatus === "Paid") return false;
+
+    return true;
+  };
+
+  const cancelOrder = async (orderId) => {
+    const confirmCancel = window.confirm(
+      "Are you sure you want to cancel this order?"
+    );
+
+    if (!confirmCancel) return;
+
+    try {
+      setCancellingId(orderId);
+
+      const response = await axios.patch(
+        `http://localhost:5000/api/orders/${orderId}/cancel`,
+        {
+          cancelReason: "Cancelled by customer",
+        }
+      );
+
+      if (response.data.success) {
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order._id === orderId ? response.data.order : order
+          )
+        );
+
+        alert("Order cancelled successfully.");
+      }
+    } catch (error) {
+      alert(
+        error.response?.data?.error ||
+          "Unable to cancel this order. Please try again."
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-7">
@@ -161,7 +214,8 @@ export default function MyOrders() {
               </h1>
 
               <p className="text-gray-500 mt-2">
-                View your order status, payment status, delivery details, and invoice.
+                View your order status, payment status, delivery details,
+                invoice, and cancellation options.
               </p>
 
               {userEmail && (
@@ -230,6 +284,7 @@ export default function MyOrders() {
               const paymentStatus = getPaymentStatus(order);
               const isExpanded = expandedOrderId === order._id;
               const invoiceAllowed = paymentStatus === "Paid";
+              const cancelAllowed = canCancelOrder(order);
 
               return (
                 <div
@@ -266,7 +321,9 @@ export default function MyOrders() {
                               className="text-sm font-bold text-gray-800"
                             >
                               {item.title}{" "}
-                              <span className="text-gray-400">x{item.qty}</span>
+                              <span className="text-gray-400">
+                                x{item.qty}
+                              </span>
                             </p>
                           ))}
 
@@ -338,19 +395,32 @@ export default function MyOrders() {
                           )}
                         </button>
 
-                        {invoiceAllowed ? (
+                        {invoiceAllowed && (
                           <Link
                             to={`/invoice/${order._id}`}
                             className="w-full inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-2xl text-xs font-black"
                           >
-                            <ReceiptText className="w-4 h-4" />
+                            <Receipt className="w-4 h-4" />
                             View Invoice
                           </Link>
-                        ) : (
-                          <div className="w-full inline-flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border border-amber-100 px-4 py-3 rounded-2xl text-xs font-black">
-                            <Lock className="w-4 h-4" />
-                            Invoice after payment
-                          </div>
+                        )}
+
+                        {cancelAllowed && (
+                          <button
+                            type="button"
+                            onClick={() => cancelOrder(order._id)}
+                            disabled={cancellingId === order._id}
+                            className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-xs font-black border ${
+                              cancellingId === order._id
+                                ? "bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed"
+                                : "bg-red-50 hover:bg-red-100 text-red-600 border-red-100"
+                            }`}
+                          >
+                            <Ban className="w-4 h-4" />
+                            {cancellingId === order._id
+                              ? "Cancelling..."
+                              : "Cancel Order"}
+                          </button>
                         )}
                       </div>
                     </div>
@@ -388,7 +458,9 @@ export default function MyOrders() {
                               <span className="font-black text-gray-900">
                                 Phone:
                               </span>{" "}
-                              {order.deliveryInfo?.phone || order.phone || "N/A"}
+                              {order.deliveryInfo?.phone ||
+                                order.phone ||
+                                "N/A"}
                             </p>
 
                             <p>
@@ -401,6 +473,15 @@ export default function MyOrders() {
                               {order.deliveryInfo?.region},{" "}
                               {order.deliveryInfo?.address}
                             </p>
+
+                            {order.cancelReason && (
+                              <p className="text-red-600">
+                                <span className="font-black">
+                                  Cancellation:
+                                </span>{" "}
+                                {order.cancelReason}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -439,7 +520,9 @@ export default function MyOrders() {
 
                                   <p className="text-xs font-black text-gray-800 mt-1">
                                     Amount: NPR{" "}
-                                    {Number(item.subtotal || 0).toLocaleString()}
+                                    {Number(
+                                      item.subtotal || 0
+                                    ).toLocaleString()}
                                   </p>
                                 </div>
                               </div>
@@ -450,7 +533,7 @@ export default function MyOrders() {
                         <div className="bg-slate-950 text-white rounded-2xl p-5">
                           <div className="flex items-center gap-2 mb-4">
                             <Truck className="w-5 h-5 text-orange-300" />
-                            <h3 className="font-black">VAT Summary</h3>
+                            <h3 className="font-black">Payment Summary</h3>
                           </div>
 
                           <div className="space-y-3 text-sm">
@@ -503,7 +586,8 @@ export default function MyOrders() {
                             <div className="border-t border-white/10 pt-3 flex justify-between">
                               <span className="font-black">Grand Total</span>
                               <span className="text-2xl font-black">
-                                NPR {Number(order.totalPrice || 0).toLocaleString()}
+                                NPR{" "}
+                                {Number(order.totalPrice || 0).toLocaleString()}
                               </span>
                             </div>
                           </div>

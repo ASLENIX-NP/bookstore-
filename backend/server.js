@@ -1,11 +1,13 @@
 const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
+const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const path = require("path");
+
 require("dotenv").config({
   path: path.join(__dirname, ".env"),
 });
@@ -19,12 +21,47 @@ const Message = require("./models/Message");
 const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
 const toPaisa = (value) => Math.round(Number(value || 0) * 100);
 
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+
+const KHALTI_BASE_URL =
+  process.env.KHALTI_BASE_URL || "https://dev.khalti.com/api/v2";
+
+const ESEWA_PAYMENT_URL =
+  process.env.ESEWA_PAYMENT_URL ||
+  "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
+
+const ESEWA_STATUS_CHECK_URL =
+  process.env.ESEWA_STATUS_CHECK_URL ||
+  "https://rc.esewa.com.np/api/epay/transaction/status/";
+
+const ESEWA_PRODUCT_CODE = process.env.ESEWA_PRODUCT_CODE || "EPAYTEST";
+const STRIPE_CURRENCY = process.env.STRIPE_CURRENCY || "npr";
+
+console.log("KHALTI_SECRET_KEY loaded:", Boolean(process.env.KHALTI_SECRET_KEY));
+console.log("ESEWA_SECRET_KEY loaded:", Boolean(process.env.ESEWA_SECRET_KEY));
+console.log("STRIPE_SECRET_KEY loaded:", Boolean(process.env.STRIPE_SECRET_KEY));
+
 // ORDER SCHEMA & MODEL
 const orderSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true },
-    customerName: { type: String, default: "Guest Customer" },
-    phone: { type: String, default: "" },
+    email: {
+      type: String,
+      required: true,
+    },
+
+    customerName: {
+      type: String,
+      default: "Guest Customer",
+    },
+
+    phone: {
+      type: String,
+      default: "",
+    },
 
     deliveryInfo: {
       fullName: { type: String, default: "" },
@@ -44,23 +81,67 @@ const orderSchema = new mongoose.Schema(
           ref: "Product",
           required: false,
         },
-        title: { type: String, required: true },
-        image: { type: String, default: "" },
-        qty: { type: Number, required: true, default: 1 },
-        price: { type: Number, required: true },
-        subtotal: { type: Number, default: 0 },
+        title: {
+          type: String,
+          required: true,
+        },
+        image: {
+          type: String,
+          default: "",
+        },
+        qty: {
+          type: Number,
+          required: true,
+          default: 1,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
+        subtotal: {
+          type: Number,
+          default: 0,
+        },
       },
     ],
 
-    productSubtotal: { type: Number, required: true, default: 0 },
-    deliveryCharge: { type: Number, required: true, default: 100 },
+    productSubtotal: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
 
-    taxableAmount: { type: Number, default: 0 },
-    vatRate: { type: Number, default: 13 },
-    vatAmount: { type: Number, default: 0 },
-    grandTotal: { type: Number, default: 0 },
+    deliveryCharge: {
+      type: Number,
+      required: true,
+      default: 100,
+    },
 
-    totalPrice: { type: Number, required: true, default: 0 },
+    taxableAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    vatRate: {
+      type: Number,
+      default: 13,
+    },
+
+    vatAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    grandTotal: {
+      type: Number,
+      default: 0,
+    },
+
+    totalPrice: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
 
     checkoutType: {
       type: String,
@@ -68,9 +149,20 @@ const orderSchema = new mongoose.Schema(
       enum: ["Cart", "Buy Now"],
     },
 
-    paymentMethod: { type: String, default: "Cash on Delivery" },
-    paymentMethodId: { type: String, default: "cod" },
-    paymentGateway: { type: String, default: "cod" },
+    paymentMethod: {
+      type: String,
+      default: "Cash on Delivery",
+    },
+
+    paymentMethodId: {
+      type: String,
+      default: "cod",
+    },
+
+    paymentGateway: {
+      type: String,
+      default: "cod",
+    },
 
     paymentStatus: {
       type: String,
@@ -84,16 +176,86 @@ const orderSchema = new mongoose.Schema(
       enum: ["Processing", "Confirmed", "Completed", "Cancelled"],
     },
 
-    status: { type: String, required: true, default: "Processing" },
+    status: {
+      type: String,
+      required: true,
+      default: "Processing",
+    },
 
-    transactionId: { type: String, default: "" },
-    paymentProof: { type: String, default: "" },
-    paidAt: { type: Date, default: null },
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
 
-    khaltiPidx: { type: String, default: "" },
-    khaltiPaymentUrl: { type: String, default: "" },
-    khaltiStatus: { type: String, default: "" },
-    gatewayResponse: { type: mongoose.Schema.Types.Mixed, default: null },
+    cancelledBy: {
+      type: String,
+      default: "",
+    },
+
+    cancelReason: {
+      type: String,
+      default: "",
+    },
+
+    transactionId: {
+      type: String,
+      default: "",
+    },
+
+    paymentProof: {
+      type: String,
+      default: "",
+    },
+
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+
+    khaltiPidx: {
+      type: String,
+      default: "",
+    },
+
+    khaltiPaymentUrl: {
+      type: String,
+      default: "",
+    },
+
+    khaltiStatus: {
+      type: String,
+      default: "",
+    },
+
+    esewaTransactionUuid: {
+      type: String,
+      default: "",
+    },
+
+    esewaRefId: {
+      type: String,
+      default: "",
+    },
+
+    esewaStatus: {
+      type: String,
+      default: "",
+    },
+
+    stripeSessionId: {
+      type: String,
+      default: "",
+    },
+
+    stripePaymentIntentId: {
+      type: String,
+      default: "",
+    },
+
+    gatewayResponse: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -104,28 +266,10 @@ const escapeRegex = (value) => {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
-const KHALTI_BASE_URL =
-  process.env.KHALTI_BASE_URL || "https://dev.khalti.com/api/v2";
-
-const khaltiRequest = async (endpoint, payload) => {
-  if (!process.env.KHALTI_SECRET_KEY) {
-    throw new Error("KHALTI_SECRET_KEY is missing in backend .env file");
-  }
-
-  const response = await fetch(`${KHALTI_BASE_URL}${endpoint}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Key ${process.env.KHALTI_SECRET_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
+const fetchJson = async (url, options = {}) => {
+  const response = await fetch(url, options);
   const text = await response.text();
+
   let data = {};
 
   try {
@@ -136,14 +280,63 @@ const khaltiRequest = async (endpoint, payload) => {
 
   if (!response.ok) {
     const error = new Error(
-      data?.detail || data?.error_key || "Khalti API error"
+      data?.detail || data?.message || data?.error || "Gateway API error"
     );
-    error.data = data;
+
     error.status = response.status;
+    error.data = data;
     throw error;
   }
 
   return data;
+};
+
+const khaltiRequest = async (endpoint, payload) => {
+  if (!process.env.KHALTI_SECRET_KEY) {
+    throw new Error("KHALTI_SECRET_KEY is missing in backend .env file");
+  }
+
+  return fetchJson(`${KHALTI_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${process.env.KHALTI_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+const createEsewaSignature = ({ totalAmount, transactionUuid, productCode }) => {
+  if (!process.env.ESEWA_SECRET_KEY) {
+    throw new Error("ESEWA_SECRET_KEY is missing in backend .env file");
+  }
+
+  const message = `total_amount=${totalAmount},transaction_uuid=${transactionUuid},product_code=${productCode}`;
+
+  return crypto
+    .createHmac("sha256", process.env.ESEWA_SECRET_KEY.trim())
+    .update(message)
+    .digest("base64");
+};
+
+const stripeRequest = async (endpoint, params, method = "POST") => {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("STRIPE_SECRET_KEY is missing in backend .env file");
+  }
+
+  const options = {
+    method,
+    headers: {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+    },
+  };
+
+  if (method === "POST") {
+    options.headers["Content-Type"] = "application/x-www-form-urlencoded";
+    options.body = params;
+  }
+
+  return fetchJson(`https://api.stripe.com/v1${endpoint}`, options);
 };
 
 // ADMIN SEED FUNCTION
@@ -213,7 +406,9 @@ app.get("/api/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
 
-    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
 
     res.status(200).json(product);
   } catch (error) {
@@ -249,7 +444,9 @@ app.post("/api/products/:id/reviews", async (req, res) => {
 
     const product = await Product.findById(req.params.id);
 
-    if (!product) return res.status(404).json({ error: "Product not found" });
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
 
     product.reviews.push({
       name,
@@ -284,7 +481,10 @@ app.patch("/api/products/:id", async (req, res) => {
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      { stockStatus, statusFlag: stockStatus },
+      {
+        stockStatus,
+        statusFlag: stockStatus,
+      },
       { new: true }
     );
 
@@ -307,7 +507,7 @@ app.delete("/api/products/:id", async (req, res) => {
   }
 });
 
-// ORDER ROUTES
+// ORDER CREATE ROUTE
 app.post("/api/orders", async (req, res) => {
   try {
     const {
@@ -339,7 +539,9 @@ app.post("/api/orders", async (req, res) => {
     }
 
     if (!deliveryInfo) {
-      return res.status(400).json({ error: "Delivery information is required" });
+      return res.status(400).json({
+        error: "Delivery information is required",
+      });
     }
 
     if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
@@ -422,7 +624,7 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
-// KHALTI: INITIATE PAYMENT
+// KHALTI PAYMENT
 app.post("/api/payments/khalti/initiate", async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -442,12 +644,6 @@ app.post("/api/payments/khalti/initiate", async (req, res) => {
     }
 
     const amountInPaisa = toPaisa(order.totalPrice);
-
-    if (amountInPaisa < 1000) {
-      return res.status(400).json({
-        error: "Khalti payment amount must be at least NPR 10",
-      });
-    }
 
     const payload = {
       return_url: `${BACKEND_URL}/api/payments/khalti/callback`,
@@ -487,7 +683,7 @@ app.post("/api/payments/khalti/initiate", async (req, res) => {
     order.khaltiPidx = khaltiData.pidx || "";
     order.khaltiPaymentUrl = khaltiData.payment_url || "";
     order.khaltiStatus = "Initiated";
-    order.transactionId = khaltiData.pidx || order.transactionId || "";
+    order.transactionId = khaltiData.pidx || "";
     order.gatewayResponse = khaltiData;
 
     await order.save();
@@ -500,6 +696,7 @@ app.post("/api/payments/khalti/initiate", async (req, res) => {
     });
   } catch (error) {
     console.error("Khalti initiate error:", error.data || error.message);
+
     res.status(400).json({
       success: false,
       error: error.data || error.message || "Failed to initiate Khalti payment",
@@ -507,7 +704,6 @@ app.post("/api/payments/khalti/initiate", async (req, res) => {
   }
 });
 
-// KHALTI: CALLBACK + LOOKUP VERIFICATION
 app.get("/api/payments/khalti/callback", async (req, res) => {
   let order = null;
 
@@ -522,13 +718,13 @@ app.get("/api/payments/khalti/callback", async (req, res) => {
 
     const lookupData = await khaltiRequest("/epayment/lookup/", { pidx });
 
-    const lookupConditions = [{ khaltiPidx: String(pidx) }];
+    const conditions = [{ khaltiPidx: String(pidx) }];
 
     if (purchase_order_id && mongoose.Types.ObjectId.isValid(purchase_order_id)) {
-      lookupConditions.push({ _id: purchase_order_id });
+      conditions.push({ _id: purchase_order_id });
     }
 
-    order = await Order.findOne({ $or: lookupConditions });
+    order = await Order.findOne({ $or: conditions });
 
     if (!order) {
       return res.redirect(
@@ -541,12 +737,11 @@ app.get("/api/payments/khalti/callback", async (req, res) => {
     const returnedAmount = Number(
       lookupData.total_amount || req.query.total_amount || 0
     );
-    const amountMatches = returnedAmount === expectedAmount;
 
     order.khaltiStatus = khaltiStatus;
     order.gatewayResponse = lookupData;
 
-    if (khaltiStatus === "Completed" && amountMatches) {
+    if (khaltiStatus === "Completed" && returnedAmount === expectedAmount) {
       order.paymentStatus = "Paid";
       order.orderStatus = "Confirmed";
       order.status = "Confirmed";
@@ -556,22 +751,12 @@ app.get("/api/payments/khalti/callback", async (req, res) => {
         order.transactionId ||
         String(pidx);
       order.paidAt = new Date();
-    } else if (khaltiStatus === "Completed" && !amountMatches) {
+    } else if (khaltiStatus === "Completed") {
       order.paymentStatus = "Verification Required";
-      order.transactionId =
-        lookupData.transaction_id ||
-        transaction_id ||
-        order.transactionId ||
-        String(pidx);
     } else if (
       ["Expired", "User canceled", "Canceled", "Failed"].includes(khaltiStatus)
     ) {
       order.paymentStatus = "Failed";
-      order.transactionId =
-        lookupData.transaction_id ||
-        transaction_id ||
-        order.transactionId ||
-        String(pidx);
     } else {
       order.paymentStatus = "Pending";
     }
@@ -606,6 +791,385 @@ app.get("/api/payments/khalti/callback", async (req, res) => {
   }
 });
 
+// ESEWA PAYMENT
+app.post("/api/payments/esewa/initiate", async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId is required" });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (order.paymentStatus === "Paid") {
+      return res.status(400).json({ error: "This order is already paid" });
+    }
+
+    const transactionUuid = `${order._id}-${Date.now()}`;
+
+    const amountNumber = roundMoney(Number(order.productSubtotal || 0));
+    const taxAmountNumber = roundMoney(Number(order.vatAmount || 0));
+    const deliveryChargeNumber = roundMoney(Number(order.deliveryCharge || 0));
+    const serviceChargeNumber = 0;
+
+    const totalAmountNumber = roundMoney(
+      amountNumber + taxAmountNumber + deliveryChargeNumber + serviceChargeNumber
+    );
+
+    const amount = String(amountNumber);
+    const taxAmount = String(taxAmountNumber);
+    const deliveryCharge = String(deliveryChargeNumber);
+    const serviceCharge = String(serviceChargeNumber);
+    const totalAmount = String(totalAmountNumber);
+
+    const signature = createEsewaSignature({
+      totalAmount,
+      transactionUuid,
+      productCode: ESEWA_PRODUCT_CODE,
+    });
+
+    const fields = {
+      amount,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+      transaction_uuid: transactionUuid,
+      product_code: ESEWA_PRODUCT_CODE,
+      product_service_charge: serviceCharge,
+      product_delivery_charge: deliveryCharge,
+      success_url: `${BACKEND_URL}/api/payments/esewa/success`,
+      failure_url: `${BACKEND_URL}/api/payments/esewa/failure?orderId=${order._id}`,
+      signed_field_names: "total_amount,transaction_uuid,product_code",
+      signature,
+    };
+
+    order.paymentMethod = "eSewa";
+    order.paymentMethodId = "esewa";
+    order.paymentGateway = "esewa";
+    order.paymentStatus = "Pending";
+    order.esewaTransactionUuid = transactionUuid;
+    order.esewaStatus = "Initiated";
+    order.transactionId = transactionUuid;
+    order.gatewayResponse = { fields };
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      formUrl: ESEWA_PAYMENT_URL,
+      fields,
+      order,
+    });
+  } catch (error) {
+    console.error("eSewa initiate error:", error.message);
+
+    res.status(400).json({
+      success: false,
+      error: error.message || "Failed to initiate eSewa payment",
+    });
+  }
+});
+
+app.get("/api/payments/esewa/success", async (req, res) => {
+  let order = null;
+
+  try {
+    let decodedData = {};
+
+    if (req.query.data) {
+      const decodedText = Buffer.from(String(req.query.data), "base64").toString(
+        "utf8"
+      );
+
+      decodedData = JSON.parse(decodedText);
+    } else {
+      decodedData = req.query;
+    }
+
+    const transactionUuid =
+      decodedData.transaction_uuid || req.query.transaction_uuid;
+
+    if (!transactionUuid) {
+      return res.redirect(
+        `${FRONTEND_URL}/order-success?payment=esewa&paymentStatus=failed`
+      );
+    }
+
+    order = await Order.findOne({ esewaTransactionUuid: transactionUuid });
+
+    if (!order) {
+      return res.redirect(
+        `${FRONTEND_URL}/order-success?payment=esewa&paymentStatus=failed`
+      );
+    }
+
+    let verifiedStatus = decodedData.status || "";
+
+    try {
+      const statusUrl = `${ESEWA_STATUS_CHECK_URL}?product_code=${ESEWA_PRODUCT_CODE}&total_amount=${order.totalPrice}&transaction_uuid=${transactionUuid}`;
+      const statusData = await fetchJson(statusUrl, { method: "GET" });
+
+      verifiedStatus =
+        statusData.status ||
+        statusData.transaction_status ||
+        verifiedStatus ||
+        "";
+
+      order.gatewayResponse = {
+        callback: decodedData,
+        statusCheck: statusData,
+      };
+    } catch (statusError) {
+      order.gatewayResponse = {
+        callback: decodedData,
+        statusCheckError: statusError.data || statusError.message,
+      };
+    }
+
+    const normalizedStatus = String(verifiedStatus).toUpperCase();
+
+    if (
+      normalizedStatus === "COMPLETE" ||
+      normalizedStatus === "COMPLETED" ||
+      normalizedStatus === "SUCCESS"
+    ) {
+      order.paymentStatus = "Paid";
+      order.orderStatus = "Confirmed";
+      order.status = "Confirmed";
+      order.esewaStatus = verifiedStatus || "COMPLETE";
+      order.esewaRefId =
+        decodedData.transaction_code || decodedData.ref_id || "";
+      order.transactionId =
+        decodedData.transaction_code || decodedData.ref_id || transactionUuid;
+      order.paidAt = new Date();
+    } else {
+      order.paymentStatus = "Verification Required";
+      order.esewaStatus = verifiedStatus || "Unknown";
+    }
+
+    await order.save();
+
+    const frontendStatus = order.paymentStatus === "Paid" ? "paid" : "pending";
+
+    return res.redirect(
+      `${FRONTEND_URL}/order-success?orderId=${order._id}&payment=esewa&paymentStatus=${frontendStatus}`
+    );
+  } catch (error) {
+    console.error("eSewa success error:", error.message);
+
+    if (order) {
+      order.paymentStatus = "Failed";
+      order.esewaStatus = "Failed";
+      order.gatewayResponse = error.data || { error: error.message };
+      await order.save();
+    }
+
+    return res.redirect(
+      `${FRONTEND_URL}/order-success${
+        order ? `?orderId=${order._id}&` : "?"
+      }payment=esewa&paymentStatus=failed`
+    );
+  }
+});
+
+app.get("/api/payments/esewa/failure", async (req, res) => {
+  try {
+    const { orderId } = req.query;
+
+    if (orderId && mongoose.Types.ObjectId.isValid(orderId)) {
+      const order = await Order.findById(orderId);
+
+      if (order) {
+        order.paymentStatus = "Failed";
+        order.esewaStatus = "Failed";
+        await order.save();
+      }
+    }
+
+    return res.redirect(
+      `${FRONTEND_URL}/order-success${
+        orderId ? `?orderId=${orderId}&` : "?"
+      }payment=esewa&paymentStatus=failed`
+    );
+  } catch {
+    return res.redirect(
+      `${FRONTEND_URL}/order-success?payment=esewa&paymentStatus=failed`
+    );
+  }
+});
+
+// CARD PAYMENT VIA STRIPE CHECKOUT
+app.post("/api/payments/card/initiate", async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ error: "orderId is required" });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (order.paymentStatus === "Paid") {
+      return res.status(400).json({ error: "This order is already paid" });
+    }
+
+    const params = new URLSearchParams();
+
+    params.append("mode", "payment");
+    params.append(
+      "success_url",
+      `${BACKEND_URL}/api/payments/card/success?session_id={CHECKOUT_SESSION_ID}&orderId=${order._id}`
+    );
+    params.append(
+      "cancel_url",
+      `${BACKEND_URL}/api/payments/card/cancel?orderId=${order._id}`
+    );
+    params.append("client_reference_id", String(order._id));
+    params.append("customer_email", order.email || "customer@example.com");
+
+    params.append("line_items[0][quantity]", "1");
+    params.append("line_items[0][price_data][currency]", STRIPE_CURRENCY);
+    params.append(
+      "line_items[0][price_data][unit_amount]",
+      String(toPaisa(order.totalPrice))
+    );
+    params.append(
+      "line_items[0][price_data][product_data][name]",
+      `PatraPatrika Order ${String(order._id).slice(-8)}`
+    );
+
+    params.append("metadata[orderId]", String(order._id));
+
+    const stripeSession = await stripeRequest(
+      "/checkout/sessions",
+      params,
+      "POST"
+    );
+
+    order.paymentMethod = "Credit / Debit Card";
+    order.paymentMethodId = "card";
+    order.paymentGateway = "stripe";
+    order.paymentStatus = "Pending";
+    order.stripeSessionId = stripeSession.id || "";
+    order.gatewayResponse = stripeSession;
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      payment_url: stripeSession.url,
+      sessionId: stripeSession.id,
+      order,
+    });
+  } catch (error) {
+    console.error("Card/Stripe initiate error:", error.data || error.message);
+
+    res.status(400).json({
+      success: false,
+      error: error.data || error.message || "Failed to initiate card payment",
+    });
+  }
+});
+
+app.get("/api/payments/card/success", async (req, res) => {
+  let order = null;
+
+  try {
+    const { session_id, orderId } = req.query;
+
+    if (!session_id || !orderId) {
+      return res.redirect(
+        `${FRONTEND_URL}/order-success?payment=card&paymentStatus=failed`
+      );
+    }
+
+    order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.redirect(
+        `${FRONTEND_URL}/order-success?payment=card&paymentStatus=failed`
+      );
+    }
+
+    const stripeSession = await stripeRequest(
+      `/checkout/sessions/${session_id}`,
+      null,
+      "GET"
+    );
+
+    order.gatewayResponse = stripeSession;
+    order.stripeSessionId = stripeSession.id || session_id;
+    order.stripePaymentIntentId = stripeSession.payment_intent || "";
+
+    if (stripeSession.payment_status === "paid") {
+      order.paymentStatus = "Paid";
+      order.orderStatus = "Confirmed";
+      order.status = "Confirmed";
+      order.transactionId =
+        stripeSession.payment_intent || stripeSession.id || session_id;
+      order.paidAt = new Date();
+    } else {
+      order.paymentStatus = "Pending";
+    }
+
+    await order.save();
+
+    const frontendStatus = order.paymentStatus === "Paid" ? "paid" : "pending";
+
+    return res.redirect(
+      `${FRONTEND_URL}/order-success?orderId=${order._id}&payment=card&paymentStatus=${frontendStatus}`
+    );
+  } catch (error) {
+    console.error("Card/Stripe success error:", error.data || error.message);
+
+    if (order) {
+      order.paymentStatus = "Failed";
+      order.gatewayResponse = error.data || { error: error.message };
+      await order.save();
+    }
+
+    return res.redirect(
+      `${FRONTEND_URL}/order-success${
+        order ? `?orderId=${order._id}&` : "?"
+      }payment=card&paymentStatus=failed`
+    );
+  }
+});
+
+app.get("/api/payments/card/cancel", async (req, res) => {
+  try {
+    const { orderId } = req.query;
+
+    if (orderId && mongoose.Types.ObjectId.isValid(orderId)) {
+      const order = await Order.findById(orderId);
+
+      if (order) {
+        order.paymentStatus = "Failed";
+        await order.save();
+      }
+    }
+
+    return res.redirect(
+      `${FRONTEND_URL}/order-success${
+        orderId ? `?orderId=${orderId}&` : "?"
+      }payment=card&paymentStatus=failed`
+    );
+  } catch {
+    return res.redirect(
+      `${FRONTEND_URL}/order-success?payment=card&paymentStatus=failed`
+    );
+  }
+});
+
+// ADMIN: GET ALL ORDERS
 app.get("/api/orders", async (req, res) => {
   try {
     res.status(200).json(await Order.find({}).sort({ createdAt: -1 }));
@@ -614,6 +1178,7 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
+// USER: GET ORDERS BY EMAIL
 app.get("/api/orders/user/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email || "")
@@ -637,11 +1202,76 @@ app.get("/api/orders/user/:email", async (req, res) => {
   }
 });
 
+// USER: CANCEL ORDER
+app.patch("/api/orders/:id/cancel", async (req, res) => {
+  try {
+    const { cancelReason } = req.body;
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const currentOrderStatus = order.orderStatus || order.status || "Processing";
+    const currentPaymentStatus = order.paymentStatus || "Pending";
+
+    if (currentOrderStatus === "Cancelled") {
+      return res.status(400).json({
+        error: "This order is already cancelled",
+      });
+    }
+
+    if (currentOrderStatus === "Confirmed") {
+      return res.status(400).json({
+        error:
+          "This order has already been confirmed by admin and cannot be cancelled by user",
+      });
+    }
+
+    if (currentOrderStatus === "Completed") {
+      return res.status(400).json({
+        error: "Completed order cannot be cancelled",
+      });
+    }
+
+    if (currentPaymentStatus === "Paid") {
+      return res.status(400).json({
+        error:
+          "Paid orders cannot be cancelled directly. Please contact admin for refund/cancellation.",
+      });
+    }
+
+    order.orderStatus = "Cancelled";
+    order.status = "Cancelled";
+    order.cancelledAt = new Date();
+    order.cancelledBy = "User";
+    order.cancelReason = cancelReason || "Cancelled by customer";
+
+    if (order.paymentStatus !== "Paid") {
+      order.paymentStatus = "Failed";
+    }
+
+    const updatedOrder = await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// GET ONE ORDER
 app.get("/api/orders/:id", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
 
-    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
     res.status(200).json(order);
   } catch (error) {
@@ -649,11 +1279,14 @@ app.get("/api/orders/:id", async (req, res) => {
   }
 });
 
+// UPDATE ORDER STATUS
 app.patch("/api/orders/:id/status", async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
 
-    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
     if (req.body.orderStatus) {
       order.orderStatus = req.body.orderStatus;
@@ -672,13 +1305,16 @@ app.patch("/api/orders/:id/status", async (req, res) => {
   }
 });
 
+// UPDATE PAYMENT STATUS
 app.patch("/api/orders/:id/payment", async (req, res) => {
   try {
     const { paymentStatus, transactionId, paymentProof } = req.body;
 
     const order = await Order.findById(req.params.id);
 
-    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
     if (paymentStatus) {
       order.paymentStatus = paymentStatus;
@@ -688,8 +1324,13 @@ app.patch("/api/orders/:id/payment", async (req, res) => {
       }
     }
 
-    if (transactionId !== undefined) order.transactionId = transactionId;
-    if (paymentProof !== undefined) order.paymentProof = paymentProof;
+    if (transactionId !== undefined) {
+      order.transactionId = transactionId;
+    }
+
+    if (paymentProof !== undefined) {
+      order.paymentProof = paymentProof;
+    }
 
     res.status(200).json(await order.save());
   } catch (error) {
@@ -697,11 +1338,14 @@ app.patch("/api/orders/:id/payment", async (req, res) => {
   }
 });
 
+// DELETE ORDER
 app.delete("/api/orders/:id", async (req, res) => {
   try {
     const deletedOrder = await Order.findByIdAndDelete(req.params.id);
 
-    if (!deletedOrder) return res.status(404).json({ error: "Order not found" });
+    if (!deletedOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
     res.status(200).json({
       success: true,
@@ -712,7 +1356,7 @@ app.delete("/api/orders/:id", async (req, res) => {
   }
 });
 
-// USER STATUS & FEATURES
+// USER ROUTES
 app.get("/api/users", async (req, res) => {
   try {
     res.status(200).json(await User.find({}));
@@ -725,7 +1369,9 @@ app.post("/api/users/ping", async (req, res) => {
   try {
     const { userId } = req.body;
 
-    if (!userId) return res.status(400).json({ error: "userId is required" });
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
 
     await User.findByIdAndUpdate(userId, { lastSeen: new Date() });
 
@@ -817,6 +1463,166 @@ app.delete("/api/admin/messages/:id", async (req, res) => {
       success: false,
       error: err.message,
     });
+  }
+});
+
+// ADMIN: REAL DASHBOARD STATISTICS FROM ORDERS
+app.get("/api/admin/dashboard-stats", async (req, res) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [
+      totalOrders,
+      paidOrders,
+      pendingPayments,
+      failedPayments,
+      processingOrders,
+      confirmedOrders,
+      completedOrders,
+      cancelledOrders,
+      totalProducts,
+      outOfStockProducts,
+      totalUsers,
+      unreadMessages,
+      recentOrders,
+      paidOrderDocs,
+      todayPaidOrders,
+      topProducts,
+    ] = await Promise.all([
+      Order.countDocuments(),
+
+      Order.countDocuments({ paymentStatus: "Paid" }),
+
+      Order.countDocuments({ paymentStatus: "Pending" }),
+
+      Order.countDocuments({ paymentStatus: "Failed" }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Processing" }, { status: "Processing" }],
+      }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Confirmed" }, { status: "Confirmed" }],
+      }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Completed" }, { status: "Completed" }],
+      }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Cancelled" }, { status: "Cancelled" }],
+      }),
+
+      Product.countDocuments(),
+
+      Product.countDocuments({ stockStatus: "Out of Stock" }),
+
+      User.countDocuments(),
+
+      Message.countDocuments({ isRead: false }),
+
+      Order.find({})
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .select(
+          "customerName email paymentMethod paymentStatus orderStatus status totalPrice createdAt orderItems"
+        ),
+
+      Order.find({ paymentStatus: "Paid" }).select(
+        "totalPrice orderItems createdAt"
+      ),
+
+      Order.find({
+        paymentStatus: "Paid",
+        createdAt: { $gte: startOfToday },
+      }).select("totalPrice orderItems createdAt"),
+
+      Order.aggregate([
+        {
+          $match: {
+            paymentStatus: "Paid",
+          },
+        },
+        {
+          $unwind: "$orderItems",
+        },
+        {
+          $group: {
+            _id: {
+              productId: "$orderItems.productId",
+              title: "$orderItems.title",
+            },
+            title: { $first: "$orderItems.title" },
+            image: { $first: "$orderItems.image" },
+            quantitySold: { $sum: "$orderItems.qty" },
+            revenue: { $sum: "$orderItems.subtotal" },
+          },
+        },
+        {
+          $sort: {
+            quantitySold: -1,
+          },
+        },
+        {
+          $limit: 5,
+        },
+      ]),
+    ]);
+
+    const totalRevenue = paidOrderDocs.reduce((total, order) => {
+      return total + Number(order.totalPrice || 0);
+    }, 0);
+
+    const todayRevenue = todayPaidOrders.reduce((total, order) => {
+      return total + Number(order.totalPrice || 0);
+    }, 0);
+
+    const totalItemsSold = paidOrderDocs.reduce((total, order) => {
+      const orderQty =
+        order.orderItems?.reduce((sum, item) => {
+          return sum + Number(item.qty || 0);
+        }, 0) || 0;
+
+      return total + orderQty;
+    }, 0);
+
+    const todayItemsSold = todayPaidOrders.reduce((total, order) => {
+      const orderQty =
+        order.orderItems?.reduce((sum, item) => {
+          return sum + Number(item.qty || 0);
+        }, 0) || 0;
+
+      return total + orderQty;
+    }, 0);
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalOrders,
+        paidOrders,
+        pendingPayments,
+        failedPayments,
+        processingOrders,
+        confirmedOrders,
+        completedOrders,
+        cancelledOrders,
+        totalProducts,
+        outOfStockProducts,
+        totalUsers,
+        unreadMessages,
+        totalRevenue,
+        todayRevenue,
+        totalItemsSold,
+        todayItemsSold,
+        todayOrders: todayPaidOrders.length,
+      },
+      recentOrders,
+      topProducts,
+    });
+  } catch (error) {
+    console.error("Dashboard stats error:", error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 

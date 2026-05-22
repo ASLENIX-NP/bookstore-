@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Loader2,
-  Receipt,
+  PackageCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -24,14 +24,14 @@ const paymentMethods = [
   {
     id: "card",
     title: "Credit / Debit Card",
-    description: "Pay securely using your bank card.",
+    description: "Pay securely using hosted card checkout.",
     icon: <CreditCard className="w-6 h-6" />,
-    status: "Available Soon",
+    status: "Ready",
   },
   {
     id: "khalti",
     title: "Khalti",
-    description: "Pay now using Khalti wallet or Khalti gateway.",
+    description: "Pay using Khalti wallet.",
     icon: <Wallet className="w-6 h-6" />,
     status: "Ready",
   },
@@ -40,7 +40,7 @@ const paymentMethods = [
     title: "eSewa",
     description: "Pay using eSewa wallet.",
     icon: <Smartphone className="w-6 h-6" />,
-    status: "Available Soon",
+    status: "Ready",
   },
   {
     id: "cod",
@@ -82,7 +82,6 @@ export default function CheckoutPayment() {
 
     let items = safeJsonParse(localStorage.getItem("checkoutItems"), []);
 
-    // Safety fallback: if checkoutItems is missing, recover from cart.
     if (!Array.isArray(items) || items.length === 0) {
       const cartItems = safeJsonParse(localStorage.getItem("cart"), []);
 
@@ -218,16 +217,31 @@ export default function CheckoutPayment() {
     };
   };
 
+  const submitEsewaForm = (formUrl, fields) => {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = formUrl;
+
+    Object.entries(fields).forEach(([key, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  };
+
   const getErrorMessage = (error) => {
     const serverError = error.response?.data?.error;
 
     if (typeof serverError === "string") return serverError;
-
     if (serverError?.detail) return serverError.detail;
-
     if (serverError) return JSON.stringify(serverError);
 
-    return "Failed to create order/payment. Your cart is still saved.";
+    return "Failed to start payment. Please check backend terminal.";
   };
 
   const handleConfirmPaymentMethod = async () => {
@@ -242,11 +256,6 @@ export default function CheckoutPayment() {
 
     if (!selectedMethod) {
       alert("Invalid payment method selected.");
-      return;
-    }
-
-    if (!["cod", "khalti"].includes(selectedMethod.id)) {
-      alert(`${selectedMethod.title} is not available yet. Please use COD or Khalti.`);
       return;
     }
 
@@ -268,19 +277,20 @@ export default function CheckoutPayment() {
       const createdOrder = orderResponse.data.order;
       localStorage.setItem("lastOrder", JSON.stringify(createdOrder));
 
-      // KHALTI FLOW:
-      // Do not clear cart or checkoutItems here.
-      // Payment must be verified by backend callback first.
+      if (selectedMethod.id === "cod") {
+        alert("Order placed successfully! Admin can now see this order.");
+        navigate("/order-success");
+        return;
+      }
+
       if (selectedMethod.id === "khalti") {
         const khaltiResponse = await axios.post(
           "http://localhost:5000/api/payments/khalti/initiate",
-          {
-            orderId: createdOrder._id,
-          }
+          { orderId: createdOrder._id }
         );
 
         if (!khaltiResponse.data.success || !khaltiResponse.data.payment_url) {
-          alert("Khalti payment could not be started. Your cart is still saved.");
+          alert("Khalti payment could not be started.");
           return;
         }
 
@@ -288,13 +298,40 @@ export default function CheckoutPayment() {
         return;
       }
 
-      // CASH ON DELIVERY FLOW:
-      // Do not clear cart or checkoutItems here.
-      // This prevents your cart becoming empty during testing.
-      alert("Order placed successfully! Admin can now see this order.");
-      navigate("/order-success");
+      if (selectedMethod.id === "esewa") {
+        const esewaResponse = await axios.post(
+          "http://localhost:5000/api/payments/esewa/initiate",
+          { orderId: createdOrder._id }
+        );
+
+        if (
+          !esewaResponse.data.success ||
+          !esewaResponse.data.formUrl ||
+          !esewaResponse.data.fields
+        ) {
+          alert("eSewa payment could not be started.");
+          return;
+        }
+
+        submitEsewaForm(esewaResponse.data.formUrl, esewaResponse.data.fields);
+        return;
+      }
+
+      if (selectedMethod.id === "card") {
+        const cardResponse = await axios.post(
+          "http://localhost:5000/api/payments/card/initiate",
+          { orderId: createdOrder._id }
+        );
+
+        if (!cardResponse.data.success || !cardResponse.data.payment_url) {
+          alert("Card payment could not be started.");
+          return;
+        }
+
+        window.location.href = cardResponse.data.payment_url;
+      }
     } catch (error) {
-      console.error("Order/payment creation error:", error);
+      console.error("Order/payment error:", error);
       alert(getErrorMessage(error));
     } finally {
       setOrderLoading(false);
@@ -304,6 +341,15 @@ export default function CheckoutPayment() {
   if (!deliveryAddress) {
     return null;
   }
+
+  const buttonLabel =
+    selectedPaymentMethod === "khalti"
+      ? "Pay with Khalti"
+      : selectedPaymentMethod === "esewa"
+      ? "Pay with eSewa"
+      : selectedPaymentMethod === "card"
+      ? "Pay with Card"
+      : "Place Order";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -521,13 +567,7 @@ export default function CheckoutPayment() {
                             {method.description}
                           </p>
 
-                          <p
-                            className={`text-[10px] font-black uppercase tracking-widest mt-2 ${
-                              method.status === "Ready"
-                                ? "text-emerald-600"
-                                : "text-orange-500"
-                            }`}
-                          >
+                          <p className="text-[10px] font-black uppercase tracking-widest mt-2 text-emerald-600">
                             {method.status}
                           </p>
                         </div>
@@ -540,7 +580,7 @@ export default function CheckoutPayment() {
 
             <section className="bg-slate-950 text-white rounded-[2rem] shadow-xl p-6">
               <div className="flex items-center gap-2 mb-5">
-                <Receipt className="w-5 h-5 text-orange-300" />
+                <PackageCheck className="w-5 h-5 text-orange-300" />
                 <h2 className="text-xl font-black">VAT Summary</h2>
               </div>
 
@@ -599,15 +639,13 @@ export default function CheckoutPayment() {
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Processing...
                   </>
-                ) : selectedPaymentMethod === "khalti" ? (
-                  "Pay with Khalti"
                 ) : (
-                  "Place Order"
+                  buttonLabel
                 )}
               </button>
 
               <p className="text-xs text-gray-400 mt-3 text-center">
-                Cart and checkout data will remain saved while payment is being processed.
+                Online payment orders are marked Paid only after gateway verification.
               </p>
             </section>
           </div>
