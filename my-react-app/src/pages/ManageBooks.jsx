@@ -1,90 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   PlusCircle,
-  BookOpen,
-  Trash2,
   Layers,
-  AlertCircle,
-} from 'lucide-react';
+  Trash2,
+  BookOpen,
+} from "lucide-react";
 
 const categoryOptions = {
-  'Academic Books': [
-    'School Books',
-    'College Books',
-    'Guide Books',
-    'Question Banks',
+  "Academic Books": [
+    "School Books",
+    "College Books",
+    "Guide Books",
+    "Question Banks",
   ],
 
-  'Novels & Literature': [
-    'Nepali Novels',
-    'English Novels',
-    'Self Help',
-    'Biography',
-    'Poetry',
-    'Romance',
-    'Mystery / Thriller',
-    'History',
+  "Novels & Literature": [
+    "Nepali Novels",
+    "English Novels",
+    "Self Help",
+    "Biography",
+    "Poetry",
+    "Romance",
+    "Mystery / Thriller",
+    "History",
   ],
 
   "Children's Books": [
-    'Story Books',
-    'Comics',
-    'Coloring Books',
-    'Alphabet Books',
-    'Activity Books',
-    'Picture Books',
+    "Story Books",
+    "Comics",
+    "Coloring Books",
+    "Alphabet Books",
+    "Activity Books",
+    "Picture Books",
   ],
 
-  'Religious Books': ['General Religious Books'],
-
-  'Notebooks, Copies & Files': [
-    'Single Line Copies',
-    'Four Line Copies',
-    'Drawing Copies',
-    'Register Copies',
-    'Practical Copies',
-    'Diaries / Journals',
-    'Files',
-    'Folders',
+  "Religious Books": [
+    "General Religious Books",
   ],
 
-  'Magazines & Newspapers': [
-    'Newspapers',
-    'Educational Magazines',
-    'Monthly Magazines',
-    'Comics Magazines',
-    'Current Affairs Magazines',
+  "Notebooks, Copies & Files": [
+    "Single Line Copies",
+    "Four Line Copies",
+    "Drawing Copies",
+    "Register Copies",
+    "Practical Copies",
+    "Diaries / Journals",
+    "Files",
+    "Folders",
   ],
 
-  'Stationery Items': [
-    'Pens',
-    'Pencils',
-    'Erasers',
-    'Sharpeners',
-    'Markers',
-    'Highlighters',
-    'Geometry Box',
-    'Scales',
-    'Art Supplies',
-    'Office Supplies',
+  "Magazines & Newspapers": [
+    "Newspapers",
+    "Educational Magazines",
+    "Monthly Magazines",
+    "Comics Magazines",
+    "Current Affairs Magazines",
+  ],
+
+  "Stationery Items": [
+    "Pens",
+    "Pencils",
+    "Erasers",
+    "Sharpeners",
+    "Markers",
+    "Highlighters",
+    "Geometry Box",
+    "Scales",
+    "Art Supplies",
+    "Office Supplies",
   ],
 };
 
 export default function ManageBooks() {
   const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
-    name: '',
-    category: 'Academic Books',
-    subcategory: 'School Books',
-    price: '',
-    salePrice: '',
-    stockStatus: 'In Stock',
-    description: '',
-    image: '',
+    name: "",
+    category: "Academic Books",
+    subcategory: "School Books",
+    price: "",
+    salePrice: "",
+    stockStatus: "In Stock",
+
+    description: "",
 
     featured: false,
     flashSale: false,
@@ -93,24 +92,19 @@ export default function ManageBooks() {
   });
 
   const categories = Object.keys(categoryOptions);
+
   const subcategories =
     categoryOptions[formData.category] || [];
 
   const fetchBooks = async () => {
-    setLoading(true);
-
     try {
-      const res = await axios.get(
-        'http://localhost:5000/api/products'
+      const response = await axios.get(
+        "http://localhost:5000/api/products"
       );
 
-      setBooks(res.data);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to load products.');
-    } finally {
-      setLoading(false);
+      setBooks(response.data);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -118,15 +112,14 @@ export default function ManageBooks() {
     fetchBooks();
   }, []);
 
-  const handleCategoryChange = (selectedCategory) => {
-    const firstSubcategory =
-      categoryOptions[selectedCategory]?.[0] ||
-      'General';
-
+  const handleCategoryChange = (
+    selectedCategory
+  ) => {
     setFormData({
       ...formData,
       category: selectedCategory,
-      subcategory: firstSubcategory,
+      subcategory:
+        categoryOptions[selectedCategory][0],
     });
   };
 
@@ -134,47 +127,27 @@ export default function ManageBooks() {
     e.preventDefault();
 
     try {
-      const res = await axios.post(
-        'http://localhost:5000/api/products',
+      const response = await axios.post(
+        "http://localhost:5000/api/products",
         {
-          name: formData.name,
-          category: formData.category,
-          subcategory: formData.subcategory,
-
-          price: Number(formData.price),
-
-          salePrice: Number(
-            formData.salePrice || 0
-          ),
-
-          featured: formData.featured,
-          flashSale: formData.flashSale,
-          bestSeller: formData.bestSeller,
-          newArrival: formData.newArrival,
-
-          stockStatus: formData.stockStatus,
-
-          description:
-            formData.description ||
-            'No description provided',
-
-          image:
-            formData.image ||
-            'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500',
+          ...formData,
         }
       );
 
-      setBooks((prev) => [res.data, ...prev]);
+      setBooks([
+        response.data,
+        ...books,
+      ]);
 
       setFormData({
-        name: '',
-        category: 'Academic Books',
-        subcategory: 'School Books',
-        price: '',
-        salePrice: '',
-        stockStatus: 'In Stock',
-        description: '',
-        image: '',
+        name: "",
+        category: "Academic Books",
+        subcategory: "School Books",
+        price: "",
+        salePrice: "",
+        stockStatus: "In Stock",
+
+        description: "",
 
         featured: false,
         flashSale: false,
@@ -182,10 +155,10 @@ export default function ManageBooks() {
         newArrival: false,
       });
 
-      alert('Product added successfully!');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to create product.');
+      alert("Product added successfully");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to add product");
     }
   };
 
@@ -195,62 +168,73 @@ export default function ManageBooks() {
         `http://localhost:5000/api/products/${id}`
       );
 
-      setBooks((prev) =>
-        prev.filter((book) => book._id !== id)
+      setBooks(
+        books.filter(
+          (book) => book._id !== id
+        )
       );
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete product.');
+    } catch (error) {
+      console.error(error);
     }
   };
 
-  const handleToggleStock = async (book) => {
-    const newStatus =
-      book.stockStatus === 'In Stock'
-        ? 'Out of Stock'
-        : 'In Stock';
-
+  const handleToggleStock = async (
+    product
+  ) => {
     try {
-      const res = await axios.patch(
-        `http://localhost:5000/api/products/${book._id}`,
+      const updatedStatus =
+        product.stockStatus === "In Stock"
+          ? "Out of Stock"
+          : "In Stock";
+
+      const response = await axios.patch(
+        `http://localhost:5000/api/products/${product._id}`,
         {
-          stockStatus: newStatus,
+          stockStatus: updatedStatus,
         }
       );
 
-      setBooks((prev) =>
-        prev.map((item) =>
-          item._id === book._id ? res.data : item
+      setBooks(
+        books.map((book) =>
+          book._id === product._id
+            ? response.data
+            : book
         )
       );
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     }
   };
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
 
+      {/* HEADER */}
+
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Layers className="text-orange-500 w-6 h-6 shrink-0" />
+
           Inventory Management Hub
         </h2>
 
         <p className="text-sm text-gray-500 mt-1">
-          Manage products, categories, stock
-          flags, and custom covers.
+          Manage products, categories,
+          stock flags, and custom covers.
         </p>
       </div>
 
+      {/* MAIN GRID */}
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
 
-        {/* LEFT SIDE */}
+        {/* LEFT FORM */}
 
         <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 h-fit space-y-5">
 
           <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2 border-b border-gray-50 pb-3">
             <PlusCircle className="w-4 h-4 text-orange-500" />
+
             Add New Product
           </h3>
 
@@ -259,6 +243,8 @@ export default function ManageBooks() {
             className="space-y-4"
           >
 
+            {/* PRODUCT NAME */}
+
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Product Name *
@@ -266,6 +252,7 @@ export default function ManageBooks() {
 
               <input
                 type="text"
+                placeholder="Example: Mathematics Grade 10"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({
@@ -273,10 +260,11 @@ export default function ManageBooks() {
                     name: e.target.value,
                   })
                 }
-                placeholder="Example: Mathematics Grade 10"
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
+
+            {/* CATEGORY + STOCK */}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
@@ -294,14 +282,16 @@ export default function ManageBooks() {
                   }
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
                 >
-                  {categories.map((category) => (
-                    <option
-                      key={category}
-                      value={category}
-                    >
-                      {category}
-                    </option>
-                  ))}
+                  {categories.map(
+                    (category) => (
+                      <option
+                        key={category}
+                        value={category}
+                      >
+                        {category}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
@@ -333,6 +323,8 @@ export default function ManageBooks() {
 
             </div>
 
+            {/* SUBCATEGORY */}
+
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Subcategory *
@@ -362,6 +354,8 @@ export default function ManageBooks() {
               </select>
             </div>
 
+            {/* PRICE */}
+
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Price (NPR) *
@@ -369,6 +363,7 @@ export default function ManageBooks() {
 
               <input
                 type="number"
+                placeholder="650"
                 value={formData.price}
                 onChange={(e) =>
                   setFormData({
@@ -376,10 +371,11 @@ export default function ManageBooks() {
                     price: e.target.value,
                   })
                 }
-                placeholder="650"
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
+
+            {/* SALE PRICE */}
 
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -388,6 +384,7 @@ export default function ManageBooks() {
 
               <input
                 type="number"
+                placeholder="499"
                 value={formData.salePrice}
                 onChange={(e) =>
                   setFormData({
@@ -396,17 +393,42 @@ export default function ManageBooks() {
                       e.target.value,
                   })
                 }
-                placeholder="499"
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
 
+            {/* DESCRIPTION */}
+
+            <div>
+              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                Description
+              </label>
+
+              <textarea
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    description:
+                      e.target.value,
+                  })
+                }
+                placeholder="Write book description..."
+                rows="4"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-3 text-sm resize-none"
+              />
+            </div>
+
+            {/* FLAGS */}
+
             <div className="grid grid-cols-2 gap-3">
 
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
-                  checked={formData.featured}
+                  checked={
+                    formData.featured
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -419,10 +441,12 @@ export default function ManageBooks() {
                 Featured Product
               </label>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
-                  checked={formData.flashSale}
+                  checked={
+                    formData.flashSale
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -435,10 +459,12 @@ export default function ManageBooks() {
                 Flash Sale
               </label>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
-                  checked={formData.bestSeller}
+                  checked={
+                    formData.bestSeller
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -451,10 +477,12 @@ export default function ManageBooks() {
                 Best Seller
               </label>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
-                  checked={formData.newArrival}
+                  checked={
+                    formData.newArrival
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -469,207 +497,137 @@ export default function ManageBooks() {
 
             </div>
 
+            {/* BUTTON */}
+
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-orange-500 text-white hover:bg-orange-600 text-xs font-bold uppercase tracking-wider py-3 px-4 rounded-xl"
+              className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-3 text-sm font-semibold"
             >
               <PlusCircle className="w-4 h-4" />
-              Save Into Catalog
+
+              SAVE INTO CATALOG
             </button>
 
           </form>
-
         </section>
 
         {/* RIGHT SIDE */}
 
         <section className="xl:col-span-2 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
 
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-indigo-500" />
-              Currently Active Items ({books.length})
-            </h3>
-          </div>
+          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2 border-b border-gray-50 pb-3 mb-5">
+            <BookOpen className="w-4 h-4 text-indigo-500" />
 
-          {loading ? (
-            <div className="text-sm text-gray-500">
-              Loading inventory...
-            </div>
-          ) : error ? (
-            <div className="flex items-start gap-2 bg-red-50 border border-red-100 text-red-700 p-3 rounded-xl text-sm">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              {error}
-            </div>
-          ) : books.length === 0 ? (
-            <div className="text-sm text-gray-500">
-              No products found.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            Currently Active Items ({books.length})
+          </h3>
 
-              <table className="w-full text-sm">
+          <div className="space-y-4">
 
-                <thead>
-                  <tr className="text-left text-gray-400 uppercase text-[11px] tracking-wider border-b border-gray-100">
-                    <th className="pb-3">
-                      Product Details
-                    </th>
+            {books.map((book) => (
+              <div
+                key={book._id}
+                className="flex items-center justify-between border-b border-gray-100 pb-4"
+              >
 
-                    <th className="pb-3">
-                      Category
-                    </th>
+                <div className="flex items-center gap-4">
 
-                    <th className="pb-3">
-                      Subcategory
-                    </th>
+                  <img
+                    src={
+                      book.image ||
+                      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500"
+                    }
+                    alt={book.name}
+                    className="w-12 h-16 rounded-lg object-cover"
+                  />
 
-                    <th className="pb-3">
-                      Price
-                    </th>
+                  <div>
+                    <h4 className="font-semibold text-gray-800">
+                      {book.name}
+                    </h4>
 
-                    <th className="pb-3">
-                      Status
-                    </th>
+                    <div className="flex flex-wrap gap-2 mt-1">
 
-                    <th className="pb-3">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-
-                  {books.map((book) => (
-                    <tr
-                      key={book._id}
-                      className="border-b border-gray-50"
-                    >
-
-                      <td className="py-4">
-
-                        <div className="flex items-center gap-3">
-
-                          <img
-                            src={book.image}
-                            alt={book.name}
-                            className="w-12 h-14 rounded-lg object-cover border border-gray-100"
-                          />
-
-                          <div>
-
-                            <h4 className="font-semibold text-gray-800 text-sm">
-                              {book.name}
-                            </h4>
-
-                            <div className="flex flex-wrap gap-1 mt-1">
-
-                              {book.featured && (
-                                <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">
-                                  Featured
-                                </span>
-                              )}
-
-                              {book.flashSale && (
-                                <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
-                                  Flash Sale
-                                </span>
-                              )}
-
-                              {book.bestSeller && (
-                                <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">
-                                  Best Seller
-                                </span>
-                              )}
-
-                              {book.newArrival && (
-                                <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                                  New Arrival
-                                </span>
-                              )}
-
-                            </div>
-
-                          </div>
-
-                        </div>
-
-                      </td>
-
-                      <td className="py-4">
-                        {book.category}
-                      </td>
-
-                      <td className="py-4">
-                        {book.subcategory}
-                      </td>
-
-                      <td className="py-4 font-bold text-gray-800">
-                        NPR {book.price}
-                      </td>
-
-                      <td className="py-4">
-
-                        <span
-                          className={`text-[11px] font-bold px-2 py-1 rounded-full ${
-                            book.stockStatus ===
-                            'In Stock'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}
-                        >
-                          {book.stockStatus}
+                      {book.featured && (
+                        <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-1 rounded-full">
+                          Featured
                         </span>
+                      )}
 
-                      </td>
+                      {book.flashSale && (
+                        <span className="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full">
+                          Flash Sale
+                        </span>
+                      )}
 
-                      <td className="py-4">
+                      {book.bestSeller && (
+                        <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-full">
+                          Best Seller
+                        </span>
+                      )}
 
-                        <div className="flex items-center gap-2">
+                      {book.newArrival && (
+                        <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full">
+                          New Arrival
+                        </span>
+                      )}
 
-                          <button
-                            onClick={() =>
-                              handleToggleStock(
-                                book
-                              )
-                            }
-                            className="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100"
-                          >
-                            {book.stockStatus ===
-                            'In Stock'
-                              ? 'Mark Out'
-                              : 'Mark In'}
-                          </button>
+                    </div>
 
-                          <button
-                            onClick={() =>
-                              handleDelete(
-                                book._id
-                              )
-                            }
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {book.category}
+                    </p>
 
-                        </div>
+                    <p className="text-xs text-gray-400">
+                      {book.subcategory}
+                    </p>
 
-                      </td>
+                    {/* DESCRIPTION */}
 
-                    </tr>
-                  ))}
+                    <p className="text-xs text-gray-500 mt-2 max-w-md">
+                      {book.description}
+                    </p>
 
-                </tbody>
+                  </div>
+                </div>
 
-              </table>
+                <div className="flex items-center gap-4">
 
-            </div>
-          )}
+                  <div>
+                    <p className="font-bold text-gray-800">
+                      NPR {book.price}
+                    </p>
 
+                    <button
+                      onClick={() =>
+                        handleToggleStock(book)
+                      }
+                      className={`text-xs px-3 py-1 rounded-full mt-2 ${
+                        book.stockStatus ===
+                        "In Stock"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {book.stockStatus}
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      handleDelete(book._id)
+                    }
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                </div>
+              </div>
+            ))}
+
+          </div>
         </section>
-
       </div>
-
     </div>
   );
 }

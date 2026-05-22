@@ -523,10 +523,17 @@ export default function Products() {
                         {product.name}
                       </h4>
 
-                      <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                        {product.description ||
-                          'No description provided'}
-                      </p>
+                      <p
+  className="text-sm text-gray-500 mt-2 leading-relaxed overflow-hidden"
+  style={{
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+  }}
+>
+  {product.description ||
+    'No description provided'}
+</p>
 
                       <div className="flex items-center gap-1 mt-3">
                         <Star className="w-4 h-4 text-amber-500 fill-current" />
