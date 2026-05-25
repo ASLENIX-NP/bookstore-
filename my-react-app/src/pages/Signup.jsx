@@ -126,7 +126,7 @@ export default function Signup() {
             <div className="mb-5">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.16em] mb-3 border bg-indigo-50 text-indigo-700 border-indigo-100">
                 <UserPlus className="w-3.5 h-3.5" />
-                Create Account
+                Create an Account
               </div>
 
               <h1 className="text-3xl sm:text-4xl font-black text-slate-950">
