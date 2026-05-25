@@ -82,6 +82,7 @@ export default function ManageBooks() {
     subcategory: "School Books",
     price: "",
     salePrice: "",
+    image: "",
     stockStatus: "In Stock",
 
     description: "",
@@ -397,7 +398,57 @@ export default function ManageBooks() {
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
+{/* PRODUCT IMAGE */}
 
+<div>
+  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+    Product Image
+  </label>
+
+  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-orange-200 rounded-2xl cursor-pointer bg-orange-50 hover:bg-orange-100 transition overflow-hidden">
+
+    {formData.image ? (
+      <img
+        src={formData.image}
+        alt="Preview"
+        className="w-full h-full object-cover rounded-2xl"
+      />
+    ) : (
+      <div className="flex flex-col items-center justify-center text-center px-4">
+        <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow mb-3">
+          <span className="text-2xl">📚</span>
+        </div>
+
+        <p className="text-sm font-semibold text-gray-700">
+          Click to upload product image
+        </p>
+
+        <p className="text-xs text-gray-400 mt-1">
+          PNG, JPG, JPEG
+        </p>
+      </div>
+    )}
+
+    <input
+      type="file"
+      accept="image/*"
+      className="hidden"
+      onChange={(e) => {
+        const file = e.target.files[0];
+
+        if (file) {
+          const imageUrl =
+            URL.createObjectURL(file);
+
+          setFormData({
+            ...formData,
+            image: imageUrl,
+          });
+        }
+      }}
+    />
+  </label>
+</div>
             {/* DESCRIPTION */}
 
             <div>

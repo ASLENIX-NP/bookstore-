@@ -293,21 +293,16 @@ export default function Home() {
         </p>
 
         <span className="text-xs font-black text-emerald-600">
-          -
-          {Math.round(
-            (((Number(
-              product.originalPrice ||
-                Number(product.price || 0) + 200
-            ) -
-              Number(product.price || 0)) /
-              Number(
-                product.originalPrice ||
-                  Number(product.price || 0) + 200
-              )) *
-              100)
-          )}
-          %
-        </span>
+  -
+  {Math.round(
+    (
+      ((product.price || 0) -
+        (product.salePrice || 0)) /
+      (product.price || 1)
+    ) * 100
+  )}
+  %
+</span>
       </div>
     )}
   </div>

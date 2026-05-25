@@ -347,43 +347,54 @@ export default function Products() {
 
           <div className="mt-4 flex items-end justify-between gap-4">
   <div>
-    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-      Flash Sale Price
-    </p>
+    {/* SHOW SALE LABEL ONLY IF SALE EXISTS */}
 
-    {/* SALE PRICE */}
-    <p className="text-2xl font-black text-[#f57224]">
-      NPR {Number(product.price || 0).toLocaleString()}
-    </p>
+    {product.salePrice &&
+    Number(product.salePrice) < Number(product.price) ? (
+      <>
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+          Flash Sale Price
+        </p>
 
-    {/* ORIGINAL PRICE */}
-    <div className="flex items-center gap-2 mt-1">
-      <p className="text-sm text-slate-400 line-through font-bold">
-        NPR{" "}
-        {Number(
-          product.originalPrice ||
-            Number(product.price || 0) + 200
-        ).toLocaleString()}
-      </p>
+        {/* SALE PRICE */}
 
-      {/* DISCOUNT */}
-      <span className="text-xs font-black text-emerald-600">
-        -
-        {Math.round(
-          (((Number(
-            product.originalPrice ||
-              Number(product.price || 0) + 200
-          ) -
-            Number(product.price || 0)) /
-            Number(
-              product.originalPrice ||
-                Number(product.price || 0) + 200
-            )) *
-            100)
-        )}
-        %
-      </span>
-    </div>
+        <p className="text-2xl font-black text-[#f57224]">
+          NPR{" "}
+          {Number(product.salePrice || 0).toLocaleString()}
+        </p>
+
+        {/* ORIGINAL PRICE + DISCOUNT */}
+
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-sm text-slate-400 line-through font-bold">
+            NPR {Number(product.price || 0).toLocaleString()}
+          </p>
+
+          <span className="text-xs font-black text-emerald-600">
+            -
+            {Math.round(
+              ((Number(product.price || 0) -
+                Number(product.salePrice || 0)) /
+                Number(product.price || 1)) *
+                100
+            )}
+            %
+          </span>
+        </div>
+      </>
+    ) : (
+      <>
+        {/* NORMAL PRICE */}
+
+        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+          Product Price
+        </p>
+
+        <p className="text-2xl font-black text-slate-900">
+          NPR {Number(product.price || 0).toLocaleString()}
+        </p>
+      </>
+    )}
   </div>
 
   <div className="text-right">
