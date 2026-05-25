@@ -186,7 +186,7 @@ export default function Cart() {
             </p>
 
             <p className="text-sm text-gray-400 mt-2">
-              Add books or products first before checkout.
+              Add books or products first before checkout Please.
             </p>
 
             <button
