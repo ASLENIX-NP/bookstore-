@@ -595,40 +595,44 @@ export default function Home() {
       ) : (
         <>
           <ProductSection
-            title="Featured Collection"
-            subtitle="Handpicked products selected for readers and learners."
-            badge="Featured"
-            icon={<Sparkles className="w-4 h-4" />}
-            products={featuredProducts}
-            type="Featured"
-          />
+  title="Featured Collection"
+  subtitle="Handpicked products selected for readers and learners."
+  badge="Featured"
+  icon={<Sparkles className="w-4 h-4" />}
+  products={featuredProducts}
+  type="Featured"
+  viewAllLink="/products?collection=featured"
+/>
 
-          <ProductSection
-            title="Flash Sale"
-            subtitle="Special products and limited-time selections for quick buyers."
-            badge="Limited Deals"
-            icon={<Star className="w-4 h-4" />}
-            products={flashSaleProducts}
-            type="Flash Sale"
-          />
+<ProductSection
+  title="Flash Sale"
+  subtitle="Special products and limited-time selections for quick buyers."
+  badge="Limited Deals"
+  icon={<Star className="w-4 h-4" />}
+  products={flashSaleProducts}
+  type="Flash Sale"
+  viewAllLink="/products?collection=flashSale"
+/>
 
-          <ProductSection
-            title="Best Sellers"
-            subtitle="Popular choices customers are buying and reviewing."
-            badge="Popular"
-            icon={<ShoppingCart className="w-4 h-4" />}
-            products={bestSellerProducts}
-            type="Best Seller"
-          />
+<ProductSection
+  title="Best Sellers"
+  subtitle="Popular choices customers are buying and reviewing."
+  badge="Popular"
+  icon={<ShoppingCart className="w-4 h-4" />}
+  products={bestSellerProducts}
+  type="Best Seller"
+  viewAllLink="/products?collection=bestSeller"
+/>
 
-          <ProductSection
-            title="New Arrivals"
-            subtitle="Freshly added products from the latest collection."
-            badge="New"
-            icon={<Layers className="w-4 h-4" />}
-            products={newArrivalProducts}
-            type="New Arrival"
-          />
+<ProductSection
+  title="New Arrivals"
+  subtitle="Freshly added products from the latest collection."
+  badge="New"
+  icon={<Layers className="w-4 h-4" />}
+  products={newArrivalProducts}
+  type="New Arrival"
+  viewAllLink="/products?collection=newArrival"
+/>
         </>
       )}
 

@@ -15,7 +15,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const categoryOptions = {
   "Academic Books": [
@@ -80,6 +80,40 @@ const categoryOptions = {
   ],
 };
 
+const collectionOptions = [
+  {
+    value: "all",
+    label: "All Products",
+    title: "Shop Products",
+    subtitle:
+      "Browse books, newspapers, magazines, stationery, and learning essentials.",
+  },
+  {
+    value: "featured",
+    label: "Featured Collection",
+    title: "Featured Collection",
+    subtitle: "Handpicked products selected for readers and learners.",
+  },
+  {
+    value: "flashSale",
+    label: "Flash Sale",
+    title: "Flash Sale Products",
+    subtitle: "Special products and limited-time selections for quick buyers.",
+  },
+  {
+    value: "bestSeller",
+    label: "Best Sellers",
+    title: "Best Selling Products",
+    subtitle: "Popular choices customers are buying and reviewing.",
+  },
+  {
+    value: "newArrival",
+    label: "New Arrivals",
+    title: "New Arrival Products",
+    subtitle: "Freshly added products from the latest collection.",
+  },
+];
+
 const CART_IMAGE_PLACEHOLDER =
   "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500";
 
@@ -91,6 +125,28 @@ const getSafeCartImage = (image) => {
   }
 
   return image;
+};
+
+const getCollectionApiUrl = (collection) => {
+  const baseUrl = "http://localhost:5000/api/products";
+
+  if (collection === "featured") {
+    return `${baseUrl}?featured=true`;
+  }
+
+  if (collection === "flashSale") {
+    return `${baseUrl}?flashSale=true`;
+  }
+
+  if (collection === "bestSeller") {
+    return `${baseUrl}?bestSeller=true`;
+  }
+
+  if (collection === "newArrival") {
+    return `${baseUrl}?newArrival=true`;
+  }
+
+  return baseUrl;
 };
 
 const ProductImage = ({ src, alt, className }) => {
@@ -113,8 +169,13 @@ const ProductImage = ({ src, alt, className }) => {
 
 export default function Products() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const collectionFromUrl = searchParams.get("collection") || "all";
 
   const [products, setProducts] = useState([]);
+  const [selectedCollection, setSelectedCollection] =
+    useState(collectionFromUrl);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedSubcategory, setSelectedSubcategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
@@ -128,21 +189,54 @@ export default function Products() {
     selectedCategory === "all" ? [] : categoryOptions[selectedCategory] || [];
 
   useEffect(() => {
-    axios
-      .get("http://localhost:5000/api/products")
-      .then((res) => {
-        setProducts(res.data);
+    const currentCollection = searchParams.get("collection") || "all";
+    setSelectedCollection(currentCollection);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+
+        const apiUrl = getCollectionApiUrl(selectedCollection);
+        const response = await axios.get(apiUrl);
+
+        setProducts(response.data);
         setError(null);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error fetching products:", err);
         setError("Unable to load products. Please make sure backend is running.");
-      })
-      .finally(() => setLoading(false));
-  }, []);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [selectedCollection]);
 
   const getStatus = (product) => {
     return product.stockStatus || product.statusFlag || "In Stock";
+  };
+
+  const getCurrentCollectionInfo = () => {
+    return (
+      collectionOptions.find((item) => item.value === selectedCollection) ||
+      collectionOptions[0]
+    );
+  };
+
+  const handleCollectionSelect = (collection) => {
+    setSelectedCollection(collection);
+    setSelectedCategory("all");
+    setSelectedSubcategory("all");
+    setSearchTerm("");
+    setSortBy("name");
+
+    if (collection === "all") {
+      setSearchParams({});
+    } else {
+      setSearchParams({ collection });
+    }
   };
 
   const handleCategorySelect = (category) => {
@@ -151,10 +245,12 @@ export default function Products() {
   };
 
   const resetFilters = () => {
+    setSelectedCollection("all");
     setSelectedCategory("all");
     setSelectedSubcategory("all");
     setSortBy("name");
     setSearchTerm("");
+    setSearchParams({});
   };
 
   const addToCart = (product) => {
@@ -162,11 +258,17 @@ export default function Products() {
 
     if (!token) {
       toast.error("Please login first to add products to cart.");
-
       navigate("/login", {
         state: { from: "/products" },
       });
+      return;
+    }
 
+    const status = getStatus(product);
+    const isOutOfStock = status.toLowerCase() === "out of stock";
+
+    if (isOutOfStock) {
+      toast.error("This product is out of stock.");
       return;
     }
 
@@ -189,7 +291,6 @@ export default function Products() {
     }
 
     localStorage.setItem("cart", JSON.stringify(currentCart));
-
     toast.success(`${product.name} added to cart`);
   };
 
@@ -198,11 +299,17 @@ export default function Products() {
 
     if (!token) {
       toast.error("Please login first to buy products.");
-
       navigate("/login", {
         state: { from: "/products" },
       });
+      return;
+    }
 
+    const status = getStatus(product);
+    const isOutOfStock = status.toLowerCase() === "out of stock";
+
+    if (isOutOfStock) {
+      toast.error("This product is out of stock.");
       return;
     }
 
@@ -270,9 +377,15 @@ export default function Products() {
     return String(a.name || "").localeCompare(String(b.name || ""));
   });
 
+  const currentCollectionInfo = getCurrentCollectionInfo();
+
   const ProductCard = ({ product }) => {
     const status = getStatus(product);
     const isOutOfStock = status.toLowerCase() === "out of stock";
+
+    const hasSalePrice =
+      Number(product.salePrice || 0) > 0 &&
+      Number(product.salePrice || 0) < Number(product.price || 0);
 
     return (
       <div className="group bg-white rounded-[1.6rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/70 transition-all duration-300">
@@ -299,6 +412,12 @@ export default function Products() {
               >
                 {status}
               </span>
+
+              {selectedCollection !== "all" && (
+                <span className="px-3 py-1 rounded-full text-[11px] font-black bg-white/90 text-slate-800 border border-white/70 backdrop-blur">
+                  {currentCollectionInfo.label}
+                </span>
+              )}
             </div>
 
             <button
@@ -346,73 +465,68 @@ export default function Products() {
           </p>
 
           <div className="mt-4 flex items-end justify-between gap-4">
-  <div>
-    {/* SHOW SALE LABEL ONLY IF SALE EXISTS */}
+            <div>
+              {hasSalePrice ? (
+                <>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Flash Sale Price
+                  </p>
 
-    {product.salePrice &&
-    Number(product.salePrice) < Number(product.price) ? (
-      <>
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-          Flash Sale Price
-        </p>
+                  <p className="text-2xl font-black text-[#f57224]">
+                    NPR {Number(product.salePrice || 0).toLocaleString()}
+                  </p>
 
-        {/* SALE PRICE */}
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-sm text-slate-400 line-through font-bold">
+                      NPR {Number(product.price || 0).toLocaleString()}
+                    </p>
 
-        <p className="text-2xl font-black text-[#f57224]">
-          NPR{" "}
-          {Number(product.salePrice || 0).toLocaleString()}
-        </p>
+                    <span className="text-xs font-black text-emerald-600">
+                      -
+                      {Math.round(
+                        ((Number(product.price || 0) -
+                          Number(product.salePrice || 0)) /
+                          Number(product.price || 1)) *
+                          100
+                      )}
+                      %
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                    Product Price
+                  </p>
 
-        {/* ORIGINAL PRICE + DISCOUNT */}
+                  <p className="text-2xl font-black text-slate-900">
+                    NPR {Number(product.price || 0).toLocaleString()}
+                  </p>
+                </>
+              )}
+            </div>
 
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-sm text-slate-400 line-through font-bold">
-            NPR {Number(product.price || 0).toLocaleString()}
-          </p>
+            <div className="text-right">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Reviews
+              </p>
 
-          <span className="text-xs font-black text-emerald-600">
-            -
-            {Math.round(
-              ((Number(product.price || 0) -
-                Number(product.salePrice || 0)) /
-                Number(product.price || 1)) *
-                100
-            )}
-            %
-          </span>
-        </div>
-      </>
-    ) : (
-      <>
-        {/* NORMAL PRICE */}
-
-        <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-          Product Price
-        </p>
-
-        <p className="text-2xl font-black text-slate-900">
-          NPR {Number(product.price || 0).toLocaleString()}
-        </p>
-      </>
-    )}
-  </div>
-
-  <div className="text-right">
-    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-      Reviews
-    </p>
-
-    <p className="text-sm font-black text-slate-700">
-      {product.numReviews || product.reviews?.length || 0}
-    </p>
-  </div>
-</div>
+              <p className="text-sm font-black text-slate-700">
+                {product.numReviews || product.reviews?.length || 0}
+              </p>
+            </div>
+          </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => addToCart(product)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-3 text-sm font-black transition-all"
+              disabled={isOutOfStock}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
+                isOutOfStock
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
+              }`}
             >
               <ShoppingCart className="w-4 h-4" />
               Cart
@@ -421,7 +535,12 @@ export default function Products() {
             <button
               type="button"
               onClick={() => handleBuyNow(product)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white px-4 py-3 text-sm font-black shadow-md transition-all"
+              disabled={isOutOfStock}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-md transition-all ${
+                isOutOfStock
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                  : "bg-slate-950 hover:bg-indigo-700 text-white"
+              }`}
             >
               Buy Now
             </button>
@@ -439,16 +558,15 @@ export default function Products() {
             <div>
               <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4">
                 <BookOpen className="w-4 h-4" />
-                Products
+                {currentCollectionInfo.label}
               </div>
 
               <h1 className="text-3xl sm:text-4xl font-black text-slate-950">
-                Shop Products
+                {currentCollectionInfo.title}
               </h1>
 
               <p className="text-slate-500 mt-2 max-w-2xl">
-                Browse books, newspapers, magazines, stationery, and learning
-                essentials.
+                {currentCollectionInfo.subtitle}
               </p>
             </div>
 
@@ -488,13 +606,14 @@ export default function Products() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="bg-white border border-slate-100 rounded-[1.6rem] p-4 shadow-sm">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-4">
+              <div className="lg:col-span-3">
                 <label className="block text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-2">
                   Search Product
                 </label>
 
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+
                   <input
                     type="text"
                     placeholder="Search by product name..."
@@ -503,6 +622,24 @@ export default function Products() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
                   />
                 </div>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="block text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-2">
+                  Collection
+                </label>
+
+                <select
+                  value={selectedCollection}
+                  onChange={(e) => handleCollectionSelect(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+                >
+                  {collectionOptions.map((collection) => (
+                    <option key={collection.value} value={collection.value}>
+                      {collection.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="lg:col-span-3">
@@ -516,6 +653,7 @@ export default function Products() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
                 >
                   <option value="all">All Categories</option>
+
                   {categories.map((category) => (
                     <option key={category} value={category}>
                       {category}
@@ -524,7 +662,7 @@ export default function Products() {
                 </select>
               </div>
 
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-2">
                 <label className="block text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-2">
                   Subcategory
                 </label>
@@ -536,6 +674,7 @@ export default function Products() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
                 >
                   <option value="all">All Subcategories</option>
+
                   {subcategories.map((subcategory) => (
                     <option key={subcategory} value={subcategory}>
                       {subcategory}
@@ -621,8 +760,8 @@ export default function Products() {
             </h2>
 
             <p className="text-sm text-slate-500 mt-2">
-              Try changing your category, subcategory, search, or sorting
-              filters.
+              Try changing your collection, category, subcategory, search, or
+              sorting filters.
             </p>
 
             <button
@@ -642,11 +781,11 @@ export default function Products() {
               <div>
                 <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-3">
                   <Grid3X3 className="w-4 h-4" />
-                  Product List
+                  {currentCollectionInfo.label}
                 </div>
 
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-950">
-                  Available Products
+                  {currentCollectionInfo.title}
                 </h2>
               </div>
 
