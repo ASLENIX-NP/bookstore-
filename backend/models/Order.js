@@ -2,37 +2,88 @@ const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema(
   {
-    // If you link it to a registered user from your User.js model
+    // USER
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false, // Set to false if you want to support guest checkouts
+      required: false,
     },
+
     email: {
       type: String,
       required: true,
     },
+
+    // PRODUCTS
     orderItems: [
       {
-        title: { type: String, required: true },
-        qty: { type: Number, required: true, default: 1 },
-        price: { type: Number, required: true },
+        title: {
+          type: String,
+          required: true,
+        },
+
+        qty: {
+          type: Number,
+          required: true,
+          default: 1,
+        },
+
+        price: {
+          type: Number,
+          required: true,
+        },
       },
     ],
+
+    // PAYMENT
     totalPrice: {
       type: Number,
       required: true,
-      default: 0.0,
+      default: 0,
     },
+
+    paymentMethod: {
+      type: String,
+      default: "Cash on Delivery",
+    },
+
+    paymentStatus: {
+      type: String,
+      enum: [
+        "Pending",
+        "Paid",
+        "Failed",
+      ],
+      default: "Pending",
+    },
+
+    // ORDER TRACKING
     status: {
       type: String,
-      required: true,
-      default: "Processing", // Processing, Completed, Cancelled
+
+      enum: [
+        "pending",
+        "confirmed",
+        "packaging",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
+
+      default: "pending",
+    },
+
+    estimatedDelivery: {
+      type: String,
     },
   },
+
   {
     timestamps: true,
   }
 );
 
-module.exports = mongoose.model("Order", orderSchema);
+module.exports = mongoose.model(
+  "Order",
+  orderSchema
+);

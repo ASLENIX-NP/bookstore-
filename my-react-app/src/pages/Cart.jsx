@@ -33,7 +33,7 @@ export default function Cart() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to view your cart.");
+      toast.error("Please login first to view your cart.");
       navigate("/login", { state: { from: "/cart" } });
       return;
     }
@@ -125,13 +125,13 @@ export default function Cart() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to checkout.");
+      toast.error("Please login first to checkout.");
       navigate("/login", { state: { from: "/cart" } });
       return;
     }
 
     if (selectedCartItems.length === 0) {
-      alert("Please select at least one product to checkout.");
+      toast.error("Please select at least one product to checkout.");
       return;
     }
 

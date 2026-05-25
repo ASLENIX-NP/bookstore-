@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 import {
   PlusCircle,
   Layers,
@@ -155,10 +156,10 @@ export default function ManageBooks() {
         newArrival: false,
       });
 
-      alert("Product added successfully");
+      toast.success("Product added successfully");
     } catch (error) {
       console.error(error);
-      alert("Failed to add product");
+      toast.error("Failed to add product");
     }
   };
 

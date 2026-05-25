@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   ShoppingCart,
@@ -120,7 +120,7 @@ export default function ProductDetails() {
       localStorage.getItem('token');
 
     if (!token) {
-      alert('Please login first to add products to cart.');
+      toast.error('Please login first to add products to cart.');
 
       navigate('/login', {
         state: {
@@ -132,7 +132,7 @@ export default function ProductDetails() {
     }
 
     if (getStatus() === 'Out of Stock') {
-      alert(
+      toast.error(
         'This product is out of stock.'
       );
 
@@ -168,7 +168,7 @@ export default function ProductDetails() {
       JSON.stringify(currentCart)
     );
 
-    alert(
+    toast.success(
       `${product.name} added to cart`
     );
   };
@@ -179,7 +179,7 @@ export default function ProductDetails() {
       localStorage.getItem('token');
 
     if (!token) {
-      alert('Please login first to buy products.');
+      toast.error('Please login first to buy products.');
 
       navigate('/login', {
         state: {
@@ -191,7 +191,7 @@ export default function ProductDetails() {
     }
 
     if (getStatus() === 'Out of Stock') {
-      alert(
+      toast.error(
         'This product is out of stock.'
       );
 
@@ -234,7 +234,7 @@ export default function ProductDetails() {
       localStorage.getItem('token');
 
     if (!token) {
-      alert(
+      toast.error(
         'Please login first to add a review.'
       );
 
@@ -250,7 +250,7 @@ export default function ProductDetails() {
     if (
       !reviewForm.comment.trim()
     ) {
-      alert(
+      toast.error(
         'Please write your review comment.'
       );
 
@@ -292,7 +292,7 @@ export default function ProductDetails() {
         comment: '',
       });
 
-      alert(
+      toast.success(
         'Review submitted successfully!'
       );
     } catch (err) {
@@ -301,7 +301,7 @@ export default function ProductDetails() {
         err
       );
 
-      alert(
+      toast.error(
         err.response?.data?.error ||
           'Failed to submit review.'
       );

@@ -1,7 +1,7 @@
 import React from "react";
 import { BookOpen, ShoppingCart, Menu, PackageCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-
+import toast from "react-hot-toast";
 const Navbar = () => {
   const navigate = useNavigate();
 
@@ -11,7 +11,7 @@ const Navbar = () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to view your cart.");
+      toast.error("Please login first to view your cart!");
       navigate("/login", { state: { from: "/cart" } });
       return;
     }
@@ -23,7 +23,7 @@ const Navbar = () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to view your orders.");
+      toast.error("Please login first to view your orders.");
       navigate("/login", { state: { from: "/my-orders" } });
       return;
     }

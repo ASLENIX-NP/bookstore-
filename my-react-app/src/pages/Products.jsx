@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 import {
   ShoppingCart,
   AlertCircle,
@@ -160,7 +161,7 @@ export default function Products() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to add products to cart.");
+      toast.error("Please login first to add products to cart.");
 
       navigate("/login", {
         state: { from: "/products" },
@@ -189,14 +190,14 @@ export default function Products() {
 
     localStorage.setItem("cart", JSON.stringify(currentCart));
 
-    alert(`${product.name} added to cart`);
+    toast.success(`${product.name} added to cart`);
   };
 
   const handleBuyNow = (product) => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to buy products.");
+      toast.error("Please login first to buy products.");
 
       navigate("/login", {
         state: { from: "/products" },
@@ -345,26 +346,56 @@ export default function Products() {
           </p>
 
           <div className="mt-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                Price
-              </p>
+  <div>
+    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+      Flash Sale Price
+    </p>
 
-              <p className="text-2xl font-black text-slate-950">
-                NPR {Number(product.price || 0).toLocaleString()}
-              </p>
-            </div>
+    {/* SALE PRICE */}
+    <p className="text-2xl font-black text-[#f57224]">
+      NPR {Number(product.price || 0).toLocaleString()}
+    </p>
 
-            <div className="text-right">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                Reviews
-              </p>
+    {/* ORIGINAL PRICE */}
+    <div className="flex items-center gap-2 mt-1">
+      <p className="text-sm text-slate-400 line-through font-bold">
+        NPR{" "}
+        {Number(
+          product.originalPrice ||
+            Number(product.price || 0) + 200
+        ).toLocaleString()}
+      </p>
 
-              <p className="text-sm font-black text-slate-700">
-                {product.numReviews || product.reviews?.length || 0}
-              </p>
-            </div>
-          </div>
+      {/* DISCOUNT */}
+      <span className="text-xs font-black text-emerald-600">
+        -
+        {Math.round(
+          (((Number(
+            product.originalPrice ||
+              Number(product.price || 0) + 200
+          ) -
+            Number(product.price || 0)) /
+            Number(
+              product.originalPrice ||
+                Number(product.price || 0) + 200
+            )) *
+            100)
+        )}
+        %
+      </span>
+    </div>
+  </div>
+
+  <div className="text-right">
+    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+      Reviews
+    </p>
+
+    <p className="text-sm font-black text-slate-700">
+      {product.numReviews || product.reviews?.length || 0}
+    </p>
+  </div>
+</div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button

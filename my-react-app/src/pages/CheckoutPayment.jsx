@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   MapPin,
@@ -75,7 +76,7 @@ export default function CheckoutPayment() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to continue payment.");
+      toast.error("Please login first to continue payment.");
       navigate("/login", { state: { from: "/checkout/payment" } });
       return;
     }
@@ -114,13 +115,13 @@ export default function CheckoutPayment() {
     );
 
     if (!items || items.length === 0) {
-      alert("No checkout products found. Please select products first.");
+      toast.error("No checkout products found. Please select products first.");
       navigate("/cart");
       return;
     }
 
     if (!address) {
-      alert("Please select delivery address first.");
+      toast.error("Please select delivery address first.");
       navigate("/checkout/delivery");
       return;
     }
@@ -246,7 +247,7 @@ export default function CheckoutPayment() {
 
   const handleConfirmPaymentMethod = async () => {
     if (!selectedPaymentMethod) {
-      alert("Please select a payment method.");
+      toast.error("Please select a payment method.");
       return;
     }
 
@@ -255,7 +256,7 @@ export default function CheckoutPayment() {
     );
 
     if (!selectedMethod) {
-      alert("Invalid payment method selected.");
+      toast.error("Invalid payment method selected.");
       return;
     }
 
@@ -270,7 +271,7 @@ export default function CheckoutPayment() {
       );
 
       if (!orderResponse.data.success) {
-        alert("Failed to place order. Please try again.");
+        toast.error("Failed to place order. Please try again.");
         return;
       }
 
@@ -278,7 +279,7 @@ export default function CheckoutPayment() {
       localStorage.setItem("lastOrder", JSON.stringify(createdOrder));
 
       if (selectedMethod.id === "cod") {
-        alert("Order placed successfully! Admin can now see this order.");
+        toast.success("Order placed successfully! Admin can now see this order.");
         navigate("/order-success");
         return;
       }
@@ -290,7 +291,7 @@ export default function CheckoutPayment() {
         );
 
         if (!khaltiResponse.data.success || !khaltiResponse.data.payment_url) {
-          alert("Khalti payment could not be started.");
+          toast.error("Khalti payment could not be started.");
           return;
         }
 
@@ -309,7 +310,7 @@ export default function CheckoutPayment() {
           !esewaResponse.data.formUrl ||
           !esewaResponse.data.fields
         ) {
-          alert("eSewa payment could not be started.");
+          toast.error("eSewa payment could not be started.");
           return;
         }
 
@@ -324,7 +325,7 @@ export default function CheckoutPayment() {
         );
 
         if (!cardResponse.data.success || !cardResponse.data.payment_url) {
-          alert("Card payment could not be started.");
+          toast.error("Card payment could not be started.");
           return;
         }
 
@@ -332,7 +333,7 @@ export default function CheckoutPayment() {
       }
     } catch (error) {
       console.error("Order/payment error:", error);
-      alert(getErrorMessage(error));
+      toast.error(getErrorMessage(error));
     } finally {
       setOrderLoading(false);
     }

@@ -393,12 +393,37 @@ app.use("/api/auth", require("./routes/authRoutes"));
 // PRODUCT ROUTES
 app.get("/api/products", async (req, res) => {
   try {
-    const { featured } = req.query;
-    const filter = featured === "true" ? { isFeatured: true } : {};
-    const products = await Product.find(filter).sort({ createdAt: -1 });
+    const query = {};
+
+    // FEATURED PRODUCTS
+    if (req.query.featured === "true") {
+      query.featured = true;
+    }
+
+    // FLASH SALE PRODUCTS
+    if (req.query.flashSale === "true") {
+      query.flashSale = true;
+    }
+
+    // BEST SELLERS
+    if (req.query.bestSeller === "true") {
+      query.bestSeller = true;
+    }
+
+    // NEW ARRIVALS
+    if (req.query.newArrival === "true") {
+      query.newArrival = true;
+    }
+
+    const products = await Product.find(query).sort({
+      createdAt: -1,
+    });
+
     res.status(200).json(products);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 });
 
@@ -592,25 +617,84 @@ app.post("/api/orders", async (req, res) => {
 
     const newOrder = await Order.create({
       email: String(email).toLowerCase().trim(),
+    
       customerName,
+    
       phone,
+    
       deliveryInfo,
+    
       orderItems: cleanedItems,
+    
+      // PRICE DETAILS
       productSubtotal: finalProductSubtotal,
+    
       deliveryCharge: finalDeliveryCharge,
+    
       taxableAmount: finalTaxableAmount,
+    
       vatRate: finalVatRate,
+    
       vatAmount: finalVatAmount,
+    
       grandTotal: finalGrandTotal,
+    
       totalPrice: finalGrandTotal,
+    
+      // CHECKOUT
       checkoutType: checkoutType || "Cart",
+    
+      // PAYMENT
       paymentMethod: selectedPaymentMethod,
+    
       paymentMethodId: selectedPaymentMethodId,
+    
       paymentGateway: selectedPaymentMethodId,
+    
       paymentStatus: paymentStatus || "Pending",
+    
+      // ORDER STATUS
       orderStatus: orderStatus || "Processing",
-      status: orderStatus || "Processing",
+    
+      status: "pending",
+    
+      // TRACKING
+      trackingSteps: [
+        {
+          title: "Order Placed",
+          completed: true,
+          date: new Date(),
+        },
+    
+        {
+          title: "Order Confirmed",
+          completed: false,
+        },
+    
+        {
+          title: "Packaging",
+          completed: false,
+        },
+    
+        {
+          title: "Shipped",
+          completed: false,
+        },
+    
+        {
+          title: "Delivered",
+          completed: false,
+        },
+      ],
+    
+      // DELIVERY ESTIMATE
+      estimatedDelivery: new Date(
+        Date.now() + 3 * 24 * 60 * 60 * 1000
+      ),
+    
+      // TRANSACTION
       transactionId: transactionId || "",
+    
       paymentProof: paymentProof || "",
     });
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import toast from "react-hot-toast";
 import {
   Mail,
   Trash2,
@@ -24,7 +25,7 @@ export default function ManageMessages() {
       setMessages(res.data);
     } catch (err) {
       console.error('Error fetching messages:', err);
-      alert('Failed to fetch messages.');
+      toast.error('Failed to fetch messages.');
     } finally {
       setLoading(false);
     }
@@ -81,7 +82,7 @@ export default function ManageMessages() {
       }
     } catch (err) {
       console.error('Error updating read status:', err);
-      alert('Failed to update message status.');
+      toast.error('Failed to update message status.');
     }
   };
 
@@ -100,7 +101,7 @@ export default function ManageMessages() {
       }
     } catch (err) {
       console.error('Error deleting message:', err);
-      alert('Failed to delete message.');
+      toast.error('Failed to delete message.');
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   Home,
   Building2,
@@ -91,7 +92,7 @@ export default function CheckoutDelivery() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to continue checkout.");
+      toast.error("Please login first to continue checkout.");
       navigate("/login", { state: { from: "/checkout/delivery" } });
       return;
     }
@@ -99,7 +100,7 @@ export default function CheckoutDelivery() {
     const checkoutItems = getCheckoutItems();
 
     if (!checkoutItems || checkoutItems.length === 0) {
-      alert("Please select products before checkout.");
+    toast.error("Please select products before checkout.");
       navigate("/cart");
       return;
     }
@@ -140,7 +141,7 @@ export default function CheckoutDelivery() {
       !formData.area.trim() ||
       !formData.address.trim()
     ) {
-      alert("Please fill in all delivery information.");
+     toast.error("Please fill in all delivery information.");
       return false;
     }
 
@@ -208,7 +209,7 @@ export default function CheckoutDelivery() {
     const checkoutItems = getCheckoutItems();
 
     if (!checkoutItems || checkoutItems.length === 0) {
-      alert("No checkout products found. Please select products first.");
+      toast.error("No checkout products found. Please select products first.");
       navigate("/cart");
       return;
     }
@@ -218,7 +219,7 @@ export default function CheckoutDelivery() {
     );
 
     if (!selectedAddress) {
-      alert("Please select or add a delivery address.");
+      toast.error("Please select or add a delivery address.");
       return;
     }
 

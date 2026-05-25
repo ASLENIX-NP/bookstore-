@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import {
   PackageCheck,
   Truck,
@@ -74,7 +76,7 @@ export default function MyOrders() {
       const token = localStorage.getItem("token");
 
       if (!token) {
-        alert("Please login first to view your orders.");
+        toast.error("Please login first to view your orders.");
         navigate("/login", { state: { from: "/my-orders" } });
         return;
       }
@@ -163,12 +165,17 @@ export default function MyOrders() {
   };
 
   const cancelOrder = async (orderId) => {
-    const confirmCancel = window.confirm(
-      "Are you sure you want to cancel this order?"
-    );
-
-    if (!confirmCancel) return;
-
+    const result = await Swal.fire({
+      title: "Cancel Order?",
+      text: "This order will be cancelled permanently.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, cancel it",
+    });
+    
+    if (!result.isConfirmed) return;
     try {
       setCancellingId(orderId);
 
@@ -186,10 +193,10 @@ export default function MyOrders() {
           )
         );
 
-        alert("Order cancelled successfully.");
+        toast.success("Order cancelled successfully.");
       }
     } catch (error) {
-      alert(
+      toast.error(
         error.response?.data?.error ||
           "Unable to cancel this order. Please try again."
       );

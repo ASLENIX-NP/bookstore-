@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BarChart3, TrendingUp, ShoppingBag, CheckCircle, AlertCircle, FileText, Download, Calendar } from 'lucide-react';
-
+import toast from "react-hot-toast";
 export default function AdminReports() {
   const [timeframe, setTimeframe] = useState('daily');
 
@@ -62,7 +62,7 @@ export default function AdminReports() {
           </div>
 
           <button 
-            onClick={() => alert('Exporting report metrics to CSV structure...')}
+            onClick={() => toast.success('Exporting report metrics to CSV structure...')}
             className="flex items-center gap-1.5 bg-indigo-600 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm ml-auto cursor-pointer"
           >
             <Download size={14} /> Export
@@ -178,7 +178,7 @@ export default function AdminReports() {
           </div>
 
           <button 
-            onClick={() => alert('Navigating to checkout management board module')}
+            onClick={() => toast.success('Navigating to checkout management board module')}
             className="w-full text-center py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-lg transition-colors mt-4 cursor-pointer"
           >
             Open Order Pipeline

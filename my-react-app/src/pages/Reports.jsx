@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import toast from "react-hot-toast";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -114,7 +115,7 @@ export default function Reports() {
             </div>
 
             <button 
-              onClick={() => alert(`Exporting spreadsheet logs...`)}
+              onClick={() => toast.success(`Exporting spreadsheet logs...`)}
               className="flex items-center gap-1.5 bg-amber-600 text-white text-xs font-semibold px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors shadow-sm ml-auto cursor-pointer"
             >
               <Download size={14} /> Export CSV

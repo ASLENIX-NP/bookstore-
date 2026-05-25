@@ -81,7 +81,7 @@ export default function Layout() {
     const currentToken = localStorage.getItem("token");
 
     if (!currentToken) {
-      alert("Please login first to view your cart!");
+      toast.error("Please login first to view your cart!");
       navigate("/login", { state: { from: "/cart" } });
       return;
     }
@@ -93,7 +93,7 @@ export default function Layout() {
     const currentToken = localStorage.getItem("token");
 
     if (!currentToken) {
-      alert("Please login first to view your orders!");
+      toast.error("Please login first to view your orders!");
       navigate("/login", { state: { from: "/my-orders" } });
       return;
     }

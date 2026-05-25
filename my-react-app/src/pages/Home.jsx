@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   ArrowRight,
   Loader2,
@@ -115,7 +116,7 @@ export default function Home() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to add products to cart.");
+      toast.error("Please login first to add products to cart.");
       navigate("/login", { state: { from: "/" } });
       return;
     }
@@ -123,7 +124,7 @@ export default function Home() {
     const isOutOfStock = getStatus(product).toLowerCase() === "out of stock";
 
     if (isOutOfStock) {
-      alert("This product is out of stock.");
+      toast.error("This product is out of stock.");
       return;
     }
 
@@ -147,7 +148,7 @@ export default function Home() {
 
     localStorage.setItem("cart", JSON.stringify(currentCart));
 
-    alert(`"${product.name}" successfully added to your cart! 🛒`);
+    toast.success(`"${product.name}" successfully added to your cart! 🛒`);
   };
 
   const handleBuyNow = (product) => {
@@ -156,7 +157,7 @@ export default function Home() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Please login first to buy products.");
+     toast.error("Please login first to buy products.");
       navigate("/login", { state: { from: "/" } });
       return;
     }
@@ -164,7 +165,7 @@ export default function Home() {
     const isOutOfStock = getStatus(product).toLowerCase() === "out of stock";
 
     if (isOutOfStock) {
-      alert("This product is out of stock.");
+      toast.error("This product is out of stock.");
       return;
     }
 
@@ -260,24 +261,67 @@ export default function Home() {
           </p>
 
           <div className="mt-4 flex items-end justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                Price
-              </p>
-              <p className="text-2xl font-black text-slate-950">
-                NPR {Number(product.price || 0).toLocaleString()}
-              </p>
-            </div>
+  <div>
+    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+      {type === "Flash Sale" ? "Flash Sale Price" : "Price"}
+    </p>
 
-            <div className="text-right">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                Reviews
-              </p>
-              <p className="text-sm font-black text-slate-700">
-                {product.numReviews || product.reviews?.length || 0}
-              </p>
-            </div>
-          </div>
+    {/* SALE PRICE */}
+    <p
+      className={`text-2xl font-black ${
+        type === "Flash Sale"
+          ? "text-[#f57224]"
+          : "text-slate-950"
+      }`}
+    >
+    NPR{" "}
+{Number(
+  type === "Flash Sale"
+    ? product.salePrice || product.price || 0
+    : product.price || 0
+).toLocaleString()}
+    </p>
+
+    {/* ONLY FOR FLASH SALE */}
+    {type === "Flash Sale" && (
+      <div className="flex items-center gap-2 mt-1">
+        <p className="text-sm text-slate-400 line-through font-bold">
+          NPR{" "}
+          {Number(
+           product.price || 0
+          ).toLocaleString()}
+        </p>
+
+        <span className="text-xs font-black text-emerald-600">
+          -
+          {Math.round(
+            (((Number(
+              product.originalPrice ||
+                Number(product.price || 0) + 200
+            ) -
+              Number(product.price || 0)) /
+              Number(
+                product.originalPrice ||
+                  Number(product.price || 0) + 200
+              )) *
+              100)
+          )}
+          %
+        </span>
+      </div>
+    )}
+  </div>
+
+  <div className="text-right">
+    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+      Reviews
+    </p>
+
+    <p className="text-sm font-black text-slate-700">
+      {product.numReviews || product.reviews?.length || 0}
+    </p>
+  </div>
+</div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button

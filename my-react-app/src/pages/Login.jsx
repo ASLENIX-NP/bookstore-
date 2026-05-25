@@ -316,17 +316,30 @@ const Login = () => {
               </div>
 
               <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer select-none font-bold text-slate-600">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  Remember me
-                </label>
-              </div>
+  <label className="flex items-center gap-2 cursor-pointer select-none font-bold text-slate-600">
+    <input
+      type="checkbox"
+      checked={rememberMe}
+      onChange={(e) => setRememberMe(e.target.checked)}
+      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+    />
+    Remember me
+  </label>
 
+  <button
+    type="button"
+    onClick={() =>
+      navigate(
+        isAdmin
+          ? "/forgot-password?role=admin"
+          : "/forgot-password?role=customer"
+      )
+    }
+    className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition"
+  >
+    Forgot password?
+  </button>
+</div>
               <button
                 type="submit"
                 disabled={loading}

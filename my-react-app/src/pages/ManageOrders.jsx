@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   PackageCheck,
   User,
@@ -96,7 +97,7 @@ export default function ManageOrders() {
         )
       );
     } catch (err) {
-      alert("Error updating order status: " + err.message);
+      toast.error("Error updating order status: " + err.message);
     } finally {
       setUpdatingId(null);
     }
@@ -129,7 +130,7 @@ export default function ManageOrders() {
         )
       );
     } catch (err) {
-      alert("Error updating payment status: " + err.message);
+      toast.error("Error updating payment status: " + err.message);
     } finally {
       setUpdatingId(null);
     }
@@ -160,7 +161,7 @@ export default function ManageOrders() {
         prevOrders.filter((order) => order._id !== orderId)
       );
     } catch (err) {
-      alert("Error deleting order: " + err.message);
+      toast.error("Error deleting order: " + err.message);
     } finally {
       setUpdatingId(null);
     }
