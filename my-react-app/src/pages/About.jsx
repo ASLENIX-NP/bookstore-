@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Heart,
   Users,
@@ -8,10 +8,48 @@ import {
   Quote,
   CheckCircle2,
   Library,
+  Loader2,
 } from "lucide-react";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 
+const defaultAboutContent = {
+  title: "A community built around books, learning, and creativity.",
+  content: `We bring together quality books, fine stationery, and a friendly local store experience for readers, students, writers, and families.
+
+PatraPatrika Center is dedicated to providing books, magazines, newspapers, educational materials, and stationery items to readers, students, and families.
+
+Our goal is to make reading materials and learning essentials easily available through a simple online shopping experience.`,
+};
+
 const About = () => {
+  const [aboutContent, setAboutContent] = useState(defaultAboutContent);
+  const [contentLoading, setContentLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAboutContent = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:5000/api/policies/aboutPage"
+        );
+
+        const data = await response.json();
+
+        if (data.success && data.policy) {
+          setAboutContent({
+            title: data.policy.title || defaultAboutContent.title,
+            content: data.policy.content || defaultAboutContent.content,
+          });
+        }
+      } catch (error) {
+        console.error("About content fetch error:", error);
+      } finally {
+        setContentLoading(false);
+      }
+    };
+
+    fetchAboutContent();
+  }, []);
+
   const stats = [
     {
       label: "Books Sold",
@@ -49,7 +87,7 @@ const About = () => {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-black leading-tight">
-              A community built around books, learning, and creativity.
+              {aboutContent.title}
             </h1>
 
             <p className="text-lg md:text-xl text-slate-300 mt-5 leading-relaxed">
@@ -75,20 +113,16 @@ const About = () => {
             </h1>
 
             <div className="space-y-5 text-gray-600 leading-relaxed text-base">
-              <p>
-                BookHaven started as a small shelf in a local cafe. Today, we
-                are the city's premier destination for book lovers, writers, and
-                stationery enthusiasts. Our mission has always been simple: to
-                curate a collection that inspires creativity and fosters a
-                lifelong love for literature.
-              </p>
-
-              <p>
-                We believe that every book has a reader and every reader has a
-                story. Whether you are looking for a rare first edition or a
-                simple journal to start your morning thoughts, we are here to
-                help you find it.
-              </p>
+              {contentLoading ? (
+                <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Loading about content...
+                </div>
+              ) : (
+                <div className="whitespace-pre-line">
+                  {aboutContent.content}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">

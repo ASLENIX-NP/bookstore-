@@ -270,7 +270,192 @@ const orderSchema = new mongoose.Schema(
 );
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+// POLICY SCHEMA & MODEL
+const policySchema = new mongoose.Schema(
+  {
+    key: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    content: {
+      type: String,
+      default: "",
+    },
+  },
+  { timestamps: true }
+);
 
+const Policy =
+  mongoose.models.Policy || mongoose.model("Policy", policySchema);
+
+const defaultPolicies = [
+  {
+    key: "terms",
+    title: "Terms & Conditions",
+    content: `Welcome to PatraPatrika Center.
+
+By using our website, you agree to follow these Terms and Conditions.
+
+1. Products and Availability
+PatraPatrika Center sells books, magazines, newspapers, stationery, and related products. Product availability depends on stock and may change at any time.
+
+2. Pricing
+Prices are shown in NPR. Prices may change without prior notice. VAT and delivery charges may be added where applicable.
+
+3. Orders
+Orders are confirmed only after successful payment verification or admin approval for Cash on Delivery.
+
+4. Customer Information
+Customers must provide correct name, phone number, email, and delivery address.
+
+5. Order Cancellation
+PatraPatrika Center may cancel an order if stock is unavailable, payment fails, customer information is incorrect, or suspicious activity is detected.
+
+6. Invoice
+VAT invoice will be provided where applicable after payment confirmation.
+
+7. Limitation
+PatraPatrika Center is not responsible for delays caused by incorrect address, courier delay, weather, public holidays, or circumstances outside our control.`,
+  },
+  {
+    key: "privacy",
+    title: "Privacy Policy",
+    content: `PatraPatrika Center respects your privacy.
+
+1. Information We Collect
+We may collect your name, email, phone number, delivery address, order details, payment method, transaction status, and contact messages.
+
+2. How We Use Information
+We use your information to create accounts, process orders, deliver products, verify payments, generate invoices, provide customer support, and prevent fraud.
+
+3. Payment Information
+We do not store card numbers, wallet PINs, CVV, banking passwords, or sensitive payment credentials. Payments are processed through third-party payment gateways.
+
+4. Data Sharing
+We do not sell your personal data. We may share required delivery details with delivery partners or payment verification details with payment providers.
+
+5. Data Security
+We use reasonable security practices to protect customer information.
+
+6. Data Retention
+Order, invoice, and contact information may be kept for business, tax, support, and legal purposes.
+
+7. Contact
+For privacy questions, contact PatraPatrika Center.`,
+  },
+  {
+    key: "return",
+    title: "Return, Refund & Cancellation Policy",
+    content: `1. Cancellation
+Customers may request cancellation before the order is confirmed, packed, shipped, paid, or delivered.
+
+2. Return
+Returns are accepted only for damaged, wrong, defective, or missing products. Customers should report the issue within 24 to 48 hours of delivery.
+
+3. Return Condition
+Returned products must be unused and in original condition. Books with writing, torn pages, used condition, or customer-caused damage may not be accepted.
+
+4. Refund
+Refunds are processed after admin verification. Refunds are made through the original payment method where possible.
+
+5. Delivery Charge
+Delivery charge may not be refundable unless the mistake is from PatraPatrika Center.`,
+  },
+  {
+    key: "shipping",
+    title: "Shipping & Delivery Policy",
+    content: `1. Delivery Area
+Delivery is available only in selected locations of Nepal.
+
+2. Delivery Charge
+Delivery charge is shown during checkout and may depend on location.
+
+3. Delivery Time
+Delivery time may vary based on location, stock, courier availability, weather, and public holidays.
+
+4. Customer Responsibility
+Customer must provide correct phone number and delivery address.
+
+5. Failed Delivery
+If delivery fails because of wrong address, unreachable phone, or customer unavailability, the order may be delayed or cancelled.`,
+  },
+  {
+    key: "contact",
+    title: "Contact Information",
+    content: `Business Name: PatraPatrika Center
+    
+PAN/VAT Number: 000000000
+Address: 000000
+Phone: 000000
+Email: patrapatrika23@gmail.com
+Website: 000000
+
+For order support, payment issues, refund requests, or delivery questions, please contact us using the details above.`,
+  },
+  {
+  key: "aboutPage",
+  title: "About Us",
+  content: `PatraPatrika Center is a bookstore and stationery center dedicated to providing books, magazines, newspapers, educational materials, and stationery items to readers, students, and families.
+
+Our goal is to make reading materials and learning essentials easily available through a simple online shopping experience.
+
+We focus on:
+- Quality books and stationery
+- Reliable customer service
+- Easy ordering and delivery
+- Secure payment and invoice flow
+- Helpful support for customers
+
+PatraPatrika Center believes that books and learning materials play an important role in education, personal growth, and community development.`,
+},
+{
+  key: "contactPage",
+  title: "Contact Us",
+  content: `Business Name: PatraPatrika Center
+PAN/VAT Number: 000000000
+Address: 000000
+Phone: 000000
+Email: patrapatrika23@gmail.com
+Website: 000000
+
+For order support, delivery questions, payment issues, refund requests, or product inquiries, please contact us using the information above.
+
+You can also send us a message through the contact form on this page.`,
+},
+];
+
+const seedPolicies = async () => {
+  try {
+    for (const policy of defaultPolicies) {
+      await Policy.findOneAndUpdate(
+        { key: policy.key },
+        {
+          $set: {
+            title: policy.title,
+          },
+          $setOnInsert: {
+            content: policy.content,
+          },
+        },
+        {
+          upsert: true,
+          returnDocument: "after"
+        }
+      );
+    }
+
+    console.log("Policy pages ready ✅");
+  } catch (error) {
+    console.error("Policy seed error:", error.message);
+  }
+};
 const escapeRegex = (value) => {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
@@ -413,6 +598,81 @@ app.use(
 app.use("/api/auth", require("./routes/authRoutes"));
 
 // PRODUCT ROUTES
+// POLICY ROUTES
+app.get("/api/policies", async (req, res) => {
+  try {
+    const policies = await Policy.find({}).sort({ key: 1 });
+
+    res.status(200).json({
+      success: true,
+      policies,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/policies/:key", async (req, res) => {
+  try {
+    const policy = await Policy.findOne({ key: req.params.key });
+
+    if (!policy) {
+      return res.status(404).json({
+        success: false,
+        message: "Policy not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      policy,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/admin/policies/:key", async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and content are required",
+      });
+    }
+
+    const updatedPolicy = await Policy.findOneAndUpdate(
+      { key: req.params.key },
+      {
+        title,
+        content,
+      },
+      {
+        returnDocument: "after",
+        upsert: true,
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Policy updated successfully",
+      policy: updatedPolicy,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 app.get("/api/products", async (req, res) => {
   try {
     const query = {};
@@ -562,7 +822,7 @@ app.patch("/api/products/:id", async (req, res) => {
         stockStatus,
         statusFlag: stockStatus,
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updatedProduct) {
@@ -1605,7 +1865,7 @@ app.patch("/api/admin/messages/:id/read", async (req, res) => {
     const updatedMessage = await Message.findByIdAndUpdate(
       req.params.id,
       { isRead: req.body.isRead },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!updatedMessage) {
@@ -1843,12 +2103,22 @@ app.get("/api/admin/daily-report", async (req, res) => {
   }
 });
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(async () => {
-    console.log("Connected to MongoDB Atlas! ✅");
-    await seedAdminAccount();
-  })
-  .catch((err) => console.error("Connection error:", err));
+const startServer = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
 
-app.listen(PORT, () => console.log(`Server running on port: ${PORT}`));
+    console.log("Connected to MongoDB Atlas! ✅");
+
+    await seedAdminAccount();
+    await seedPolicies();
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port: ${PORT}`);
+    });
+  } catch (error) {
+    console.error("MongoDB connection failed:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
