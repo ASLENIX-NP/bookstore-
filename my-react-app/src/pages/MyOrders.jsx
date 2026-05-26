@@ -600,18 +600,24 @@ export default function MyOrders() {
                           </div>
 
                           <div className="mt-5 bg-white/10 border border-white/10 rounded-2xl p-4">
-                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-                              Current Status
-                            </p>
+  <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+    Current Status
+  </p>
 
-                            <p className="text-sm font-black mt-2">
-                              Payment: {paymentStatus}
-                            </p>
+  <p className="text-sm font-black mt-2">
+    Payment: {paymentStatus}
+  </p>
 
-                            <p className="text-sm font-black mt-1">
-                              Order: {orderStatus}
-                            </p>
-                          </div>
+  <p className="text-sm font-black mt-1">
+    Order: {orderStatus}
+  </p>
+
+  {/* ADD THIS BELOW */}
+  <p className="text-sm font-black mt-1">
+    Estimated Delivery:{" "}
+    {order.estimatedDelivery || "3–5 Days"}
+  </p>
+</div>
                         </div>
                       </div>
                     </div>

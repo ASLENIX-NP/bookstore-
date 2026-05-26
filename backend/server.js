@@ -13,6 +13,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const fileUpload = require("express-fileupload");
+const calculateDelivery = require("./utils/deliveryCalculator");
 
 const imagekit = require("./config/imagekit");
 
@@ -647,7 +648,54 @@ app.post("/api/orders", async (req, res) => {
     const finalProductSubtotal =
       Number(productSubtotal || 0) || calculatedProductSubtotal;
 
-    const finalDeliveryCharge = Number(deliveryCharge || 100);
+      let distanceKm = 0;
+
+      const region = deliveryInfo?.region?.toLowerCase() || "";
+      const city = deliveryInfo?.city?.toLowerCase() || "";
+      
+      // VERY NEAR
+      if (
+        region.includes("hetauda") ||
+        region.includes("makwanpur") ||
+        city.includes("hetauda")
+      ) {
+        distanceKm = 10;
+      }
+      
+      // NEAR
+      else if (
+        region.includes("chitwan") ||
+        region.includes("bharatpur")
+      ) {
+        distanceKm = 90;
+      }
+      
+      // MEDIUM
+      else if (
+        region.includes("kathmandu") ||
+        region.includes("lalitpur") ||
+        region.includes("bhaktapur")
+      ) {
+        distanceKm = 140;
+      }
+      
+      // FAR
+      else if (
+        region.includes("pokhara") ||
+        region.includes("dharan") ||
+        region.includes("butwal")
+      ) {
+        distanceKm = 250;
+      }
+      
+      // VERY FAR
+      else {
+        distanceKm = 500;
+      }
+      
+      const deliveryData = calculateDelivery(distanceKm);
+      
+      const finalDeliveryCharge = deliveryData.charge;
 
     const finalTaxableAmount =
       Number(taxableAmount || 0) ||
@@ -739,9 +787,7 @@ app.post("/api/orders", async (req, res) => {
       ],
     
       // DELIVERY ESTIMATE
-      estimatedDelivery: new Date(
-        Date.now() + 3 * 24 * 60 * 60 * 1000
-      ),
+      estimatedDelivery: deliveryData.days,
     
       // TRANSACTION
       transactionId: transactionId || "",

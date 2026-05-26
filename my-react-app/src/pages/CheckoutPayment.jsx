@@ -17,9 +17,44 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const DELIVERY_CHARGE = 100;
 const VAT_RATE = 13;
+
+const getDeliveryInfo = (city = "") => {
+  const location = city.toLowerCase();
+
+  // VERY NEAR
+  if (
+    location.includes("hetauda") ||
+    location.includes("makwanpur")
+  ) {
+    return {
+      deliveryCharge: 70,
+      estimatedDelivery: "1–3 Days",
+    };
+  }
+
+  // MEDIUM DISTANCE
+  if (
+    location.includes("kathmandu") ||
+    location.includes("lalitpur") ||
+    location.includes("bhaktapur") ||
+    location.includes("chitwan") ||
+    location.includes("bharatpur") ||
+    location.includes("pokhara") ||
+    location.includes("butwal")
+  ) {
+    return {
+      deliveryCharge: 110,
+      estimatedDelivery: "3–5 Days",
+    };
+  }
+
+  // FAR DISTANCE
+  return {
+    deliveryCharge: 210,
+    estimatedDelivery: "5–7 Days",
+  };
+};
 
 const paymentMethods = [
   {
@@ -65,12 +100,15 @@ const safeJsonParse = (value, fallback) => {
 };
 
 export default function CheckoutPayment() {
+
   const navigate = useNavigate();
 
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [deliveryAddress, setDeliveryAddress] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cod");
   const [orderLoading, setOrderLoading] = useState(false);
+
+  const deliveryInfo = getDeliveryInfo(deliveryAddress?.city || "");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -152,7 +190,9 @@ export default function CheckoutPayment() {
     }, 0)
   );
 
-  const taxableAmount = roundMoney(productSubtotal + DELIVERY_CHARGE);
+  const taxableAmount = roundMoney(
+    productSubtotal + deliveryInfo.deliveryCharge
+  );
   const vatAmount = roundMoney((taxableAmount * VAT_RATE) / 100);
   const grandTotal = roundMoney(taxableAmount + vatAmount);
 
@@ -199,13 +239,13 @@ export default function CheckoutPayment() {
       }),
 
       productSubtotal,
-      deliveryCharge: DELIVERY_CHARGE,
+      deliveryCharge: deliveryInfo.deliveryCharge,
+      estimatedDelivery: deliveryInfo.estimatedDelivery,
       taxableAmount,
       vatRate: VAT_RATE,
       vatAmount,
       grandTotal,
       totalPrice: grandTotal,
-
       checkoutType: localStorage.getItem("checkoutType") || "Cart",
 
       paymentMethod: selectedMethod.title,
@@ -594,35 +634,25 @@ export default function CheckoutPayment() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-300 flex items-center gap-2">
-                    <Truck className="w-4 h-4" />
-                    Delivery Charge
-                  </span>
-                  <span className="font-black">
-                    NPR {DELIVERY_CHARGE.toLocaleString()}
-                  </span>
-                </div>
+  <span className="text-gray-300 flex items-center gap-2">
+    <Truck className="w-4 h-4" />
+    Delivery Charge
+  </span>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Taxable Amount</span>
-                  <span className="font-black">
-                    NPR {taxableAmount.toLocaleString()}
-                  </span>
-                </div>
+  <span className="font-black">
+    NPR {deliveryInfo.deliveryCharge.toLocaleString()}
+  </span>
+</div>
 
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-300">VAT {VAT_RATE}%</span>
-                  <span className="font-black">
-                    NPR {vatAmount.toLocaleString()}
-                  </span>
-                </div>
+<div className="flex items-center justify-between">
+  <span className="text-gray-300">
+    Estimated Delivery
+  </span>
 
-                <div className="border-t border-white/10 pt-4 flex items-center justify-between">
-                  <span className="text-white font-black">Grand Total</span>
-                  <span className="text-3xl font-black">
-                    NPR {grandTotal.toLocaleString()}
-                  </span>
-                </div>
+  <span className="font-black text-orange-300">
+    {deliveryInfo.estimatedDelivery}
+  </span>
+</div>
               </div>
 
               <button
