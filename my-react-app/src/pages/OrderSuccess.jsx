@@ -157,6 +157,7 @@ export default function OrderSuccess() {
                 <p className="text-xs font-black uppercase tracking-widest text-gray-400">
                   Order Status
                 </p>
+                
                 <p className="text-sm font-black text-gray-950 mt-1">
                   {order.orderStatus || order.status || "Processing"}
                 </p>
@@ -307,7 +308,54 @@ export default function OrderSuccess() {
                 </Link>
               )}
             </div>
+{/* Delivery Estimate */}
+<div className="bg-white border border-gray-100 rounded-[2rem] p-6">
+  <div className="flex items-center gap-3 mb-5">
+    <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center">
+      <Truck className="w-7 h-7 text-orange-500" />
+    </div>
 
+    <div>
+      <p className="text-xs font-black uppercase tracking-widest text-orange-500">
+        Delivery Information
+      </p>
+
+      <h2 className="text-2xl font-black text-gray-950">
+        Estimated Delivery Time
+      </h2>
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
+      <p className="text-xs font-black uppercase tracking-widest text-orange-500 mb-2">
+        Delivery Time
+      </p>
+
+      <h3 className="text-3xl font-black text-gray-950">
+        {order.estimatedDelivery || "3–5 Days"}
+      </h3>
+
+      <p className="text-sm text-gray-500 mt-2">
+        Delivery depends on your location.
+      </p>
+    </div>
+
+    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+      <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2">
+        Shipping Charge
+      </p>
+
+      <h3 className="text-3xl font-black text-gray-950">
+        NPR {order.deliveryCharge || 0}
+      </h3>
+
+      <p className="text-sm text-gray-500 mt-2">
+        Calculated automatically by distance.
+      </p>
+    </div>
+  </div>
+</div>
             <p className="text-xs text-gray-400 text-center">
               Invoice is available after payment is verified as Paid.
             </p>

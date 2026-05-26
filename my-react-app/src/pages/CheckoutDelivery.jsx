@@ -535,7 +535,91 @@ export default function CheckoutDelivery() {
             </div>
           </form>
         )}
+{/* Delivery Estimate */}
+<div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6">
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+      <MapPin className="w-6 h-6 text-orange-500" />
+    </div>
 
+    <div>
+      <h3 className="text-xl font-black text-gray-950">
+        Delivery Information
+      </h3>
+
+      <p className="text-sm text-gray-500">
+        Estimated delivery time & shipping charge
+      </p>
+    </div>
+  </div>
+
+  {selectedAddressId && (() => {
+    const selectedAddress = addresses.find(
+      (address) => address.id === selectedAddressId
+    );
+
+    const city =
+      selectedAddress?.city?.toLowerCase() || "";
+
+    let deliveryDays = "5–7 Days";
+    let deliveryCharge = 210;
+
+    // Hetauda & nearby
+    if (
+      city.includes("hetauda") ||
+      city.includes("makwanpur")
+    ) {
+      deliveryDays = "1–3 Days";
+      deliveryCharge = 70;
+    }
+
+    // Kathmandu / Chitwan
+    else if (
+      city.includes("kathmandu") ||
+      city.includes("lalitpur") ||
+      city.includes("bhaktapur") ||
+      city.includes("chitwan") ||
+      city.includes("bharatpur")
+    ) {
+      deliveryDays = "3–5 Days";
+      deliveryCharge = 110;
+    }
+
+    // Medium distance
+    else if (
+      city.includes("pokhara") ||
+      city.includes("butwal") ||
+      city.includes("dharan")
+    ) {
+      deliveryDays = "5–7 Days";
+      deliveryCharge = 170;
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
+          <p className="text-xs font-black uppercase tracking-widest text-orange-500 mb-2">
+            Estimated Delivery
+          </p>
+
+          <h4 className="text-2xl font-black text-gray-950">
+            {deliveryDays}
+          </h4>
+        </div>
+
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+          <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2">
+            Delivery Charge
+          </p>
+
+          <h4 className="text-2xl font-black text-gray-950">
+            NPR {deliveryCharge}
+          </h4>
+        </div>
+      </div>
+    );
+  })()}
+</div>
         {/* Proceed Button */}
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
