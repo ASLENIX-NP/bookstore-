@@ -127,20 +127,38 @@ export default function ManageBooks() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     try {
+      const data = new FormData();
+  
+      data.append("name", formData.name);
+      data.append("category", formData.category);
+      data.append("subcategory", formData.subcategory);
+      data.append("price", formData.price);
+      data.append("salePrice", formData.salePrice);
+      data.append("stockStatus", formData.stockStatus);
+      data.append("description", formData.description);
+  
+      data.append("featured", formData.featured);
+      data.append("flashSale", formData.flashSale);
+      data.append("bestSeller", formData.bestSeller);
+      data.append("newArrival", formData.newArrival);
+  
+      // REAL IMAGE FILE
+      data.append("image", formData.image);
+  
       const response = await axios.post(
         "http://localhost:5000/api/products",
+        data,
         {
-          ...formData,
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
-
-      setBooks([
-        response.data,
-        ...books,
-      ]);
-
+  
+      setBooks([response.data, ...books]);
+  
       setFormData({
         name: "",
         category: "Academic Books",
@@ -148,15 +166,14 @@ export default function ManageBooks() {
         price: "",
         salePrice: "",
         stockStatus: "In Stock",
-
+        image: "",
         description: "",
-
         featured: false,
         flashSale: false,
         bestSeller: false,
         newArrival: false,
       });
-
+  
       toast.success("Product added successfully");
     } catch (error) {
       console.error(error);
@@ -407,13 +424,13 @@ export default function ManageBooks() {
 
   <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-orange-200 rounded-2xl cursor-pointer bg-orange-50 hover:bg-orange-100 transition overflow-hidden">
 
-    {formData.image ? (
-      <img
-        src={formData.image}
-        alt="Preview"
-        className="w-full h-full object-cover rounded-2xl"
-      />
-    ) : (
+  {formData.image ? (
+  <img
+    src={URL.createObjectURL(formData.image)}
+    alt="Preview"
+    className="w-full h-full object-cover rounded-2xl"
+  />
+) : (
       <div className="flex flex-col items-center justify-center text-center px-4">
         <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow mb-3">
           <span className="text-2xl">📚</span>
@@ -435,14 +452,11 @@ export default function ManageBooks() {
       className="hidden"
       onChange={(e) => {
         const file = e.target.files[0];
-
+      
         if (file) {
-          const imageUrl =
-            URL.createObjectURL(file);
-
           setFormData({
             ...formData,
-            image: imageUrl,
+            image: file,
           });
         }
       }}
@@ -583,15 +597,16 @@ export default function ManageBooks() {
 
                 <div className="flex items-center gap-4">
 
-                  <img
-                    src={
-                      book.image ||
-                      "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500"
-                    }
-                    alt={book.name}
-                    className="w-12 h-16 rounded-lg object-cover"
-                  />
-
+                <img
+  src={
+    book.image &&
+    book.image.startsWith("http")
+      ? book.image
+      : "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500"
+  }
+  alt={book.name}
+  className="w-16 h-20 rounded-lg object-cover border"
+/>
                   <div>
                     <h4 className="font-semibold text-gray-800">
                       {book.name}

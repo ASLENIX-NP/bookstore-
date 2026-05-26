@@ -2,11 +2,19 @@ const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const path = require("path");
+
+require("dotenv").config({
+  path: path.join(__dirname, ".env"),
+});
+
 const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const fileUpload = require("express-fileupload");
+
+const imagekit = require("./config/imagekit");
 
 require("dotenv").config({
   path: path.join(__dirname, ".env"),
@@ -384,8 +392,21 @@ const seedAdminAccount = async () => {
 };
 
 app.use(cors());
+
 app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+app.use(
+  express.urlencoded({
+    limit: "50mb",
+    extended: true,
+  })
+);
+
+app.use(
+  fileUpload({
+    limits: { fileSize: 50 * 1024 * 1024 },
+  })
+);
 
 // AUTH ROUTES
 app.use("/api/auth", require("./routes/authRoutes"));
@@ -443,9 +464,39 @@ app.get("/api/products/:id", async (req, res) => {
 
 app.post("/api/products", async (req, res) => {
   try {
-    res.status(201).json(await new Product(req.body).save());
+    let imageUrl = "";
+
+    if (req.files && req.files.image) {
+      const file = req.files.image;
+
+      const base64File = `data:${file.mimetype};base64,${file.data.toString("base64")}`;
+
+      const uploadResponse = await imagekit.upload({
+        file: base64File,
+        fileName: file.name,
+        folder: "/bookstore-products",
+      });
+
+      imageUrl = uploadResponse.url;
+
+      console.log(uploadResponse);
+    }
+
+    const product = new Product({
+      ...req.body,
+      image: imageUrl,
+    });
+
+    await product.save();
+
+    res.status(201).json(product);
+
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error("PRODUCT CREATE ERROR:", error);
+
+    res.status(500).json({
+      error: error.message,
+    });
   }
 });
 
