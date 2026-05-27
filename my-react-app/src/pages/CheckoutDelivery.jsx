@@ -7,9 +7,10 @@ import {
   Edit3,
   MapPin,
   Phone,
-  User,
   ArrowRight,
   CheckCircle2,
+  LocateFixed,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -22,6 +23,8 @@ const emptyAddress = {
   area: "",
   address: "",
   label: "Home",
+  lat: "",
+  lng: "",
 };
 
 export default function CheckoutDelivery() {
@@ -32,61 +35,65 @@ export default function CheckoutDelivery() {
   const [showForm, setShowForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [formData, setFormData] = useState(emptyAddress);
+  const [deliveryPreview, setDeliveryPreview] = useState(null);
+  const [deliveryPreviewLoading, setDeliveryPreviewLoading] = useState(false);
 
- const getCheckoutItems = () => {
-  try {
-    const checkoutItems = JSON.parse(
-      localStorage.getItem("checkoutItems") || "[]"
-    );
+  const getCheckoutItems = () => {
+    try {
+      const checkoutItems = JSON.parse(
+        localStorage.getItem("checkoutItems") || "[]"
+      );
 
-    if (Array.isArray(checkoutItems) && checkoutItems.length > 0) {
-      return checkoutItems;
+      if (Array.isArray(checkoutItems) && checkoutItems.length > 0) {
+        return checkoutItems;
+      }
+
+      const cartItems = JSON.parse(localStorage.getItem("cart") || "[]");
+
+      if (Array.isArray(cartItems) && cartItems.length > 0) {
+        const fixedCartItems = cartItems.map((item) => {
+          const qty = Number(item.quantity || item.qty || 1);
+          const price = Number(item.price || 0);
+
+          return {
+            _id: item._id || item.productId || item.id,
+            productId: item.productId || item._id || item.id,
+            title: item.title || item.name || "Product",
+            name: item.name || item.title || "Product",
+            price,
+            image: item.image || "",
+            quantity: qty,
+            qty,
+            subtotal: price * qty,
+          };
+        });
+
+        localStorage.setItem("checkoutItems", JSON.stringify(fixedCartItems));
+        localStorage.setItem("checkoutType", "Cart");
+
+        return fixedCartItems;
+      }
+
+      const buyNowItem = JSON.parse(
+        localStorage.getItem("buyNowItem") || "null"
+      );
+
+      if (buyNowItem) {
+        const fixedBuyNowItems = Array.isArray(buyNowItem)
+          ? buyNowItem
+          : [buyNowItem];
+
+        localStorage.setItem("checkoutItems", JSON.stringify(fixedBuyNowItems));
+        localStorage.setItem("checkoutType", "Buy Now");
+
+        return fixedBuyNowItems;
+      }
+
+      return [];
+    } catch {
+      return [];
     }
-
-    const cartItems = JSON.parse(localStorage.getItem("cart") || "[]");
-
-    if (Array.isArray(cartItems) && cartItems.length > 0) {
-      const fixedCartItems = cartItems.map((item) => {
-        const qty = Number(item.quantity || item.qty || 1);
-        const price = Number(item.price || 0);
-
-        return {
-          _id: item._id || item.productId || item.id,
-          productId: item.productId || item._id || item.id,
-          title: item.title || item.name || "Product",
-          name: item.name || item.title || "Product",
-          price,
-          image: item.image || "",
-          quantity: qty,
-          qty,
-          subtotal: price * qty,
-        };
-      });
-
-      localStorage.setItem("checkoutItems", JSON.stringify(fixedCartItems));
-      localStorage.setItem("checkoutType", "Cart");
-
-      return fixedCartItems;
-    }
-
-    const buyNowItem = JSON.parse(localStorage.getItem("buyNowItem") || "null");
-
-    if (buyNowItem) {
-      const fixedBuyNowItems = Array.isArray(buyNowItem)
-        ? buyNowItem
-        : [buyNowItem];
-
-      localStorage.setItem("checkoutItems", JSON.stringify(fixedBuyNowItems));
-      localStorage.setItem("checkoutType", "Buy Now");
-
-      return fixedBuyNowItems;
-    }
-
-    return [];
-  } catch {
-    return [];
-  }
-};
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -100,7 +107,7 @@ export default function CheckoutDelivery() {
     const checkoutItems = getCheckoutItems();
 
     if (!checkoutItems || checkoutItems.length === 0) {
-    toast.error("Please select products before checkout.");
+      toast.error("Please select products before checkout.");
       navigate("/cart");
       return;
     }
@@ -119,6 +126,52 @@ export default function CheckoutDelivery() {
     }
   }, [navigate]);
 
+  useEffect(() => {
+    const selectedAddress = addresses.find(
+      (address) => address.id === selectedAddressId
+    );
+
+    const lat = Number(selectedAddress?.lat);
+    const lng = Number(selectedAddress?.lng);
+
+    if (!selectedAddress || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setDeliveryPreview(null);
+      return;
+    }
+
+    const calculatePreview = async () => {
+      try {
+        setDeliveryPreviewLoading(true);
+
+        const response = await fetch(
+          "http://localhost:5000/api/delivery/calculate",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ lat, lng }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Failed to calculate delivery");
+        }
+
+        setDeliveryPreview(data.delivery);
+      } catch (error) {
+        console.error("Delivery preview error:", error);
+        setDeliveryPreview(null);
+      } finally {
+        setDeliveryPreviewLoading(false);
+      }
+    };
+
+    calculatePreview();
+  }, [addresses, selectedAddressId]);
+
   const saveAddresses = (updatedAddresses) => {
     setAddresses(updatedAddresses);
     localStorage.setItem("deliveryAddresses", JSON.stringify(updatedAddresses));
@@ -131,6 +184,44 @@ export default function CheckoutDelivery() {
     });
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Location is not supported by this browser.");
+      return;
+    }
+
+    toast.loading("Getting your current location...", {
+      id: "location-loading",
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        setFormData((prev) => ({
+          ...prev,
+          lat,
+          lng,
+        }));
+
+        toast.success("Location added successfully.", {
+          id: "location-loading",
+        });
+      },
+      () => {
+        toast.error("Could not get your location. Please allow location access.", {
+          id: "location-loading",
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   const validateForm = () => {
     if (
       !formData.fullName.trim() ||
@@ -141,7 +232,15 @@ export default function CheckoutDelivery() {
       !formData.area.trim() ||
       !formData.address.trim()
     ) {
-     toast.error("Please fill in all delivery information.");
+      toast.error("Please fill in all delivery information.");
+      return false;
+    }
+
+    const lat = Number(formData.lat);
+    const lng = Number(formData.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast.error("Please click Use Current Location for delivery calculation.");
       return false;
     }
 
@@ -159,6 +258,8 @@ export default function CheckoutDelivery() {
           ? {
               ...address,
               ...formData,
+              lat: Number(formData.lat),
+              lng: Number(formData.lng),
             }
           : address
       );
@@ -170,6 +271,8 @@ export default function CheckoutDelivery() {
       const newAddress = {
         id: Date.now().toString(),
         ...formData,
+        lat: Number(formData.lat),
+        lng: Number(formData.lng),
       };
 
       const updatedAddresses = [...addresses, newAddress];
@@ -200,6 +303,8 @@ export default function CheckoutDelivery() {
       area: address.area || "",
       address: address.address || "",
       label: address.label || "Home",
+      lat: address.lat || "",
+      lng: address.lng || "",
     });
 
     setShowForm(true);
@@ -223,6 +328,16 @@ export default function CheckoutDelivery() {
       return;
     }
 
+    const lat = Number(selectedAddress.lat);
+    const lng = Number(selectedAddress.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      toast.error(
+        "This address has no location coordinates. Please edit it and click Use Current Location."
+      );
+      return;
+    }
+
     localStorage.setItem(
       "selectedDeliveryAddress",
       JSON.stringify(selectedAddress)
@@ -234,7 +349,6 @@ export default function CheckoutDelivery() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-6xl mx-auto px-4 py-8 sm:py-10 space-y-7">
-        {/* Header */}
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div>
@@ -263,11 +377,13 @@ export default function CheckoutDelivery() {
           </div>
         </div>
 
-        {/* Address Cards */}
         {addresses.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {addresses.map((address) => {
               const isSelected = selectedAddressId === address.id;
+              const hasLocation =
+                Number.isFinite(Number(address.lat)) &&
+                Number.isFinite(Number(address.lng));
 
               return (
                 <div
@@ -344,6 +460,17 @@ export default function CheckoutDelivery() {
                         {address.address ? `, ${address.address}` : ""}
                       </span>
                     </div>
+
+                    {hasLocation ? (
+                      <p className="text-xs font-bold text-emerald-600">
+                        Location saved: {Number(address.lat).toFixed(5)},{" "}
+                        {Number(address.lng).toFixed(5)}
+                      </p>
+                    ) : (
+                      <p className="text-xs font-bold text-red-500">
+                        Location missing. Edit and click Use Current Location.
+                      </p>
+                    )}
                   </div>
                 </div>
               );
@@ -351,7 +478,6 @@ export default function CheckoutDelivery() {
           </div>
         )}
 
-        {/* Address Form */}
         {showForm && (
           <form
             onSubmit={handleSaveAddress}
@@ -359,7 +485,9 @@ export default function CheckoutDelivery() {
           >
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-orange-500">
-                {editingAddressId ? "Edit Delivery Location" : "New Delivery Location"}
+                {editingAddressId
+                  ? "Edit Delivery Location"
+                  : "New Delivery Location"}
               </p>
 
               <h2 className="text-2xl font-black text-gray-950 mt-1">
@@ -467,6 +595,38 @@ export default function CheckoutDelivery() {
               </div>
 
               <div className="sm:col-span-2">
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-900">
+                        Delivery Location Coordinates
+                      </p>
+
+                      <p className="text-xs text-slate-500 mt-1">
+                        Required for distance-based delivery charge.
+                      </p>
+
+                      {formData.lat && formData.lng && (
+                        <p className="text-xs font-bold text-emerald-600 mt-2">
+                          Location added: {Number(formData.lat).toFixed(5)},{" "}
+                          {Number(formData.lng).toFixed(5)}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleUseCurrentLocation}
+                      className="inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-sm font-black transition-all"
+                    >
+                      <LocateFixed className="w-4 h-4" />
+                      Use Current Location
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Address Label
                 </label>
@@ -535,92 +695,68 @@ export default function CheckoutDelivery() {
             </div>
           </form>
         )}
-{/* Delivery Estimate */}
-<div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6">
-  <div className="flex items-center gap-3 mb-4">
-    <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
-      <MapPin className="w-6 h-6 text-orange-500" />
-    </div>
 
-    <div>
-      <h3 className="text-xl font-black text-gray-950">
-        Delivery Information
-      </h3>
+        <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+              <MapPin className="w-6 h-6 text-orange-500" />
+            </div>
 
-      <p className="text-sm text-gray-500">
-        Estimated delivery time & shipping charge
-      </p>
-    </div>
-  </div>
+            <div>
+              <h3 className="text-xl font-black text-gray-950">
+                Delivery Information
+              </h3>
 
-  {selectedAddressId && (() => {
-    const selectedAddress = addresses.find(
-      (address) => address.id === selectedAddressId
-    );
+              <p className="text-sm text-gray-500">
+                Estimated delivery time and shipping charge
+              </p>
+            </div>
+          </div>
 
-    const city =
-      selectedAddress?.city?.toLowerCase() || "";
+          {deliveryPreviewLoading ? (
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Calculating delivery...
+            </div>
+          ) : deliveryPreview ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
+                <p className="text-xs font-black uppercase tracking-widest text-orange-500 mb-2">
+                  Estimated Delivery
+                </p>
 
-    let deliveryDays = "5–7 Days";
-    let deliveryCharge = 210;
+                <h4 className="text-2xl font-black text-gray-950">
+                  {deliveryPreview.days}
+                </h4>
+              </div>
 
-    // Hetauda & nearby
-    if (
-      city.includes("hetauda") ||
-      city.includes("makwanpur")
-    ) {
-      deliveryDays = "1–3 Days";
-      deliveryCharge = 70;
-    }
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+                <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2">
+                  Delivery Charge
+                </p>
 
-    // Kathmandu / Chitwan
-    else if (
-      city.includes("kathmandu") ||
-      city.includes("lalitpur") ||
-      city.includes("bhaktapur") ||
-      city.includes("chitwan") ||
-      city.includes("bharatpur")
-    ) {
-      deliveryDays = "3–5 Days";
-      deliveryCharge = 110;
-    }
+                <h4 className="text-2xl font-black text-gray-950">
+                  NPR {Number(deliveryPreview.charge || 0).toLocaleString()}
+                </h4>
+              </div>
 
-    // Medium distance
-    else if (
-      city.includes("pokhara") ||
-      city.includes("butwal") ||
-      city.includes("dharan")
-    ) {
-      deliveryDays = "5–7 Days";
-      deliveryCharge = 170;
-    }
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
+                <p className="text-xs font-black uppercase tracking-widest text-emerald-500 mb-2">
+                  Distance
+                </p>
 
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
-          <p className="text-xs font-black uppercase tracking-widest text-orange-500 mb-2">
-            Estimated Delivery
-          </p>
-
-          <h4 className="text-2xl font-black text-gray-950">
-            {deliveryDays}
-          </h4>
+                <h4 className="text-2xl font-black text-gray-950">
+                  {deliveryPreview.distanceKm} km
+                </h4>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 font-bold">
+              Select an address with saved location coordinates to calculate delivery.
+            </p>
+          )}
         </div>
 
-        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
-          <p className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2">
-            Delivery Charge
-          </p>
-
-          <h4 className="text-2xl font-black text-gray-950">
-            NPR {deliveryCharge}
-          </h4>
-        </div>
-      </div>
-    );
-  })()}
-</div>
-        {/* Proceed Button */}
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <p className="text-sm font-black text-gray-950">

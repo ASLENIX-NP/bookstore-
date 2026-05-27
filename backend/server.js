@@ -1,4 +1,4 @@
-const dns = require("dns");
+﻿const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const path = require("path");
@@ -81,6 +81,8 @@ const orderSchema = new mongoose.Schema(
       area: { type: String, default: "" },
       address: { type: String, default: "" },
       label: { type: String, default: "Home" },
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
     },
 
     orderItems: [
@@ -124,6 +126,16 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
       default: 100,
+    },
+
+    deliveryDistanceKm: {
+      type: Number,
+      default: 0,
+    },
+
+    estimatedDelivery: {
+      type: String,
+      default: "",
     },
 
     taxableAmount: {
@@ -270,6 +282,7 @@ const orderSchema = new mongoose.Schema(
 );
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+
 // POLICY SCHEMA & MODEL
 const policySchema = new mongoose.Schema(
   {
@@ -390,7 +403,6 @@ If delivery fails because of wrong address, unreachable phone, or customer unava
     key: "contact",
     title: "Contact Information",
     content: `Business Name: PatraPatrika Center
-    
 PAN/VAT Number: 000000000
 Address: 000000
 Phone: 000000
@@ -400,35 +412,37 @@ Website: 000000
 For order support, payment issues, refund requests, or delivery questions, please contact us using the details above.`,
   },
   {
-  key: "aboutPage",
-  title: "About Us",
-  content: `PatraPatrika Center is a bookstore and stationery center dedicated to providing books, magazines, newspapers, educational materials, and stationery items to readers, students, and families.
+    key: "aboutPage",
+    title: "A community built around books, learning, and creativity.",
+    content: `We bring together quality books, fine stationery, and a friendly local store experience for readers, students, writers, and families.
 
-Our goal is to make reading materials and learning essentials easily available through a simple online shopping experience.
+PatraPatrika Center is dedicated to providing books, magazines, newspapers, educational materials, and stationery items to readers, students, and families.
 
-We focus on:
-- Quality books and stationery
-- Reliable customer service
-- Easy ordering and delivery
-- Secure payment and invoice flow
-- Helpful support for customers
-
-PatraPatrika Center believes that books and learning materials play an important role in education, personal growth, and community development.`,
-},
-{
-  key: "contactPage",
-  title: "Contact Us",
-  content: `Business Name: PatraPatrika Center
-PAN/VAT Number: 000000000
-Address: 000000
-Phone: 000000
-Email: patrapatrika23@gmail.com
-Website: 000000
-
-For order support, delivery questions, payment issues, refund requests, or product inquiries, please contact us using the information above.
-
-You can also send us a message through the contact form on this page.`,
-},
+Our goal is to make reading materials and learning essentials easily available through a simple online shopping experience.`,
+  },
+  {
+    key: "contactPage",
+    title: "We are here to help with your books and stationery needs.",
+    content: `Have a question about a book, magazine, stationery order, or availability? Send us your message and our team will respond as soon as possible.`,
+  },
+  {
+    key: "contactDetails",
+    title: "Contact Details",
+    content: JSON.stringify(
+      {
+        primaryEmail: "support@PatraPatrikaCenter.com",
+        secondaryEmail: "info@patrapatrikacentre.com",
+        phone: "+977-9866666666",
+        whatsappNumber: "9779866666666",
+        storeName: "PatraPatrika Center",
+        address: "Parijat Marg, Hetauda, Nepal",
+        responseTime: "We usually reply within a few hours.",
+        mapUrl: "https://www.google.com/maps/place/Parijat+Marg,+Hetauda+44107",
+      },
+      null,
+      2
+    ),
+  },
 ];
 
 const seedPolicies = async () => {
@@ -446,12 +460,12 @@ const seedPolicies = async () => {
         },
         {
           upsert: true,
-          returnDocument: "after"
+          returnDocument: "after",
         }
       );
     }
 
-    console.log("Policy pages ready ✅");
+    console.log("Policy pages ready âœ…");
   } catch (error) {
     console.error("Policy seed error:", error.message);
   }
@@ -549,7 +563,7 @@ const seedAdminAccount = async () => {
 
     if (!existingAdmin) {
       await AdminModel.create({ email: adminEmail, password: hashedPassword });
-      console.log("Admin account created in your MongoDB ✅");
+      console.log("Admin account created in your MongoDB âœ…");
       return;
     }
 
@@ -567,11 +581,11 @@ const seedAdminAccount = async () => {
     if (!passwordMatches) {
       existingAdmin.password = hashedPassword;
       await existingAdmin.save();
-      console.log("Admin password updated in your MongoDB ✅");
+      console.log("Admin password updated in your MongoDB âœ…");
       return;
     }
 
-    console.log("Admin account already exists ✅");
+    console.log("Admin account already exists âœ…");
   } catch (error) {
     console.error("Admin seed error:", error.message);
   }
@@ -597,7 +611,6 @@ app.use(
 // AUTH ROUTES
 app.use("/api/auth", require("./routes/authRoutes"));
 
-// PRODUCT ROUTES
 // POLICY ROUTES
 app.get("/api/policies", async (req, res) => {
   try {
@@ -673,26 +686,24 @@ app.put("/api/admin/policies/:key", async (req, res) => {
     });
   }
 });
+
+// PRODUCT ROUTES
 app.get("/api/products", async (req, res) => {
   try {
     const query = {};
 
-    // FEATURED PRODUCTS
     if (req.query.featured === "true") {
       query.featured = true;
     }
 
-    // FLASH SALE PRODUCTS
     if (req.query.flashSale === "true") {
       query.flashSale = true;
     }
 
-    // BEST SELLERS
     if (req.query.bestSeller === "true") {
       query.bestSeller = true;
     }
 
-    // NEW ARRIVALS
     if (req.query.newArrival === "true") {
       query.newArrival = true;
     }
@@ -714,12 +725,16 @@ app.get("/api/products/:id", async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+      return res.status(404).json({
+        error: "Product not found",
+      });
     }
 
     res.status(200).json(product);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({
+      error: error.message,
+    });
   }
 });
 
@@ -730,7 +745,9 @@ app.post("/api/products", async (req, res) => {
     if (req.files && req.files.image) {
       const file = req.files.image;
 
-      const base64File = `data:${file.mimetype};base64,${file.data.toString("base64")}`;
+      const base64File = `data:${file.mimetype};base64,${file.data.toString(
+        "base64"
+      )}`;
 
       const uploadResponse = await imagekit.upload({
         file: base64File,
@@ -739,8 +756,6 @@ app.post("/api/products", async (req, res) => {
       });
 
       imageUrl = uploadResponse.url;
-
-      console.log(uploadResponse);
     }
 
     const product = new Product({
@@ -751,7 +766,6 @@ app.post("/api/products", async (req, res) => {
     await product.save();
 
     res.status(201).json(product);
-
   } catch (error) {
     console.error("PRODUCT CREATE ERROR:", error);
 
@@ -782,7 +796,9 @@ app.post("/api/products/:id/reviews", async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+      return res.status(404).json({
+        error: "Product not found",
+      });
     }
 
     product.reviews.push({
@@ -804,7 +820,9 @@ app.post("/api/products/:id/reviews", async (req, res) => {
 
     res.status(201).json(updatedProduct);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({
+      error: error.message,
+    });
   }
 });
 
@@ -813,7 +831,9 @@ app.patch("/api/products/:id", async (req, res) => {
     const { stockStatus } = req.body;
 
     if (!stockStatus) {
-      return res.status(400).json({ error: "stockStatus is required" });
+      return res.status(400).json({
+        error: "stockStatus is required",
+      });
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -822,25 +842,70 @@ app.patch("/api/products/:id", async (req, res) => {
         stockStatus,
         statusFlag: stockStatus,
       },
-      { returnDocument: "after" }
+      {
+        returnDocument: "after",
+      }
     );
 
     if (!updatedProduct) {
-      return res.status(404).json({ error: "Product not found" });
+      return res.status(404).json({
+        error: "Product not found",
+      });
     }
 
     res.status(200).json(updatedProduct);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({
+      error: error.message,
+    });
   }
 });
 
 app.delete("/api/products/:id", async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Deleted" });
+
+    res.status(200).json({
+      message: "Deleted",
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
+
+// DELIVERY CALCULATION ROUTE
+app.post("/api/delivery/calculate", async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+
+    const customerLat = Number(lat);
+    const customerLng = Number(lng);
+
+    if (!Number.isFinite(customerLat) || !Number.isFinite(customerLng)) {
+      return res.status(400).json({
+        success: false,
+        error: "Valid latitude and longitude are required",
+      });
+    }
+
+    const delivery = calculateDelivery({
+      lat: customerLat,
+      lng: customerLng,
+    });
+
+    return res.status(200).json({
+      success: true,
+      delivery,
+    });
+  } catch (error) {
+    console.error("Delivery calculation error:", error);
+
+    return res.status(400).json({
+      success: false,
+      error: error.message || "Failed to calculate delivery",
+    });
   }
 });
 
@@ -854,7 +919,6 @@ app.post("/api/orders", async (req, res) => {
       deliveryInfo,
       orderItems,
       productSubtotal,
-      deliveryCharge,
       taxableAmount,
       vatRate,
       vatAmount,
@@ -871,21 +935,42 @@ app.post("/api/orders", async (req, res) => {
 
     if (!email || !customerName || !phone) {
       return res.status(400).json({
+        success: false,
         error: "Customer name, email, and phone are required",
       });
     }
 
     if (!deliveryInfo) {
       return res.status(400).json({
+        success: false,
         error: "Delivery information is required",
       });
     }
 
     if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
       return res.status(400).json({
+        success: false,
         error: "Order must contain at least one product",
       });
     }
+
+    const customerLat = Number(deliveryInfo?.lat);
+    const customerLng = Number(deliveryInfo?.lng);
+
+    if (!Number.isFinite(customerLat) || !Number.isFinite(customerLng)) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Customer location is required for delivery calculation. Please use current location on delivery page.",
+      });
+    }
+
+    const deliveryData = calculateDelivery({
+      lat: customerLat,
+      lng: customerLng,
+    });
+
+    const finalDeliveryCharge = Number(deliveryData.charge || 0);
 
     const cleanedItems = orderItems.map((item) => {
       const qty = Number(item.qty || item.quantity || 1);
@@ -908,55 +993,6 @@ app.post("/api/orders", async (req, res) => {
     const finalProductSubtotal =
       Number(productSubtotal || 0) || calculatedProductSubtotal;
 
-      let distanceKm = 0;
-
-      const region = deliveryInfo?.region?.toLowerCase() || "";
-      const city = deliveryInfo?.city?.toLowerCase() || "";
-      
-      // VERY NEAR
-      if (
-        region.includes("hetauda") ||
-        region.includes("makwanpur") ||
-        city.includes("hetauda")
-      ) {
-        distanceKm = 10;
-      }
-      
-      // NEAR
-      else if (
-        region.includes("chitwan") ||
-        region.includes("bharatpur")
-      ) {
-        distanceKm = 90;
-      }
-      
-      // MEDIUM
-      else if (
-        region.includes("kathmandu") ||
-        region.includes("lalitpur") ||
-        region.includes("bhaktapur")
-      ) {
-        distanceKm = 140;
-      }
-      
-      // FAR
-      else if (
-        region.includes("pokhara") ||
-        region.includes("dharan") ||
-        region.includes("butwal")
-      ) {
-        distanceKm = 250;
-      }
-      
-      // VERY FAR
-      else {
-        distanceKm = 500;
-      }
-      
-      const deliveryData = calculateDelivery(distanceKm);
-      
-      const finalDeliveryCharge = deliveryData.charge;
-
     const finalTaxableAmount =
       Number(taxableAmount || 0) ||
       roundMoney(finalProductSubtotal + finalDeliveryCharge);
@@ -969,89 +1005,84 @@ app.post("/api/orders", async (req, res) => {
 
     const finalGrandTotal =
       Number(grandTotal || totalPrice || 0) ||
-      roundMoney(finalTaxableAmount + finalVatAmount);
+      roundMoney(finalProductSubtotal + finalDeliveryCharge);
 
     const selectedPaymentMethod = paymentMethod || "Cash on Delivery";
     const selectedPaymentMethodId = paymentMethodId || "cod";
 
     const newOrder = await Order.create({
       email: String(email).toLowerCase().trim(),
-    
+
       customerName,
-    
+
       phone,
-    
-      deliveryInfo,
-    
+
+      deliveryInfo: {
+        ...deliveryInfo,
+        lat: customerLat,
+        lng: customerLng,
+      },
+
       orderItems: cleanedItems,
-    
-      // PRICE DETAILS
+
       productSubtotal: finalProductSubtotal,
-    
+
       deliveryCharge: finalDeliveryCharge,
-    
+
+      deliveryDistanceKm: deliveryData.distanceKm,
+
+      estimatedDelivery: deliveryData.days,
+
       taxableAmount: finalTaxableAmount,
-    
+
       vatRate: finalVatRate,
-    
+
       vatAmount: finalVatAmount,
-    
+
       grandTotal: finalGrandTotal,
-    
+
       totalPrice: finalGrandTotal,
-    
-      // CHECKOUT
+
       checkoutType: checkoutType || "Cart",
-    
-      // PAYMENT
+
       paymentMethod: selectedPaymentMethod,
-    
+
       paymentMethodId: selectedPaymentMethodId,
-    
+
       paymentGateway: selectedPaymentMethodId,
-    
+
       paymentStatus: paymentStatus || "Pending",
-    
-      // ORDER STATUS
+
       orderStatus: orderStatus || "Processing",
-    
+
       status: "pending",
-    
-      // TRACKING
+
       trackingSteps: [
         {
           title: "Order Placed",
           completed: true,
           date: new Date(),
         },
-    
         {
           title: "Order Confirmed",
           completed: false,
         },
-    
         {
           title: "Packaging",
           completed: false,
         },
-    
         {
           title: "Shipped",
           completed: false,
         },
-    
         {
           title: "Delivered",
           completed: false,
         },
       ],
-    
-      // DELIVERY ESTIMATE
-      estimatedDelivery: deliveryData.days,
-    
-      // TRANSACTION
+
       transactionId: transactionId || "",
-    
+
       paymentProof: paymentProof || "",
     });
 
@@ -1061,177 +1092,535 @@ app.post("/api/orders", async (req, res) => {
       order: newOrder,
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error("Order creation error:", error);
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+// GET ALL ORDERS
+app.get("/api/orders", async (req, res) => {
+  try {
+    const orders = await Order.find({}).sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      orders,
+    });
+  } catch (error) {
+    console.error("Fetch orders error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 
-// KHALTI PAYMENT
-app.post("/api/payments/khalti/initiate", async (req, res) => {
+// GET ORDERS BY CUSTOMER EMAIL
+app.get("/api/orders/customer/:email", async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const email = String(req.params.email || "").toLowerCase().trim();
 
-    if (!orderId) {
-      return res.status(400).json({ error: "orderId is required" });
-    }
+    const orders = await Order.find({
+      email,
+    }).sort({
+      createdAt: -1,
+    });
 
-    const order = await Order.findById(orderId);
+    res.status(200).json({
+      success: true,
+      orders,
+    });
+  } catch (error) {
+    console.error("Fetch customer orders error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// GET SINGLE ORDER
+app.get("/api/orders/:id", async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
 
     if (!order) {
-      return res.status(404).json({ error: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
     }
 
-    if (order.paymentStatus === "Paid") {
-      return res.status(400).json({ error: "This order is already paid" });
+    res.status(200).json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    console.error("Fetch single order error:", error);
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// UPDATE ORDER STATUS
+app.patch("/api/orders/:id/status", async (req, res) => {
+  try {
+    const { orderStatus, status, paymentStatus } = req.body;
+
+    const updateData = {};
+
+    if (orderStatus) {
+      updateData.orderStatus = orderStatus;
+      updateData.status = orderStatus;
     }
 
-    const amountInPaisa = toPaisa(order.totalPrice);
+    if (status) {
+      updateData.status = status;
+      updateData.orderStatus = status;
+    }
 
-    const payload = {
-      return_url: `${BACKEND_URL}/api/payments/khalti/callback`,
-      website_url: FRONTEND_URL,
-      amount: amountInPaisa,
-      purchase_order_id: String(order._id),
-      purchase_order_name: `PatraPatrika Order ${String(order._id).slice(-8)}`,
-      customer_info: {
-        name: order.customerName || order.deliveryInfo?.fullName || "Customer",
-        email: order.email || "customer@example.com",
-        phone: order.phone || order.deliveryInfo?.phone || "9800000000",
-      },
-      amount_breakdown: [
-        {
-          label: "Grand Total Including VAT",
-          amount: amountInPaisa,
-        },
-      ],
-      product_details: [
-        {
-          identity: String(order._id),
-          name: `PatraPatrika Order ${String(order._id).slice(-8)}`,
-          total_price: amountInPaisa,
-          quantity: 1,
-          unit_price: amountInPaisa,
-        },
-      ],
-      merchant_extra: String(order._id),
-    };
+    if (paymentStatus) {
+      updateData.paymentStatus = paymentStatus;
 
-    const khaltiData = await khaltiRequest("/epayment/initiate/", payload);
+      if (paymentStatus === "Paid") {
+        updateData.paidAt = new Date();
+      }
+    }
 
-    order.paymentMethod = "Khalti";
-    order.paymentMethodId = "khalti";
-    order.paymentGateway = "khalti";
-    order.paymentStatus = "Pending";
-    order.khaltiPidx = khaltiData.pidx || "";
-    order.khaltiPaymentUrl = khaltiData.payment_url || "";
-    order.khaltiStatus = "Initiated";
-    order.transactionId = khaltiData.pidx || "";
-    order.gatewayResponse = khaltiData;
+    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData, {
+      returnDocument: "after",
+    });
+
+    if (!updatedOrder) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Order status updated successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Update order status error:", error);
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// CANCEL ORDER
+app.patch("/api/orders/:id/cancel", async (req, res) => {
+  try {
+    const { cancelledBy = "customer", cancelReason = "" } = req.body;
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
+    }
+
+    const blockedStatuses = ["Completed", "Delivered", "Cancelled"];
+
+    if (blockedStatuses.includes(order.orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: `Order cannot be cancelled because it is already ${order.orderStatus}`,
+      });
+    }
+
+    order.orderStatus = "Cancelled";
+    order.status = "Cancelled";
+    order.cancelledAt = new Date();
+    order.cancelledBy = cancelledBy;
+    order.cancelReason = cancelReason || "Cancelled by customer/admin";
 
     await order.save();
 
     res.status(200).json({
       success: true,
-      payment_url: khaltiData.payment_url,
-      pidx: khaltiData.pidx,
+      message: "Order cancelled successfully",
       order,
     });
   } catch (error) {
-    console.error("Khalti initiate error:", error.data || error.message);
+    console.error("Cancel order error:", error);
 
     res.status(400).json({
       success: false,
-      error: error.data || error.message || "Failed to initiate Khalti payment",
+      error: error.message,
     });
   }
 });
 
-app.get("/api/payments/khalti/callback", async (req, res) => {
-  let order = null;
-
+// DELETE ORDER
+app.delete("/api/orders/:id", async (req, res) => {
   try {
-    const { pidx, purchase_order_id, transaction_id } = req.query;
+    const deletedOrder = await Order.findByIdAndDelete(req.params.id);
 
-    if (!pidx) {
-      return res.redirect(
-        `${FRONTEND_URL}/order-success?payment=khalti&paymentStatus=failed`
-      );
+    if (!deletedOrder) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
     }
 
-    const lookupData = await khaltiRequest("/epayment/lookup/", { pidx });
-
-    const conditions = [{ khaltiPidx: String(pidx) }];
-
-    if (purchase_order_id && mongoose.Types.ObjectId.isValid(purchase_order_id)) {
-      conditions.push({ _id: purchase_order_id });
-    }
-
-    order = await Order.findOne({ $or: conditions });
-
-    if (!order) {
-      return res.redirect(
-        `${FRONTEND_URL}/order-success?payment=khalti&paymentStatus=failed`
-      );
-    }
-
-    const khaltiStatus = lookupData.status || req.query.status || "Unknown";
-    const expectedAmount = toPaisa(order.totalPrice);
-    const returnedAmount = Number(
-      lookupData.total_amount || req.query.total_amount || 0
-    );
-
-    order.khaltiStatus = khaltiStatus;
-    order.gatewayResponse = lookupData;
-
-    if (khaltiStatus === "Completed" && returnedAmount === expectedAmount) {
-      order.paymentStatus = "Paid";
-      order.orderStatus = "Confirmed";
-      order.status = "Confirmed";
-      order.transactionId =
-        lookupData.transaction_id ||
-        transaction_id ||
-        order.transactionId ||
-        String(pidx);
-      order.paidAt = new Date();
-    } else if (khaltiStatus === "Completed") {
-      order.paymentStatus = "Verification Required";
-    } else if (
-      ["Expired", "User canceled", "Canceled", "Failed"].includes(khaltiStatus)
-    ) {
-      order.paymentStatus = "Failed";
-    } else {
-      order.paymentStatus = "Pending";
-    }
-
-    await order.save();
-
-    const frontendStatus =
-      order.paymentStatus === "Paid"
-        ? "paid"
-        : order.paymentStatus === "Failed"
-        ? "failed"
-        : "pending";
-
-    return res.redirect(
-      `${FRONTEND_URL}/order-success?orderId=${order._id}&payment=khalti&paymentStatus=${frontendStatus}`
-    );
+    res.status(200).json({
+      success: true,
+      message: "Order deleted successfully",
+    });
   } catch (error) {
-    console.error("Khalti callback error:", error.data || error.message);
+    console.error("Delete order error:", error);
 
-    if (order) {
-      order.paymentStatus = "Failed";
-      order.khaltiStatus = "Failed";
-      order.gatewayResponse = error.data || { error: error.message };
-      await order.save();
-    }
-
-    return res.redirect(
-      `${FRONTEND_URL}/order-success${
-        order ? `?orderId=${order._id}&` : "?"
-      }payment=khalti&paymentStatus=failed`
-    );
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 
+// ADMIN DASHBOARD STATS
+app.get("/api/admin/dashboard", async (req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments();
+    const totalOrders = await Order.countDocuments();
+    const totalUsers = await User.countDocuments();
+    const totalMessages = await Message.countDocuments();
+
+    const revenueResult = await Order.aggregate([
+      {
+        $match: {
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          revenue: {
+            $sum: "$grandTotal",
+          },
+        },
+      },
+    ]);
+
+    const pendingOrders = await Order.countDocuments({
+      orderStatus: {
+        $in: ["Processing", "Confirmed"],
+      },
+    });
+
+    const lowStockProducts = await Product.countDocuments({
+      $or: [
+        {
+          stock: {
+            $lte: 5,
+          },
+        },
+        {
+          stockStatus: "Low Stock",
+        },
+      ],
+    });
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalProducts,
+        totalOrders,
+        totalUsers,
+        totalMessages,
+        totalRevenue: revenueResult[0]?.revenue || 0,
+        pendingOrders,
+        lowStockProducts,
+      },
+    });
+  } catch (error) {
+    console.error("Admin dashboard stats error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// ADMIN REPORTS
+app.get("/api/admin/reports", async (req, res) => {
+  try {
+    const totalRevenueResult = await Order.aggregate([
+      {
+        $match: {
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: "$grandTotal",
+          },
+        },
+      },
+    ]);
+
+    const totalOrders = await Order.countDocuments();
+
+    const paidOrders = await Order.countDocuments({
+      paymentStatus: "Paid",
+    });
+
+    const pendingOrders = await Order.countDocuments({
+      paymentStatus: "Pending",
+    });
+
+    const cancelledOrders = await Order.countDocuments({
+      orderStatus: "Cancelled",
+    });
+
+    const statusBreakdown = await Order.aggregate([
+      {
+        $group: {
+          _id: "$orderStatus",
+          count: {
+            $sum: 1,
+          },
+        },
+      },
+      {
+        $sort: {
+          count: -1,
+        },
+      },
+    ]);
+
+    const paymentBreakdown = await Order.aggregate([
+      {
+        $group: {
+          _id: "$paymentMethodId",
+          count: {
+            $sum: 1,
+          },
+          amount: {
+            $sum: "$grandTotal",
+          },
+        },
+      },
+      {
+        $sort: {
+          count: -1,
+        },
+      },
+    ]);
+
+    const monthlySales = await Order.aggregate([
+      {
+        $match: {
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: {
+              $year: "$createdAt",
+            },
+            month: {
+              $month: "$createdAt",
+            },
+          },
+          orders: {
+            $sum: 1,
+          },
+          revenue: {
+            $sum: "$grandTotal",
+          },
+        },
+      },
+      {
+        $sort: {
+          "_id.year": 1,
+          "_id.month": 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      report: {
+        totalRevenue: totalRevenueResult[0]?.totalRevenue || 0,
+        totalOrders,
+        paidOrders,
+        pendingOrders,
+        cancelledOrders,
+        statusBreakdown,
+        paymentBreakdown,
+        monthlySales,
+      },
+    });
+  } catch (error) {
+    console.error("Admin reports error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// PAYMENT HELPERS
+const updateOrderPaymentSuccess = async ({
+  order,
+  paymentGateway,
+  transactionId,
+  gatewayResponse,
+}) => {
+  order.paymentStatus = "Paid";
+  order.orderStatus = "Confirmed";
+  order.status = "Confirmed";
+  order.paymentGateway = paymentGateway;
+  order.transactionId = transactionId || order.transactionId || "";
+  order.gatewayResponse = gatewayResponse || null;
+  order.paidAt = new Date();
+
+  await order.save();
+
+  return order;
+};
+
+const updateOrderPaymentFailed = async ({ order, paymentGateway, gatewayResponse }) => {
+  order.paymentStatus = "Failed";
+  order.paymentGateway = paymentGateway;
+  order.gatewayResponse = gatewayResponse || null;
+
+  await order.save();
+
+  return order;
+};
+
+// KHALTI INITIATE
+app.post("/api/payments/khalti/initiate", async (req, res) => {
+  try {
+    const { orderId } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
+    }
+
+    const amount = toPaisa(order.grandTotal || order.totalPrice);
+
+    if (amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order amount",
+      });
+    }
+
+    const payload = {
+      return_url: `${BACKEND_URL}/api/payments/khalti/verify?orderId=${order._id}`,
+      website_url: FRONTEND_URL,
+      amount,
+      purchase_order_id: String(order._id),
+      purchase_order_name: `Order ${order._id}`,
+      customer_info: {
+        name: order.customerName,
+        email: order.email,
+        phone: order.phone,
+      },
+    };
+
+    const khaltiResponse = await khaltiRequest("/epayment/initiate/", payload);
+
+    order.khaltiPidx = khaltiResponse.pidx || "";
+    order.khaltiPaymentUrl = khaltiResponse.payment_url || "";
+    order.khaltiStatus = khaltiResponse.status || "";
+    order.paymentGateway = "khalti";
+    order.gatewayResponse = khaltiResponse;
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      payment_url: khaltiResponse.payment_url,
+      pidx: khaltiResponse.pidx,
+    });
+  } catch (error) {
+    console.error("Khalti initiate error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.data || error.message,
+    });
+  }
+});
+
+// KHALTI VERIFY
+app.get("/api/payments/khalti/verify", async (req, res) => {
+  try {
+    const { pidx, orderId } = req.query;
+
+    if (!pidx || !orderId) {
+      return res.redirect(`${FRONTEND_URL}/my-orders?payment=failed`);
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.redirect(`${FRONTEND_URL}/my-orders?payment=failed`);
+    }
+
+    const lookupResponse = await khaltiRequest("/epayment/lookup/", {
+      pidx,
+    });
+
+    order.khaltiPidx = pidx;
+    order.khaltiStatus = lookupResponse.status || "";
+    order.gatewayResponse = lookupResponse;
+
+    if (lookupResponse.status === "Completed") {
+      await updateOrderPaymentSuccess({
+        order,
+        paymentGateway: "khalti",
+        transactionId: lookupResponse.transaction_id || pidx,
+        gatewayResponse: lookupResponse,
+      });
+
+      return res.redirect(`${FRONTEND_URL}/order-success?orderId=${order._id}`);
+    }
+
+    await updateOrderPaymentFailed({
+      order,
+      paymentGateway: "khalti",
+      gatewayResponse: lookupResponse,
+    });
+
+    return res.redirect(`${FRONTEND_URL}/my-orders?payment=failed`);
+  } catch (error) {
+    console.error("Khalti verify error:", error);
+
+    return res.redirect(`${FRONTEND_URL}/my-orders?payment=failed`);
+  }
+});
 // ESEWA PAYMENT
 app.post("/api/payments/esewa/initiate", async (req, res) => {
   try {
@@ -1610,16 +1999,8 @@ app.get("/api/payments/card/cancel", async (req, res) => {
   }
 });
 
-// ADMIN: GET ALL ORDERS
-app.get("/api/orders", async (req, res) => {
-  try {
-    res.status(200).json(await Order.find({}).sort({ createdAt: -1 }));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// USER: GET ORDERS BY EMAIL
+// USER ORDER ROUTE ALIAS
+// Keep this because some frontend pages use /api/orders/user/:email
 app.get("/api/orders/user/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email || "")
@@ -1643,161 +2024,7 @@ app.get("/api/orders/user/:email", async (req, res) => {
   }
 });
 
-// USER: CANCEL ORDER
-app.patch("/api/orders/:id/cancel", async (req, res) => {
-  try {
-    const { cancelReason } = req.body;
-
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    const currentOrderStatus = order.orderStatus || order.status || "Processing";
-    const currentPaymentStatus = order.paymentStatus || "Pending";
-
-    if (currentOrderStatus === "Cancelled") {
-      return res.status(400).json({
-        error: "This order is already cancelled",
-      });
-    }
-
-    if (currentOrderStatus === "Confirmed") {
-      return res.status(400).json({
-        error:
-          "This order has already been confirmed by admin and cannot be cancelled by user",
-      });
-    }
-
-    if (currentOrderStatus === "Completed") {
-      return res.status(400).json({
-        error: "Completed order cannot be cancelled",
-      });
-    }
-
-    if (currentPaymentStatus === "Paid") {
-      return res.status(400).json({
-        error:
-          "Paid orders cannot be cancelled directly. Please contact admin for refund/cancellation.",
-      });
-    }
-
-    order.orderStatus = "Cancelled";
-    order.status = "Cancelled";
-    order.cancelledAt = new Date();
-    order.cancelledBy = "User";
-    order.cancelReason = cancelReason || "Cancelled by customer";
-
-    if (order.paymentStatus !== "Paid") {
-      order.paymentStatus = "Failed";
-    }
-
-    const updatedOrder = await order.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Order cancelled successfully",
-      order: updatedOrder,
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// GET ONE ORDER
-app.get("/api/orders/:id", async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    res.status(200).json(order);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// UPDATE ORDER STATUS
-app.patch("/api/orders/:id/status", async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    if (req.body.orderStatus) {
-      order.orderStatus = req.body.orderStatus;
-      order.status = req.body.orderStatus;
-    } else {
-      const newStatus =
-        order.status === "Processing" ? "Completed" : "Processing";
-
-      order.status = newStatus;
-      order.orderStatus = newStatus;
-    }
-
-    res.status(200).json(await order.save());
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// UPDATE PAYMENT STATUS
-app.patch("/api/orders/:id/payment", async (req, res) => {
-  try {
-    const { paymentStatus, transactionId, paymentProof } = req.body;
-
-    const order = await Order.findById(req.params.id);
-
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    if (paymentStatus) {
-      order.paymentStatus = paymentStatus;
-
-      if (paymentStatus === "Paid" && !order.paidAt) {
-        order.paidAt = new Date();
-      }
-    }
-
-    if (transactionId !== undefined) {
-      order.transactionId = transactionId;
-    }
-
-    if (paymentProof !== undefined) {
-      order.paymentProof = paymentProof;
-    }
-
-    res.status(200).json(await order.save());
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// DELETE ORDER
-app.delete("/api/orders/:id", async (req, res) => {
-  try {
-    const deletedOrder = await Order.findByIdAndDelete(req.params.id);
-
-    if (!deletedOrder) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Order deleted successfully",
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// USER ROUTES
+// ADMIN FEATURES: USERS
 app.get("/api/users", async (req, res) => {
   try {
     res.status(200).json(await User.find({}));
@@ -1907,166 +2134,6 @@ app.delete("/api/admin/messages/:id", async (req, res) => {
   }
 });
 
-// ADMIN: REAL DASHBOARD STATISTICS FROM ORDERS
-app.get("/api/admin/dashboard-stats", async (req, res) => {
-  try {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const [
-      totalOrders,
-      paidOrders,
-      pendingPayments,
-      failedPayments,
-      processingOrders,
-      confirmedOrders,
-      completedOrders,
-      cancelledOrders,
-      totalProducts,
-      outOfStockProducts,
-      totalUsers,
-      unreadMessages,
-      recentOrders,
-      paidOrderDocs,
-      todayPaidOrders,
-      topProducts,
-    ] = await Promise.all([
-      Order.countDocuments(),
-
-      Order.countDocuments({ paymentStatus: "Paid" }),
-
-      Order.countDocuments({ paymentStatus: "Pending" }),
-
-      Order.countDocuments({ paymentStatus: "Failed" }),
-
-      Order.countDocuments({
-        $or: [{ orderStatus: "Processing" }, { status: "Processing" }],
-      }),
-
-      Order.countDocuments({
-        $or: [{ orderStatus: "Confirmed" }, { status: "Confirmed" }],
-      }),
-
-      Order.countDocuments({
-        $or: [{ orderStatus: "Completed" }, { status: "Completed" }],
-      }),
-
-      Order.countDocuments({
-        $or: [{ orderStatus: "Cancelled" }, { status: "Cancelled" }],
-      }),
-
-      Product.countDocuments(),
-
-      Product.countDocuments({ stockStatus: "Out of Stock" }),
-
-      User.countDocuments(),
-
-      Message.countDocuments({ isRead: false }),
-
-      Order.find({})
-        .sort({ createdAt: -1 })
-        .limit(8)
-        .select(
-          "customerName email paymentMethod paymentStatus orderStatus status totalPrice createdAt orderItems"
-        ),
-
-      Order.find({ paymentStatus: "Paid" }).select(
-        "totalPrice orderItems createdAt"
-      ),
-
-      Order.find({
-        paymentStatus: "Paid",
-        createdAt: { $gte: startOfToday },
-      }).select("totalPrice orderItems createdAt"),
-
-      Order.aggregate([
-        {
-          $match: {
-            paymentStatus: "Paid",
-          },
-        },
-        {
-          $unwind: "$orderItems",
-        },
-        {
-          $group: {
-            _id: {
-              productId: "$orderItems.productId",
-              title: "$orderItems.title",
-            },
-            title: { $first: "$orderItems.title" },
-            image: { $first: "$orderItems.image" },
-            quantitySold: { $sum: "$orderItems.qty" },
-            revenue: { $sum: "$orderItems.subtotal" },
-          },
-        },
-        {
-          $sort: {
-            quantitySold: -1,
-          },
-        },
-        {
-          $limit: 5,
-        },
-      ]),
-    ]);
-
-    const totalRevenue = paidOrderDocs.reduce((total, order) => {
-      return total + Number(order.totalPrice || 0);
-    }, 0);
-
-    const todayRevenue = todayPaidOrders.reduce((total, order) => {
-      return total + Number(order.totalPrice || 0);
-    }, 0);
-
-    const totalItemsSold = paidOrderDocs.reduce((total, order) => {
-      const orderQty =
-        order.orderItems?.reduce((sum, item) => {
-          return sum + Number(item.qty || 0);
-        }, 0) || 0;
-
-      return total + orderQty;
-    }, 0);
-
-    const todayItemsSold = todayPaidOrders.reduce((total, order) => {
-      const orderQty =
-        order.orderItems?.reduce((sum, item) => {
-          return sum + Number(item.qty || 0);
-        }, 0) || 0;
-
-      return total + orderQty;
-    }, 0);
-
-    res.status(200).json({
-      success: true,
-      stats: {
-        totalOrders,
-        paidOrders,
-        pendingPayments,
-        failedPayments,
-        processingOrders,
-        confirmedOrders,
-        completedOrders,
-        cancelledOrders,
-        totalProducts,
-        outOfStockProducts,
-        totalUsers,
-        unreadMessages,
-        totalRevenue,
-        todayRevenue,
-        totalItemsSold,
-        todayItemsSold,
-        todayOrders: todayPaidOrders.length,
-      },
-      recentOrders,
-      topProducts,
-    });
-  } catch (error) {
-    console.error("Dashboard stats error:", error.message);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // REPORT ROUTES
 app.get("/api/admin/daily-report", async (req, res) => {
   try {
@@ -2088,8 +2155,8 @@ app.get("/api/admin/daily-report", async (req, res) => {
 
     let revenue = 0;
 
-    soldItems.forEach((p) => {
-      revenue += Number(p.price || 0);
+    soldItems.forEach((product) => {
+      revenue += Number(product.price || 0);
     });
 
     res.status(200).json({
@@ -2103,11 +2170,12 @@ app.get("/api/admin/daily-report", async (req, res) => {
   }
 });
 
+// START SERVER AFTER DATABASE CONNECTION
 const startServer = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
 
-    console.log("Connected to MongoDB Atlas! ✅");
+    console.log("Connected to MongoDB Atlas! âœ…");
 
     await seedAdminAccount();
     await seedPolicies();

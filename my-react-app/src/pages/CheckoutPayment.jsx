@@ -15,46 +15,12 @@ import {
   ShieldCheck,
   Loader2,
   PackageCheck,
+  ReceiptText,
+  Route,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 const VAT_RATE = 13;
-
-const getDeliveryInfo = (city = "") => {
-  const location = city.toLowerCase();
-
-  // VERY NEAR
-  if (
-    location.includes("hetauda") ||
-    location.includes("makwanpur")
-  ) {
-    return {
-      deliveryCharge: 70,
-      estimatedDelivery: "1–3 Days",
-    };
-  }
-
-  // MEDIUM DISTANCE
-  if (
-    location.includes("kathmandu") ||
-    location.includes("lalitpur") ||
-    location.includes("bhaktapur") ||
-    location.includes("chitwan") ||
-    location.includes("bharatpur") ||
-    location.includes("pokhara") ||
-    location.includes("butwal")
-  ) {
-    return {
-      deliveryCharge: 110,
-      estimatedDelivery: "3–5 Days",
-    };
-  }
-
-  // FAR DISTANCE
-  return {
-    deliveryCharge: 210,
-    estimatedDelivery: "5–7 Days",
-  };
-};
 
 const paymentMethods = [
   {
@@ -100,7 +66,6 @@ const safeJsonParse = (value, fallback) => {
 };
 
 export default function CheckoutPayment() {
-
   const navigate = useNavigate();
 
   const [checkoutItems, setCheckoutItems] = useState([]);
@@ -108,7 +73,13 @@ export default function CheckoutPayment() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cod");
   const [orderLoading, setOrderLoading] = useState(false);
 
-  const deliveryInfo = getDeliveryInfo(deliveryAddress?.city || "");
+  const [deliveryInfo, setDeliveryInfo] = useState({
+    distanceKm: 0,
+    charge: 0,
+    days: "",
+  });
+
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -166,6 +137,41 @@ export default function CheckoutPayment() {
 
     setCheckoutItems(items);
     setDeliveryAddress(address);
+
+    const calculateDeliveryPreview = async () => {
+      try {
+        setDeliveryLoading(true);
+
+        const lat = Number(address.lat);
+        const lng = Number(address.lng);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          toast.error(
+            "Delivery location is missing. Please go back and use current location."
+          );
+          return;
+        }
+
+        const response = await axios.post(
+          "http://localhost:5000/api/delivery/calculate",
+          {
+            lat,
+            lng,
+          }
+        );
+
+        if (response.data.success) {
+          setDeliveryInfo(response.data.delivery);
+        }
+      } catch (error) {
+        console.error("Delivery calculation error:", error);
+        toast.error("Could not calculate delivery charge.");
+      } finally {
+        setDeliveryLoading(false);
+      }
+    };
+
+    calculateDeliveryPreview();
   }, [navigate]);
 
   const getLoggedUser = () => {
@@ -189,17 +195,11 @@ export default function CheckoutPayment() {
       );
     }, 0)
   );
-// PRODUCT PRICE ALREADY INCLUDES VAT
-const productWithoutVat = roundMoney(productSubtotal / 1.13);
 
-// VAT ONLY ON PRODUCT
-const vatAmount = roundMoney(productSubtotal - productWithoutVat);
-
-// DELIVERY CHARGE
-const deliveryCharge = roundMoney(deliveryInfo.deliveryCharge);
-
-// FINAL TOTAL (PRODUCT + DELIVERY ONLY)
-const grandTotal = roundMoney(productSubtotal + deliveryCharge);
+  const productWithoutVat = roundMoney(productSubtotal / 1.13);
+  const vatAmount = roundMoney(productSubtotal - productWithoutVat);
+  const deliveryCharge = roundMoney(deliveryInfo.charge);
+  const grandTotal = roundMoney(productSubtotal + deliveryCharge);
 
   const createOrderPayload = (selectedMethod) => {
     const loggedUser = getLoggedUser();
@@ -227,6 +227,8 @@ const grandTotal = roundMoney(productSubtotal + deliveryCharge);
         area: deliveryAddress.area || "",
         address: deliveryAddress.address || "",
         label: deliveryAddress.label || "Home",
+        lat: deliveryAddress.lat || "",
+        lng: deliveryAddress.lng || "",
       },
 
       orderItems: checkoutItems.map((item) => {
@@ -244,13 +246,15 @@ const grandTotal = roundMoney(productSubtotal + deliveryCharge);
       }),
 
       productSubtotal,
-productWithoutVat,
-deliveryCharge,
-estimatedDelivery: deliveryInfo.estimatedDelivery,
-vatRate: VAT_RATE,
-vatAmount,
-grandTotal,
-totalPrice: grandTotal,
+      productWithoutVat,
+      deliveryCharge,
+      deliveryDistanceKm: deliveryInfo.distanceKm,
+      estimatedDelivery: deliveryInfo.days,
+      vatRate: VAT_RATE,
+      vatAmount,
+      grandTotal,
+      totalPrice: grandTotal,
+
       checkoutType: localStorage.getItem("checkoutType") || "Cart",
 
       paymentMethod: selectedMethod.title,
@@ -293,6 +297,11 @@ totalPrice: grandTotal,
   const handleConfirmPaymentMethod = async () => {
     if (!selectedPaymentMethod) {
       toast.error("Please select a payment method.");
+      return;
+    }
+
+    if (deliveryLoading || !deliveryInfo.charge) {
+      toast.error("Please wait until delivery charge is calculated.");
       return;
     }
 
@@ -428,11 +437,11 @@ totalPrice: grandTotal,
 
             <div className="bg-slate-950 text-white rounded-2xl px-6 py-4">
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-                Grand Total With VAT
+                Grand Total
               </p>
               <p className="text-3xl font-black">
-  NPR {grandTotal.toLocaleString()}
-</p>
+                NPR {grandTotal.toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
@@ -493,6 +502,42 @@ totalPrice: grandTotal,
                 <p className="text-sm text-gray-500 mt-1">
                   {deliveryAddress.address}
                 </p>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+                  <Truck className="w-5 h-5 text-orange-600 mb-2" />
+                  <p className="text-xs font-black text-orange-500 uppercase tracking-wider">
+                    Delivery Charge
+                  </p>
+                  <p className="text-sm font-black text-gray-950 mt-1">
+                    {deliveryLoading
+                      ? "Calculating..."
+                      : `NPR ${Number(deliveryInfo.charge || 0).toLocaleString()}`}
+                  </p>
+                </div>
+
+                <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+                  <PackageCheck className="w-5 h-5 text-indigo-600 mb-2" />
+                  <p className="text-xs font-black text-indigo-500 uppercase tracking-wider">
+                    Estimated Delivery
+                  </p>
+                  <p className="text-sm font-black text-gray-950 mt-1">
+                    {deliveryInfo.days || "Calculating..."}
+                  </p>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                  <Route className="w-5 h-5 text-emerald-600 mb-2" />
+                  <p className="text-xs font-black text-emerald-500 uppercase tracking-wider">
+                    Distance
+                  </p>
+                  <p className="text-sm font-black text-gray-950 mt-1">
+                    {deliveryInfo.distanceKm
+                      ? `${deliveryInfo.distanceKm} km`
+                      : "Calculating..."}
+                  </p>
+                </div>
               </div>
             </section>
 
@@ -626,46 +671,74 @@ totalPrice: grandTotal,
 
             <section className="bg-slate-950 text-white rounded-[2rem] shadow-xl p-6">
               <div className="flex items-center gap-2 mb-5">
-                <PackageCheck className="w-5 h-5 text-orange-300" />
-                <h2 className="text-xl font-black">VAT Summary</h2>
+                <ReceiptText className="w-5 h-5 text-orange-300" />
+                <h2 className="text-xl font-black">Order Summary</h2>
               </div>
 
               <div className="space-y-4 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-300">Product Subtotal</span>
+                  <span className="text-gray-300">Product Total</span>
                   <span className="font-black">
                     NPR {productSubtotal.toLocaleString()}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-  <span className="text-gray-300 flex items-center gap-2">
-    <Truck className="w-4 h-4" />
-    Delivery Charge
-  </span>
+                  <span className="text-gray-300">Product Without VAT</span>
+                  <span className="font-black">
+                    NPR {productWithoutVat.toLocaleString()}
+                  </span>
+                </div>
 
-  <span className="font-black">
-    NPR {deliveryInfo.deliveryCharge.toLocaleString()}
-  </span>
-</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">VAT Included</span>
+                  <span className="font-black">
+                    NPR {vatAmount.toLocaleString()}
+                  </span>
+                </div>
 
-<div className="flex items-center justify-between">
-  <span className="text-gray-300">
-    Estimated Delivery
-  </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300 flex items-center gap-2">
+                    <Truck className="w-4 h-4" />
+                    Delivery Charge
+                  </span>
+                  <span className="font-black">
+                    {deliveryLoading
+                      ? "Calculating..."
+                      : `NPR ${deliveryCharge.toLocaleString()}`}
+                  </span>
+                </div>
 
-  <span className="font-black text-orange-300">
-    {deliveryInfo.estimatedDelivery}
-  </span>
-</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Estimated Delivery</span>
+                  <span className="font-black text-orange-300">
+                    {deliveryInfo.days || "Calculating..."}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-300">Distance From Store</span>
+                  <span className="font-black text-orange-300">
+                    {deliveryInfo.distanceKm
+                      ? `${deliveryInfo.distanceKm} km`
+                      : "Calculating..."}
+                  </span>
+                </div>
+
+                <div className="border-t border-white/10 pt-4 flex items-center justify-between">
+                  <span className="text-white font-black">Grand Total</span>
+                  <span className="text-3xl font-black">
+                    NPR {grandTotal.toLocaleString()}
+                  </span>
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleConfirmPaymentMethod}
-                disabled={orderLoading}
+                disabled={orderLoading || deliveryLoading || !deliveryInfo.charge}
                 className={`mt-6 w-full text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 ${
-                  orderLoading
+                  orderLoading || deliveryLoading || !deliveryInfo.charge
                     ? "bg-gray-500 cursor-not-allowed"
                     : "bg-orange-500 hover:bg-orange-600"
                 }`}
@@ -675,13 +748,18 @@ totalPrice: grandTotal,
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Processing...
                   </>
+                ) : deliveryLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Calculating Delivery...
+                  </>
                 ) : (
                   buttonLabel
                 )}
               </button>
 
               <p className="text-xs text-gray-400 mt-3 text-center">
-                Online payment orders are marked Paid only after gateway verification.
+                Delivery charge is calculated from your current location.
               </p>
             </section>
           </div>
