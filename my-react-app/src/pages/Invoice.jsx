@@ -175,26 +175,19 @@ export default function Invoice() {
     order.deliveryCharge || 0
   );
 
+  // VAT INCLUDED PRICE LOGIC
   const taxableAmount = roundMoney(
-    order.taxableAmount ||
-      productSubtotal +
-        deliveryCharge
+    productSubtotal / 1.13
   );
 
-  const vatRate = Number(
-    order.vatRate ?? 13
-  );
+  const vatRate = 13;
 
   const vatAmount = roundMoney(
-    order.vatAmount ||
-      (taxableAmount * vatRate) /
-        100
+    productSubtotal - taxableAmount
   );
 
   const grandTotal = roundMoney(
-    order.grandTotal ||
-      order.totalPrice ||
-      taxableAmount + vatAmount
+    productSubtotal + deliveryCharge
   );
 
   const invoiceNo = `VAT-${String(
@@ -496,7 +489,29 @@ export default function Invoice() {
 
             <div className="flex justify-between px-4 py-3 border-b border-gray-300">
               <span>
-                Product Subtotal
+                Product Price (Without VAT)
+              </span>
+
+              <strong>
+                NPR{" "}
+                {taxableAmount.toFixed(2)}
+              </strong>
+            </div>
+
+            <div className="flex justify-between px-4 py-3 border-b border-gray-300">
+              <span>
+                VAT 13%
+              </span>
+
+              <strong>
+                NPR{" "}
+                {vatAmount.toFixed(2)}
+              </strong>
+            </div>
+
+            <div className="flex justify-between px-4 py-3 border-b border-gray-300">
+              <span>
+                Product Total
               </span>
 
               <strong>
@@ -516,28 +531,6 @@ export default function Invoice() {
               </strong>
             </div>
 
-            <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>
-                Taxable Amount
-              </span>
-
-              <strong>
-                NPR{" "}
-                {taxableAmount.toLocaleString()}
-              </strong>
-            </div>
-
-            <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>
-                VAT {vatRate}%
-              </span>
-
-              <strong>
-                NPR{" "}
-                {vatAmount.toLocaleString()}
-              </strong>
-            </div>
-
             <div className="flex justify-between px-4 py-4 bg-gray-950 text-white">
 
               <span className="font-black">
@@ -552,42 +545,6 @@ export default function Invoice() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-10 pt-10 border-t border-gray-200">
-
-          <div>
-            <p className="text-sm font-black">
-              Amount in words:
-            </p>
-
-            <p className="text-sm text-gray-600 mt-1">
-              NPR{" "}
-              {grandTotal.toLocaleString()}{" "}
-              only.
-            </p>
-          </div>
-
-          <div className="text-right">
-            <div className="h-16" />
-
-            <p className="border-t border-gray-900 inline-block px-8 pt-2 text-sm font-black">
-              Authorized Signature
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-8 text-center text-xs text-gray-500">
-          <p>
-            This is a computer-generated
-            VAT tax invoice.
-          </p>
-
-          <p>
-            Seller VAT/PAN, address,
-            phone and buyer PAN are
-            placeholders and must be
-            updated before real use.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -1,11 +1,42 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BookOpen, ShoppingCart, Menu, PackageCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+
 const Navbar = () => {
   const navigate = useNavigate();
 
   const isLoggedIn = Boolean(localStorage.getItem("token"));
+
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    const checkLogin = () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setCartCount(0);
+        return;
+      }
+
+      const cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+      const totalQty = cart.reduce(
+        (sum, item) => sum + (item.qty || 1),
+        0
+      );
+
+      setCartCount(totalQty);
+    };
+
+    checkLogin();
+
+    window.addEventListener("storage", checkLogin);
+
+    return () => {
+      window.removeEventListener("storage", checkLogin);
+    };
+  }, []);
 
   const handleCartClick = () => {
     const token = localStorage.getItem("token");
@@ -43,6 +74,7 @@ const Navbar = () => {
             <p className="text-lg sm:text-xl font-black text-slate-950">
               PatraPatrika
             </p>
+
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-500">
               Center
             </p>
@@ -116,6 +148,12 @@ const Navbar = () => {
             title="Cart"
           >
             <ShoppingCart size={21} />
+
+            {isLoggedIn && cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-950 text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
           </button>
 
           <button

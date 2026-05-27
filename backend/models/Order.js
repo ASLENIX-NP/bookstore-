@@ -35,6 +35,50 @@ const orderSchema = new mongoose.Schema(
       },
     ],
 
+    // VAT / PRICE SUMMARY
+
+    // FINAL PRODUCT PRICE (WITH VAT)
+    productSubtotal: {
+      type: Number,
+      default: 0,
+    },
+
+    // PRODUCT PRICE WITHOUT VAT
+    productWithoutVat: {
+      type: Number,
+      default: 0,
+    },
+
+    // DELIVERY
+    deliveryCharge: {
+      type: Number,
+      default: 0,
+    },
+
+    // ONLY PRODUCT TAXABLE
+    taxableAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    // VAT RATE
+    vatRate: {
+      type: Number,
+      default: 13,
+    },
+
+    // VAT AMOUNT
+    vatAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    // GRAND TOTAL
+    grandTotal: {
+      type: Number,
+      default: 0,
+    },
+
     // PAYMENT
     totalPrice: {
       type: Number,

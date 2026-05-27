@@ -165,47 +165,88 @@ export default function OrderSuccess() {
             </div>
 
             <div className="bg-slate-950 text-white rounded-[2rem] p-6">
-              <h2 className="text-xl font-black mb-5">VAT Payment Summary</h2>
+  <h2 className="text-xl font-black mb-5">
+    VAT Payment Summary
+  </h2>
 
-              <div className="space-y-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Product Subtotal</span>
-                  <span className="font-black">
-                    NPR {Number(order.productSubtotal || 0).toLocaleString()}
-                  </span>
-                </div>
+  {(() => {
+    // PRODUCT TOTAL (already includes VAT)
+    const productTotal = Number(order.productSubtotal || 0);
 
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Delivery Charge</span>
-                  <span className="font-black">
-                    NPR {Number(order.deliveryCharge || 0).toLocaleString()}
-                  </span>
-                </div>
+    // REMOVE VAT FROM PRODUCT PRICE
+    const productWithoutVat = productTotal / 1.13;
 
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Taxable Amount</span>
-                  <span className="font-black">
-                    NPR {Number(order.taxableAmount || 0).toLocaleString()}
-                  </span>
-                </div>
+    // VAT ONLY ON PRODUCT
+    const vatAmount = productTotal - productWithoutVat;
 
-                <div className="flex justify-between">
-                  <span className="text-gray-300">
-                    VAT {Number(order.vatRate ?? 13)}%
-                  </span>
-                  <span className="font-black">
-                    NPR {Number(order.vatAmount || 0).toLocaleString()}
-                  </span>
-                </div>
+    // DELIVERY CHARGE
+    const deliveryCharge = Number(order.deliveryCharge || 0);
 
-                <div className="border-t border-white/10 pt-4 flex justify-between">
-                  <span className="text-white font-black">Grand Total</span>
-                  <span className="text-3xl font-black">
-                    NPR {Number(order.totalPrice || 0).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
+    // FINAL TOTAL
+    const grandTotal = productTotal + deliveryCharge;
+
+    return (
+      <div className="space-y-4 text-sm">
+
+        {/* PRODUCT WITHOUT VAT */}
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            Product Price (Without VAT)
+          </span>
+
+          <span className="font-black">
+            NPR {productWithoutVat.toFixed(2)}
+          </span>
+        </div>
+
+        {/* VAT */}
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            VAT 13%
+          </span>
+
+          <span className="font-black">
+            NPR {vatAmount.toFixed(2)}
+          </span>
+        </div>
+
+        {/* PRODUCT TOTAL */}
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            Product Total
+          </span>
+
+          <span className="font-black">
+            NPR {productTotal.toLocaleString()}
+          </span>
+        </div>
+
+        {/* DELIVERY */}
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            Delivery Charge
+          </span>
+
+          <span className="font-black">
+            NPR {deliveryCharge.toLocaleString()}
+          </span>
+        </div>
+
+        {/* GRAND TOTAL */}
+        <div className="border-t border-white/10 pt-4 flex justify-between">
+          <span className="text-white font-black">
+            Grand Total
+          </span>
+
+          <span className="text-3xl font-black">
+            NPR {grandTotal.toLocaleString()}
+          </span>
+        </div>
+
+      </div>
+    );
+  })()}
+</div>
 
             <div className="bg-slate-50 border border-gray-100 rounded-[2rem] p-6">
               <p className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2">

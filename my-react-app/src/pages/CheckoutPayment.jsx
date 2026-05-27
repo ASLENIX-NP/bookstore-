@@ -189,12 +189,17 @@ export default function CheckoutPayment() {
       );
     }, 0)
   );
+// PRODUCT PRICE ALREADY INCLUDES VAT
+const productWithoutVat = roundMoney(productSubtotal / 1.13);
 
-  const taxableAmount = roundMoney(
-    productSubtotal + deliveryInfo.deliveryCharge
-  );
-  const vatAmount = roundMoney((taxableAmount * VAT_RATE) / 100);
-  const grandTotal = roundMoney(taxableAmount + vatAmount);
+// VAT ONLY ON PRODUCT
+const vatAmount = roundMoney(productSubtotal - productWithoutVat);
+
+// DELIVERY CHARGE
+const deliveryCharge = roundMoney(deliveryInfo.deliveryCharge);
+
+// FINAL TOTAL (PRODUCT + DELIVERY ONLY)
+const grandTotal = roundMoney(productSubtotal + deliveryCharge);
 
   const createOrderPayload = (selectedMethod) => {
     const loggedUser = getLoggedUser();
@@ -239,13 +244,13 @@ export default function CheckoutPayment() {
       }),
 
       productSubtotal,
-      deliveryCharge: deliveryInfo.deliveryCharge,
-      estimatedDelivery: deliveryInfo.estimatedDelivery,
-      taxableAmount,
-      vatRate: VAT_RATE,
-      vatAmount,
-      grandTotal,
-      totalPrice: grandTotal,
+productWithoutVat,
+deliveryCharge,
+estimatedDelivery: deliveryInfo.estimatedDelivery,
+vatRate: VAT_RATE,
+vatAmount,
+grandTotal,
+totalPrice: grandTotal,
       checkoutType: localStorage.getItem("checkoutType") || "Cart",
 
       paymentMethod: selectedMethod.title,
@@ -426,8 +431,8 @@ export default function CheckoutPayment() {
                 Grand Total With VAT
               </p>
               <p className="text-3xl font-black">
-                NPR {grandTotal.toLocaleString()}
-              </p>
+  NPR {grandTotal.toLocaleString()}
+</p>
             </div>
           </div>
         </div>

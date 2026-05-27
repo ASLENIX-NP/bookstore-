@@ -108,8 +108,10 @@ export default function Layout() {
     setUserMenuOpen(false);
     setMobileMenuOpen(false);
 
+    window.dispatchEvent(new Event("storage"));
+
     navigate("/");
-  };
+};
 
   const handleCartClick = () => {
     const currentToken = localStorage.getItem("token");

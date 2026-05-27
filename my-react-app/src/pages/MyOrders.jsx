@@ -377,9 +377,13 @@ export default function MyOrders() {
                         </span>
 
                         <p className="text-xl font-black text-gray-950 mt-3">
-                          NPR {Number(order.totalPrice || 0).toLocaleString()}
-                        </p>
-                      </div>
+  NPR{" "}
+  {(
+    Number(order.productSubtotal || 0) +
+    Number(order.deliveryCharge || 0)
+  ).toLocaleString()}
+</p>
+</div>
 
                       <div className="lg:col-span-2 space-y-2">
                         <button
@@ -544,62 +548,77 @@ export default function MyOrders() {
                           </div>
 
                           <div className="space-y-3 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-gray-300">
-                                Product Subtotal
-                              </span>
-                              <span className="font-black">
-                                NPR{" "}
-                                {Number(
-                                  order.productSubtotal || 0
-                                ).toLocaleString()}
-                              </span>
-                            </div>
 
-                            <div className="flex justify-between">
-                              <span className="text-gray-300">
-                                Delivery Charge
-                              </span>
-                              <span className="font-black">
-                                NPR{" "}
-                                {Number(
-                                  order.deliveryCharge || 0
-                                ).toLocaleString()}
-                              </span>
-                            </div>
+  {(() => {
 
-                            <div className="flex justify-between">
-                              <span className="text-gray-300">
-                                Taxable Amount
-                              </span>
-                              <span className="font-black">
-                                NPR{" "}
-                                {Number(
-                                  order.taxableAmount || 0
-                                ).toLocaleString()}
-                              </span>
-                            </div>
+    const productTotal = Number(order.productSubtotal || 0);
 
-                            <div className="flex justify-between">
-                              <span className="text-gray-300">
-                                VAT {Number(order.vatRate ?? 13)}%
-                              </span>
-                              <span className="font-black">
-                                NPR{" "}
-                                {Number(order.vatAmount || 0).toLocaleString()}
-                              </span>
-                            </div>
+    const productWithoutVat = productTotal / 1.13;
 
-                            <div className="border-t border-white/10 pt-3 flex justify-between">
-                              <span className="font-black">Grand Total</span>
-                              <span className="text-2xl font-black">
-                                NPR{" "}
-                                {Number(order.totalPrice || 0).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
+    const vatOnly = productTotal - productWithoutVat;
 
-                          <div className="mt-5 bg-white/10 border border-white/10 rounded-2xl p-4">
+    const deliveryCharge = Number(order.deliveryCharge || 0);
+
+    const grandTotal = productTotal + deliveryCharge;
+
+    return (
+      <>
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            Product Price (Without VAT)
+          </span>
+
+          <span className="font-black">
+            NPR {productWithoutVat.toFixed(2)}
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            VAT 13%
+          </span>
+
+          <span className="font-black">
+            NPR {vatOnly.toFixed(2)}
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            Product Total
+          </span>
+
+          <span className="font-black">
+            NPR {productTotal.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-gray-300">
+            Delivery Charge
+          </span>
+
+          <span className="font-black">
+            NPR {deliveryCharge.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="border-t border-white/10 pt-3 flex justify-between">
+          <span className="font-black">
+            Grand Total
+          </span>
+
+          <span className="text-2xl font-black">
+            NPR {grandTotal.toLocaleString()}
+          </span>
+        </div>
+      </>
+    );
+
+  })()}
+
+</div>
+      <div className="mt-5 bg-white/10 border border-white/10 rounded-2xl p-4">
   <p className="text-xs font-black uppercase tracking-widest text-gray-400">
     Current Status
   </p>
