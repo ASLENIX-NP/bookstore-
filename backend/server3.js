@@ -8,6 +8,10 @@ app.get("/api/orders", async (req, res) => {
     res.status(200).json({
       success: true,
       orders,
+
+      // compatibility
+      data: orders,
+      count: orders.length,
     });
   } catch (error) {
     console.error("Fetch orders error:", error);
@@ -22,10 +26,15 @@ app.get("/api/orders", async (req, res) => {
 // GET ORDERS BY CUSTOMER EMAIL
 app.get("/api/orders/customer/:email", async (req, res) => {
   try {
-    const email = String(req.params.email || "").toLowerCase().trim();
+    const email = decodeURIComponent(req.params.email || "")
+      .toLowerCase()
+      .trim();
 
     const orders = await Order.find({
-      email,
+      email: {
+        $regex: `^${escapeRegex(email)}$`,
+        $options: "i",
+      },
     }).sort({
       createdAt: -1,
     });
@@ -33,6 +42,10 @@ app.get("/api/orders/customer/:email", async (req, res) => {
     res.status(200).json({
       success: true,
       orders,
+
+      // compatibility
+      data: orders,
+      count: orders.length,
     });
   } catch (error) {
     console.error("Fetch customer orders error:", error);
@@ -44,9 +57,51 @@ app.get("/api/orders/customer/:email", async (req, res) => {
   }
 });
 
+// USER ORDER ROUTE ALIAS
+// IMPORTANT: keep this ABOVE /api/orders/:id
+app.get("/api/orders/user/:email", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email || "")
+      .toLowerCase()
+      .trim();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: "User email is required",
+      });
+    }
+
+    const orders = await Order.find({
+      email: {
+        $regex: `^${escapeRegex(email)}$`,
+        $options: "i",
+      },
+    }).sort({ createdAt: -1 });
+
+    // some of your old frontend pages expect direct array
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error("Fetch user orders error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET SINGLE ORDER
+// IMPORTANT: this must stay BELOW /api/orders/user/:email
 app.get("/api/orders/:id", async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
     const order = await Order.findById(req.params.id);
 
     if (!order) {
@@ -59,6 +114,9 @@ app.get("/api/orders/:id", async (req, res) => {
     res.status(200).json({
       success: true,
       order,
+
+      // compatibility
+      data: order,
     });
   } catch (error) {
     console.error("Fetch single order error:", error);
@@ -70,21 +128,25 @@ app.get("/api/orders/:id", async (req, res) => {
   }
 });
 
-// UPDATE ORDER STATUS
-app.patch("/api/orders/:id/status", async (req, res) => {
+// COMMON ORDER STATUS UPDATE FUNCTION
+const updateOrderStatusHandler = async (req, res) => {
   try {
     const { orderStatus, status, paymentStatus } = req.body;
 
-    const updateData = {};
-
-    if (orderStatus) {
-      updateData.orderStatus = orderStatus;
-      updateData.status = orderStatus;
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
     }
 
-    if (status) {
-      updateData.status = status;
-      updateData.orderStatus = status;
+    const updateData = {};
+
+    const finalOrderStatus = orderStatus || status;
+
+    if (finalOrderStatus) {
+      updateData.orderStatus = finalOrderStatus;
+      updateData.status = finalOrderStatus;
     }
 
     if (paymentStatus) {
@@ -95,9 +157,20 @@ app.patch("/api/orders/:id/status", async (req, res) => {
       }
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData, {
-      returnDocument: "after",
-    });
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No status value provided",
+      });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      {
+        returnDocument: "after",
+      }
+    );
 
     if (!updatedOrder) {
       return res.status(404).json({
@@ -110,6 +183,9 @@ app.patch("/api/orders/:id/status", async (req, res) => {
       success: true,
       message: "Order status updated successfully",
       order: updatedOrder,
+
+      // compatibility
+      data: updatedOrder,
     });
   } catch (error) {
     console.error("Update order status error:", error);
@@ -119,12 +195,27 @@ app.patch("/api/orders/:id/status", async (req, res) => {
       error: error.message,
     });
   }
-});
+};
+
+// UPDATE ORDER STATUS
+app.patch("/api/orders/:id/status", updateOrderStatusHandler);
+app.put("/api/orders/:id/status", updateOrderStatusHandler);
+
+// ADMIN STATUS ROUTE ALIAS
+app.patch("/api/admin/orders/:id/status", updateOrderStatusHandler);
+app.put("/api/admin/orders/:id/status", updateOrderStatusHandler);
 
 // CANCEL ORDER
 app.patch("/api/orders/:id/cancel", async (req, res) => {
   try {
     const { cancelledBy = "customer", cancelReason = "" } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
 
     const order = await Order.findById(req.params.id);
 
@@ -156,6 +247,9 @@ app.patch("/api/orders/:id/cancel", async (req, res) => {
       success: true,
       message: "Order cancelled successfully",
       order,
+
+      // compatibility
+      data: order,
     });
   } catch (error) {
     console.error("Cancel order error:", error);
@@ -167,9 +261,70 @@ app.patch("/api/orders/:id/cancel", async (req, res) => {
   }
 });
 
+// ADMIN CANCEL ROUTE ALIAS
+app.patch("/api/admin/orders/:id/cancel", async (req, res) => {
+  try {
+    const { cancelledBy = "admin", cancelReason = "" } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
+    }
+
+    const blockedStatuses = ["Completed", "Delivered", "Cancelled"];
+
+    if (blockedStatuses.includes(order.orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: `Order cannot be cancelled because it is already ${order.orderStatus}`,
+      });
+    }
+
+    order.orderStatus = "Cancelled";
+    order.status = "Cancelled";
+    order.cancelledAt = new Date();
+    order.cancelledBy = cancelledBy;
+    order.cancelReason = cancelReason || "Cancelled by admin";
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      order,
+      data: order,
+    });
+  } catch (error) {
+    console.error("Admin cancel order error:", error);
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // DELETE ORDER
 app.delete("/api/orders/:id", async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
     const deletedOrder = await Order.findByIdAndDelete(req.params.id);
 
     if (!deletedOrder) {
@@ -193,6 +348,127 @@ app.delete("/api/orders/:id", async (req, res) => {
   }
 });
 
+// ADMIN DELETE ROUTE ALIAS
+app.delete("/api/admin/orders/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const deletedOrder = await Order.findByIdAndDelete(req.params.id);
+
+    if (!deletedOrder) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error) {
+    console.error("Admin delete order error:", error);
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// ADMIN DASHBOARD STATS
+app.get("/api/admin/dashboard", async (req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments();
+    const totalOrders = await Order.countDocuments();
+    const totalUsers = await User.countDocuments();
+    const totalMessages = await Message.countDocuments();
+
+    const revenueResult = await Order.aggregate([
+      {
+        $match: {
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          revenue: {
+            $sum: {
+              $ifNull: ["$grandTotal", "$totalPrice"],
+            },
+          },
+        },
+      },
+    ]);
+
+    const pendingOrders = await Order.countDocuments({
+      orderStatus: {
+        $in: ["Processing", "Confirmed", "Pending", "pending"],
+      },
+    });
+
+    const lowStockProducts = await Product.countDocuments({
+      $or: [
+        {
+          stock: {
+            $lte: 5,
+          },
+        },
+        {
+          quantity: {
+            $lte: 5,
+          },
+        },
+        {
+          stockStatus: "Low Stock",
+        },
+      ],
+    });
+
+    const totalRevenue = revenueResult[0]?.revenue || 0;
+
+    const stats = {
+      totalProducts,
+      totalOrders,
+      totalUsers,
+      totalMessages,
+      totalRevenue,
+      revenue: totalRevenue,
+      pendingOrders,
+      lowStockProducts,
+    };
+
+    res.status(200).json({
+      success: true,
+
+      // new format
+      stats,
+
+      // old frontend compatibility
+      totalProducts,
+      totalOrders,
+      totalUsers,
+      totalMessages,
+      totalRevenue,
+      revenue: totalRevenue,
+      pendingOrders,
+      lowStockProducts,
+    });
+  } catch (error) {
+    console.error("Admin dashboard stats error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 // ADMIN DASHBOARD STATS
 app.get("/api/admin/dashboard", async (req, res) => {
   try {

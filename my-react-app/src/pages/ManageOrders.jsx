@@ -46,9 +46,15 @@ export default function ManageOrders() {
       }
 
       const data = await response.json();
-      setOrders(data);
+
+      const ordersData = Array.isArray(data)
+        ? data
+        : data.orders || data.data || [];
+
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
     } catch (err) {
       setError(err.message);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -58,16 +64,22 @@ export default function ManageOrders() {
     fetchOrders();
   }, []);
 
+  const safeOrders = Array.isArray(orders) ? orders : [];
+
   const getOrderStatus = (order) => {
-    return order.orderStatus || order.status || "Processing";
+    return order?.orderStatus || order?.status || "Processing";
   };
 
   const getPaymentStatus = (order) => {
-    return order.paymentStatus || "Pending";
+    return order?.paymentStatus || "Pending";
   };
 
   const getPaymentMethod = (order) => {
-    return order.paymentMethod || "Cash on Delivery";
+    return order?.paymentMethod || "Cash on Delivery";
+  };
+
+  const getOrderTotal = (order) => {
+    return Number(order?.grandTotal || order?.totalPrice || 0);
   };
 
   const updateOrderStatus = async (orderId, orderStatus) => {
@@ -89,13 +101,19 @@ export default function ManageOrders() {
         throw new Error("Failed to update order status");
       }
 
-      const updatedOrder = await response.json();
+      const data = await response.json();
 
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
+      const updatedOrder = data.order || data.data || data;
+
+      setOrders((prevOrders) => {
+        const safePreviousOrders = Array.isArray(prevOrders) ? prevOrders : [];
+
+        return safePreviousOrders.map((order) =>
           order._id === orderId ? updatedOrder : order
-        )
-      );
+        );
+      });
+
+      toast.success("Order status updated successfully.");
     } catch (err) {
       toast.error("Error updating order status: " + err.message);
     } finally {
@@ -122,13 +140,19 @@ export default function ManageOrders() {
         throw new Error("Failed to update payment status");
       }
 
-      const updatedOrder = await response.json();
+      const data = await response.json();
 
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
+      const updatedOrder = data.order || data.data || data;
+
+      setOrders((prevOrders) => {
+        const safePreviousOrders = Array.isArray(prevOrders) ? prevOrders : [];
+
+        return safePreviousOrders.map((order) =>
           order._id === orderId ? updatedOrder : order
-        )
-      );
+        );
+      });
+
+      toast.success("Payment status updated successfully.");
     } catch (err) {
       toast.error("Error updating payment status: " + err.message);
     } finally {
@@ -157,9 +181,13 @@ export default function ManageOrders() {
         throw new Error("Failed to delete order");
       }
 
-      setOrders((prevOrders) =>
-        prevOrders.filter((order) => order._id !== orderId)
-      );
+      setOrders((prevOrders) => {
+        const safePreviousOrders = Array.isArray(prevOrders) ? prevOrders : [];
+
+        return safePreviousOrders.filter((order) => order._id !== orderId);
+      });
+
+      toast.success("Order deleted successfully.");
     } catch (err) {
       toast.error("Error deleting order: " + err.message);
     } finally {
@@ -213,42 +241,43 @@ export default function ManageOrders() {
   };
 
   const getSearchableText = (order) => {
-    const productText =
-      order.orderItems
-        ?.map((item) => `${item.title} ${item.qty} ${item.price}`)
-        .join(" ") || "";
+    const orderItems = Array.isArray(order?.orderItems) ? order.orderItems : [];
+
+    const productText = orderItems
+      .map((item) => `${item.title} ${item.qty} ${item.price}`)
+      .join(" ");
 
     const deliveryText = [
-      order.deliveryInfo?.fullName,
-      order.deliveryInfo?.phone,
-      order.deliveryInfo?.region,
-      order.deliveryInfo?.city,
-      order.deliveryInfo?.building,
-      order.deliveryInfo?.area,
-      order.deliveryInfo?.address,
-      order.deliveryInfo?.label,
+      order?.deliveryInfo?.fullName,
+      order?.deliveryInfo?.phone,
+      order?.deliveryInfo?.region,
+      order?.deliveryInfo?.city,
+      order?.deliveryInfo?.building,
+      order?.deliveryInfo?.area,
+      order?.deliveryInfo?.address,
+      order?.deliveryInfo?.label,
     ]
       .filter(Boolean)
       .join(" ");
 
     return [
-      order._id,
-      order.customerName,
-      order.email,
-      order.phone,
+      order?._id,
+      order?.customerName,
+      order?.email,
+      order?.phone,
       getPaymentMethod(order),
       getPaymentStatus(order),
       getOrderStatus(order),
       productText,
       deliveryText,
-      order.totalPrice,
+      getOrderTotal(order),
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
   };
 
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = safeOrders.filter((order) => {
     const search = searchTerm.trim().toLowerCase();
 
     const matchesSearch =
@@ -274,17 +303,17 @@ export default function ManageOrders() {
     );
   });
 
-  const totalOrders = orders.length;
+  const totalOrders = safeOrders.length;
 
-  const pendingPayments = orders.filter(
+  const pendingPayments = safeOrders.filter(
     (order) => getPaymentStatus(order) === "Pending"
   ).length;
 
-  const paidOrders = orders.filter(
+  const paidOrders = safeOrders.filter(
     (order) => getPaymentStatus(order) === "Paid"
   ).length;
 
-  const processingOrders = orders.filter(
+  const processingOrders = safeOrders.filter(
     (order) => getOrderStatus(order) === "Processing"
   ).length;
 
@@ -302,7 +331,8 @@ export default function ManageOrders() {
           </h1>
 
           <p className="text-gray-500 text-sm mt-1">
-            Search, filter, verify payment, manage order status, and open VAT invoices.
+            Search, filter, verify payment, manage order status, and open VAT
+            invoices.
           </p>
         </div>
 
@@ -322,6 +352,7 @@ export default function ManageOrders() {
             <p className="text-xs font-black uppercase tracking-widest text-gray-400">
               Total Orders
             </p>
+
             <p className="text-3xl font-black text-gray-950 mt-2">
               {totalOrders}
             </p>
@@ -331,6 +362,7 @@ export default function ManageOrders() {
             <p className="text-xs font-black uppercase tracking-widest text-gray-400">
               Processing
             </p>
+
             <p className="text-3xl font-black text-amber-600 mt-2">
               {processingOrders}
             </p>
@@ -340,6 +372,7 @@ export default function ManageOrders() {
             <p className="text-xs font-black uppercase tracking-widest text-gray-400">
               Pending Payment
             </p>
+
             <p className="text-3xl font-black text-orange-600 mt-2">
               {pendingPayments}
             </p>
@@ -349,6 +382,7 @@ export default function ManageOrders() {
             <p className="text-xs font-black uppercase tracking-widest text-gray-400">
               Paid Orders
             </p>
+
             <p className="text-3xl font-black text-green-600 mt-2">
               {paidOrders}
             </p>
@@ -360,6 +394,7 @@ export default function ManageOrders() {
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Filter className="w-5 h-5 text-indigo-600" />
+
             <h2 className="font-black text-gray-950">
               Search & Filter Orders
             </h2>
@@ -425,7 +460,7 @@ export default function ManageOrders() {
               </span>{" "}
               of{" "}
               <span className="font-black text-gray-950">
-                {orders.length}
+                {safeOrders.length}
               </span>{" "}
               orders
             </p>
@@ -445,6 +480,7 @@ export default function ManageOrders() {
       {loading && (
         <div className="flex items-center justify-center p-12 bg-white rounded-[2rem] shadow-sm border border-gray-100">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+
           <span className="ml-3 text-gray-500 font-bold">
             Loading orders data...
           </span>
@@ -457,7 +493,7 @@ export default function ManageOrders() {
         </div>
       )}
 
-      {!loading && !error && orders.length === 0 && (
+      {!loading && !error && safeOrders.length === 0 && (
         <div className="p-12 text-center text-gray-400 text-sm font-bold bg-white border border-dashed border-gray-200 rounded-[2rem]">
           No orders have been placed yet.
         </div>
@@ -465,7 +501,7 @@ export default function ManageOrders() {
 
       {!loading &&
         !error &&
-        orders.length > 0 &&
+        safeOrders.length > 0 &&
         filteredOrders.length === 0 && (
           <div className="p-12 text-center text-gray-400 text-sm font-bold bg-white border border-dashed border-gray-200 rounded-[2rem]">
             No orders match your current search/filter.
@@ -479,6 +515,9 @@ export default function ManageOrders() {
             const paymentStatus = getPaymentStatus(order);
             const paymentMethod = getPaymentMethod(order);
             const isExpanded = expandedOrderId === order._id;
+            const orderItems = Array.isArray(order.orderItems)
+              ? order.orderItems
+              : [];
 
             return (
               <div
@@ -491,9 +530,11 @@ export default function ManageOrders() {
                       <p className="text-xs font-black uppercase tracking-widest text-gray-400">
                         Order ID
                       </p>
+
                       <p className="font-mono text-sm text-orange-600 font-black mt-1">
                         #{order._id?.substring(0, 10)}
                       </p>
+
                       <p className="text-xs text-gray-400 mt-2">
                         {order.createdAt
                           ? new Date(order.createdAt).toLocaleString()
@@ -530,21 +571,19 @@ export default function ManageOrders() {
                       </p>
 
                       <div className="mt-2 space-y-1">
-                        {order.orderItems?.slice(0, 2).map((item, index) => (
+                        {orderItems.slice(0, 2).map((item, index) => (
                           <p
                             key={index}
                             className="text-sm font-bold text-gray-800 line-clamp-1"
                           >
                             {item.title}{" "}
-                            <span className="text-gray-400">
-                              x{item.qty}
-                            </span>
+                            <span className="text-gray-400">x{item.qty}</span>
                           </p>
                         ))}
 
-                        {order.orderItems?.length > 2 && (
+                        {orderItems.length > 2 && (
                           <p className="text-xs text-indigo-600 font-black">
-                            +{order.orderItems.length - 2} more item(s)
+                            +{orderItems.length - 2} more item(s)
                           </p>
                         )}
                       </div>
@@ -578,7 +617,7 @@ export default function ManageOrders() {
                       </p>
 
                       <p className="text-xl font-black text-gray-950 mt-2">
-                        NPR {Number(order.totalPrice || 0).toLocaleString()}
+                        NPR {getOrderTotal(order).toLocaleString()}
                       </p>
 
                       <p className="text-xs text-gray-400 mt-1">
@@ -633,6 +672,7 @@ export default function ManageOrders() {
                       <div className="bg-white border border-gray-100 rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-4">
                           <MapPin className="w-5 h-5 text-emerald-600" />
+
                           <h3 className="font-black text-gray-950">
                             Delivery Information
                           </h3>
@@ -696,19 +736,38 @@ export default function ManageOrders() {
                             </span>{" "}
                             {order.deliveryInfo?.address || "N/A"}
                           </p>
+
+                          {order.deliveryDistanceKm !== undefined && (
+                            <p>
+                              <span className="font-black text-gray-900">
+                                Distance:
+                              </span>{" "}
+                              {Number(order.deliveryDistanceKm || 0)} km
+                            </p>
+                          )}
+
+                          {order.estimatedDelivery && (
+                            <p>
+                              <span className="font-black text-gray-900">
+                                Estimated Delivery:
+                              </span>{" "}
+                              {order.estimatedDelivery}
+                            </p>
+                          )}
                         </div>
                       </div>
 
                       <div className="bg-white border border-gray-100 rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-4">
                           <PackageCheck className="w-5 h-5 text-orange-600" />
+
                           <h3 className="font-black text-gray-950">
                             Ordered Products
                           </h3>
                         </div>
 
                         <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                          {order.orderItems?.map((item, index) => (
+                          {orderItems.map((item, index) => (
                             <div
                               key={index}
                               className="flex items-center gap-3 bg-slate-50 border border-gray-100 rounded-2xl p-3"
@@ -745,85 +804,90 @@ export default function ManageOrders() {
                       <div className="bg-white border border-gray-100 rounded-2xl p-5">
                         <div className="flex items-center gap-2 mb-4">
                           <Truck className="w-5 h-5 text-indigo-600" />
+
                           <h3 className="font-black text-gray-950">
                             Admin Controls
                           </h3>
                         </div>
 
                         <div className="space-y-4">
-                        <div className="bg-slate-50 border border-gray-100 rounded-2xl p-4">
-  <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
-    VAT Price Summary
-  </p>
+                          <div className="bg-slate-50 border border-gray-100 rounded-2xl p-4">
+                            <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
+                              VAT Price Summary
+                            </p>
 
-  {(() => {
-    const productTotal = Number(order.productSubtotal || 0);
+                            {(() => {
+                              const productTotal = Number(
+                                order.productSubtotal || 0
+                              );
 
-    const productWithoutVat = productTotal / 1.13;
+                              const productWithoutVat = productTotal / 1.13;
 
-    const vatOnly = productTotal - productWithoutVat;
+                              const vatOnly = productTotal - productWithoutVat;
 
-    const deliveryCharge = Number(order.deliveryCharge || 0);
+                              const deliveryCharge = Number(
+                                order.deliveryCharge || 0
+                              );
 
-    const grandTotal = productTotal + deliveryCharge;
+                              const grandTotal =
+                                Number(order.grandTotal || order.totalPrice) ||
+                                productTotal + deliveryCharge;
 
-    return (
-      <div className="space-y-2 text-sm">
+                              return (
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">
+                                      Product Price (Without VAT)
+                                    </span>
 
-        <div className="flex justify-between">
-          <span className="text-gray-500">
-            Product Price (Without VAT)
-          </span>
+                                    <span className="font-black">
+                                      NPR {productWithoutVat.toFixed(2)}
+                                    </span>
+                                  </div>
 
-          <span className="font-black">
-            NPR {productWithoutVat.toFixed(2)}
-          </span>
-        </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">
+                                      VAT 13%
+                                    </span>
 
-        <div className="flex justify-between">
-          <span className="text-gray-500">
-            VAT 13%
-          </span>
+                                    <span className="font-black">
+                                      NPR {vatOnly.toFixed(2)}
+                                    </span>
+                                  </div>
 
-          <span className="font-black">
-            NPR {vatOnly.toFixed(2)}
-          </span>
-        </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">
+                                      Product Total
+                                    </span>
 
-        <div className="flex justify-between">
-          <span className="text-gray-500">
-            Product Total
-          </span>
+                                    <span className="font-black">
+                                      NPR {productTotal.toLocaleString()}
+                                    </span>
+                                  </div>
 
-          <span className="font-black">
-            NPR {productTotal.toLocaleString()}
-          </span>
-        </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">
+                                      Delivery Charge
+                                    </span>
 
-        <div className="flex justify-between">
-          <span className="text-gray-500">
-            Delivery Charge
-          </span>
+                                    <span className="font-black">
+                                      NPR {deliveryCharge.toLocaleString()}
+                                    </span>
+                                  </div>
 
-          <span className="font-black">
-            NPR {deliveryCharge.toLocaleString()}
-          </span>
-        </div>
+                                  <div className="border-t border-gray-200 pt-2 flex justify-between">
+                                    <span className="font-black text-gray-900">
+                                      Grand Total
+                                    </span>
 
-        <div className="border-t border-gray-200 pt-2 flex justify-between">
-          <span className="font-black text-gray-900">
-            Grand Total
-          </span>
-
-          <span className="font-black text-gray-950 text-lg">
-            NPR {grandTotal.toLocaleString()}
-          </span>
-        </div>
-
-      </div>
-    );
-  })()}
-</div>
+                                    <span className="font-black text-gray-950 text-lg">
+                                      NPR {grandTotal.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
 
                           <div>
                             <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">

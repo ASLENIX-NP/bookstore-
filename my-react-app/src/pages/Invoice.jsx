@@ -31,17 +31,13 @@ export default function Invoice() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const isAdmin = Boolean(
-    localStorage.getItem("adminToken")
-  );
+  const isAdmin = Boolean(localStorage.getItem("adminToken"));
 
   useEffect(() => {
     document.body.classList.add("invoice-print-mode");
 
     return () => {
-      document.body.classList.remove(
-        "invoice-print-mode"
-      );
+      document.body.classList.remove("invoice-print-mode");
     };
   }, []);
 
@@ -55,12 +51,14 @@ export default function Invoice() {
           `http://localhost:5000/api/orders/${id}`
         );
 
-        setOrder(response.data);
+        const orderData =
+          response.data?.order ||
+          response.data?.data ||
+          response.data;
+
+        setOrder(orderData);
       } catch (err) {
-        console.error(
-          "Invoice fetch error:",
-          err
-        );
+        console.error("Invoice fetch error:", err);
 
         setError(
           err.response?.data?.error ||
@@ -99,13 +97,10 @@ export default function Invoice() {
           <AlertCircle className="w-6 h-6 shrink-0" />
 
           <div>
-            <h1 className="font-black">
-              Invoice Error
-            </h1>
+            <h1 className="font-black">Invoice Error</h1>
 
             <p className="text-sm mt-1">
-              {error ||
-                "Invoice not found."}
+              {error || "Invoice not found."}
             </p>
 
             <button
@@ -121,13 +116,12 @@ export default function Invoice() {
     );
   }
 
-  const paymentStatus =
-    order.paymentStatus || "Pending";
+  const paymentStatus = order?.paymentStatus || "Pending";
 
-  if (
-    paymentStatus !== "Paid" &&
-    !isAdmin
-  ) {
+  const isPaid =
+    String(paymentStatus).toLowerCase() === "paid";
+
+  if (!isPaid && !isAdmin) {
     return (
       <div className="min-h-screen bg-slate-100 px-4 py-12">
         <div className="max-w-3xl mx-auto bg-white border border-gray-100 rounded-[2rem] shadow-sm p-8 text-center">
@@ -141,13 +135,8 @@ export default function Invoice() {
 
           <p className="text-gray-500 mt-2">
             This order is currently marked as{" "}
-            <strong>
-              {paymentStatus}
-            </strong>
-            . Your VAT invoice will
-            be available after admin
-            marks the payment as
-            Paid.
+            <strong>{paymentStatus}</strong>. Your VAT invoice will be
+            available after admin marks the payment as Paid.
           </p>
 
           <Link
@@ -164,45 +153,26 @@ export default function Invoice() {
   const productSubtotal = roundMoney(
     order.productSubtotal ||
       order.orderItems?.reduce(
-        (total, item) =>
-          total +
-          Number(item.subtotal || 0),
+        (total, item) => total + Number(item.subtotal || 0),
         0
       )
   );
 
-  const deliveryCharge = roundMoney(
-    order.deliveryCharge || 0
-  );
+  const deliveryCharge = roundMoney(order.deliveryCharge || 0);
 
-  // VAT INCLUDED PRICE LOGIC
-  const taxableAmount = roundMoney(
-    productSubtotal / 1.13
-  );
+  const taxableAmount = roundMoney(productSubtotal / 1.13);
+  const vatAmount = roundMoney(productSubtotal - taxableAmount);
+  const grandTotal = roundMoney(productSubtotal + deliveryCharge);
 
-  const vatRate = 13;
-
-  const vatAmount = roundMoney(
-    productSubtotal - taxableAmount
-  );
-
-  const grandTotal = roundMoney(
-    productSubtotal + deliveryCharge
-  );
-
-  const invoiceNo = `VAT-${String(
-    order._id
-  )
+  const invoiceNo = `VAT-${String(order._id)
     .slice(-8)
     .toUpperCase()}`;
 
   return (
     <div className="invoice-wrapper min-h-screen bg-slate-100 py-8 px-4">
-
       <style>
         {`
           @media print {
-
             body {
               background: white !important;
             }
@@ -244,7 +214,6 @@ export default function Invoice() {
       </style>
 
       <div className="no-print max-w-5xl mx-auto mb-5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -266,9 +235,7 @@ export default function Invoice() {
       </div>
 
       <div className="invoice-sheet max-w-5xl mx-auto bg-white rounded-[1.5rem] shadow-xl border border-gray-100 p-8 sm:p-10">
-
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 border-b-2 border-gray-900 pb-6">
-
           <div>
             <h1 className="text-3xl font-black text-gray-950">
               {SELLER.name}
@@ -287,13 +254,11 @@ export default function Invoice() {
             </p>
 
             <p className="text-sm font-black text-gray-900 mt-2">
-              VAT/PAN No:{" "}
-              {SELLER.vatPan}
+              VAT/PAN No: {SELLER.vatPan}
             </p>
           </div>
 
           <div className="text-left sm:text-right">
-
             <div className="inline-flex items-center gap-2 bg-gray-950 text-white px-4 py-2 rounded-xl text-sm font-black mb-3">
               <ReceiptText className="w-4 h-4" />
               TAX INVOICE
@@ -301,32 +266,26 @@ export default function Invoice() {
 
             <p className="text-sm text-gray-600">
               Invoice No:{" "}
-              <span className="font-black">
-                {invoiceNo}
-              </span>
+              <span className="font-black">{invoiceNo}</span>
             </p>
 
             <p className="text-sm text-gray-600">
               Invoice Date:{" "}
               <span className="font-black">
                 {new Date(
-                  order.createdAt ||
-                    Date.now()
+                  order.createdAt || Date.now()
                 ).toLocaleDateString()}
               </span>
             </p>
 
             <p className="text-sm text-gray-600">
               Order ID:{" "}
-              <span className="font-black">
-                #{order._id}
-              </span>
+              <span className="font-black">#{order._id}</span>
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 py-6 border-b border-gray-200">
-
           <div>
             <h2 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-3">
               Buyer Details
@@ -334,30 +293,22 @@ export default function Invoice() {
 
             <p className="text-sm">
               <strong>Name:</strong>{" "}
-              {order.deliveryInfo
-                ?.fullName ||
+              {order.deliveryInfo?.fullName ||
                 order.customerName ||
                 "N/A"}
             </p>
 
             <p className="text-sm">
-              <strong>Email:</strong>{" "}
-              {order.email || "N/A"}
+              <strong>Email:</strong> {order.email || "N/A"}
             </p>
 
             <p className="text-sm">
               <strong>Phone:</strong>{" "}
-              {order.deliveryInfo
-                ?.phone ||
-                order.phone ||
-                "N/A"}
+              {order.deliveryInfo?.phone || order.phone || "N/A"}
             </p>
 
             <p className="text-sm">
-              <strong>
-                Buyer VAT/PAN:
-              </strong>{" "}
-              000000
+              <strong>Buyer VAT/PAN:</strong> 000000
             </p>
           </div>
 
@@ -367,63 +318,31 @@ export default function Invoice() {
             </h2>
 
             <p className="text-sm">
-              <strong>
-                Address:
-              </strong>{" "}
-              {
-                order.deliveryInfo
-                  ?.building
-              }
-              ,{" "}
-              {
-                order.deliveryInfo
-                  ?.area
-              }
-              ,{" "}
-              {
-                order.deliveryInfo
-                  ?.city
-              }
-              ,{" "}
-              {
-                order.deliveryInfo
-                  ?.region
-              }
+              <strong>Address:</strong>{" "}
+              {order.deliveryInfo?.building}, {order.deliveryInfo?.area},{" "}
+              {order.deliveryInfo?.city}, {order.deliveryInfo?.region}
             </p>
 
             <p className="text-sm">
-              <strong>
-                Payment Method:
-              </strong>{" "}
-              {order.paymentMethod ||
-                "Cash on Delivery"}
+              <strong>Payment Method:</strong>{" "}
+              {order.paymentMethod || "Cash on Delivery"}
             </p>
 
             <p className="text-sm">
-              <strong>
-                Payment Status:
-              </strong>{" "}
-              {paymentStatus}
+              <strong>Payment Status:</strong> {paymentStatus}
             </p>
 
             <p className="text-sm">
-              <strong>
-                Order Status:
-              </strong>{" "}
-              {order.orderStatus ||
-                order.status ||
-                "Processing"}
+              <strong>Order Status:</strong>{" "}
+              {order.orderStatus || order.status || "Processing"}
             </p>
           </div>
         </div>
 
         <div className="py-6">
-
           <table className="w-full border-collapse text-sm">
-
             <thead>
               <tr className="bg-gray-950 text-white">
-
                 <th className="border border-gray-300 px-3 py-3 text-left">
                   S.N.
                 </th>
@@ -447,104 +366,68 @@ export default function Invoice() {
             </thead>
 
             <tbody>
-              {order.orderItems?.map(
-                (item, index) => (
-                  <tr key={index}>
+              {order.orderItems?.map((item, index) => (
+                <tr key={index}>
+                  <td className="border border-gray-300 px-3 py-3">
+                    {index + 1}
+                  </td>
 
-                    <td className="border border-gray-300 px-3 py-3">
-                      {index + 1}
-                    </td>
+                  <td className="border border-gray-300 px-3 py-3">
+                    {item.title}
+                  </td>
 
-                    <td className="border border-gray-300 px-3 py-3">
-                      {item.title}
-                    </td>
+                  <td className="border border-gray-300 px-3 py-3 text-right">
+                    {item.qty}
+                  </td>
 
-                    <td className="border border-gray-300 px-3 py-3 text-right">
-                      {item.qty}
-                    </td>
+                  <td className="border border-gray-300 px-3 py-3 text-right">
+                    NPR {Number(item.price || 0).toLocaleString()}
+                  </td>
 
-                    <td className="border border-gray-300 px-3 py-3 text-right">
-                      NPR{" "}
-                      {Number(
-                        item.price || 0
-                      ).toLocaleString()}
-                    </td>
-
-                    <td className="border border-gray-300 px-3 py-3 text-right">
-                      NPR{" "}
-                      {Number(
-                        item.subtotal || 0
-                      ).toLocaleString()}
-                    </td>
-                  </tr>
-                )
-              )}
+                  <td className="border border-gray-300 px-3 py-3 text-right">
+                    NPR {Number(item.subtotal || 0).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
 
         <div className="flex justify-end">
-
           <div className="w-full sm:w-96 border border-gray-300 rounded-xl overflow-hidden">
-
             <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>
-                Product Price (Without VAT)
-              </span>
+              <span>Product Price (Without VAT)</span>
 
-              <strong>
-                NPR{" "}
-                {taxableAmount.toFixed(2)}
-              </strong>
+              <strong>NPR {taxableAmount.toFixed(2)}</strong>
             </div>
 
             <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>
-                VAT 13%
-              </span>
+              <span>VAT 13%</span>
 
-              <strong>
-                NPR{" "}
-                {vatAmount.toFixed(2)}
-              </strong>
+              <strong>NPR {vatAmount.toFixed(2)}</strong>
             </div>
 
             <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>
-                Product Total
-              </span>
+              <span>Product Total</span>
 
-              <strong>
-                NPR{" "}
-                {productSubtotal.toLocaleString()}
-              </strong>
+              <strong>NPR {productSubtotal.toLocaleString()}</strong>
             </div>
 
             <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>
-                Delivery Charge
-              </span>
+              <span>Delivery Charge</span>
 
-              <strong>
-                NPR{" "}
-                {deliveryCharge.toLocaleString()}
-              </strong>
+              <strong>NPR {deliveryCharge.toLocaleString()}</strong>
             </div>
 
             <div className="flex justify-between px-4 py-4 bg-gray-950 text-white">
-
-              <span className="font-black">
-                Grand Total
-              </span>
+              <span className="font-black">Grand Total</span>
 
               <strong className="text-xl">
-                NPR{" "}
-                {grandTotal.toLocaleString()}
+                NPR {grandTotal.toLocaleString()}
               </strong>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

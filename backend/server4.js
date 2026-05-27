@@ -376,8 +376,18 @@ app.get("/api/payments/card/cancel", async (req, res) => {
   }
 });
 
-// USER ORDER ROUTE ALIAS
-// Keep this because some frontend pages use /api/orders/user/:email
+// ADMIN: GET ALL ORDERS
+app.get("/api/orders", async (req, res) => {
+  try {
+    const orders = await Order.find({}).sort({ createdAt: -1 });
+
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// USER: GET ORDERS BY EMAIL
 app.get("/api/orders/user/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email || "")
@@ -401,7 +411,193 @@ app.get("/api/orders/user/:email", async (req, res) => {
   }
 });
 
-// ADMIN FEATURES: USERS
+// USER: CANCEL ORDER
+app.patch("/api/orders/:id/cancel", async (req, res) => {
+  try {
+    const { cancelReason } = req.body;
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    const currentOrderStatus = order.orderStatus || order.status || "Processing";
+    const currentPaymentStatus = order.paymentStatus || "Pending";
+
+    if (currentOrderStatus === "Cancelled") {
+      return res.status(400).json({
+        error: "This order is already cancelled",
+      });
+    }
+
+    if (currentOrderStatus === "Confirmed") {
+      return res.status(400).json({
+        error:
+          "This order has already been confirmed by admin and cannot be cancelled by user",
+      });
+    }
+
+    if (currentOrderStatus === "Completed") {
+      return res.status(400).json({
+        error: "Completed order cannot be cancelled",
+      });
+    }
+
+    if (currentPaymentStatus === "Paid") {
+      return res.status(400).json({
+        error:
+          "Paid orders cannot be cancelled directly. Please contact admin for refund/cancellation.",
+      });
+    }
+
+    order.orderStatus = "Cancelled";
+    order.status = "Cancelled";
+    order.cancelledAt = new Date();
+    order.cancelledBy = "User";
+    order.cancelReason = cancelReason || "Cancelled by customer";
+
+    if (order.paymentStatus !== "Paid") {
+      order.paymentStatus = "Failed";
+    }
+
+    const updatedOrder = await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      order: updatedOrder,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// GET ONE ORDER
+app.get("/api/orders/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// UPDATE ORDER STATUS
+app.patch("/api/orders/:id/status", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (req.body.orderStatus || req.body.status) {
+      const newStatus = req.body.orderStatus || req.body.status;
+
+      order.orderStatus = newStatus;
+      order.status = newStatus;
+    } else {
+      const newStatus =
+        order.status === "Processing" ? "Completed" : "Processing";
+
+      order.status = newStatus;
+      order.orderStatus = newStatus;
+    }
+
+    const updatedOrder = await order.save();
+
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// UPDATE PAYMENT STATUS
+app.patch("/api/orders/:id/payment", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const { paymentStatus, transactionId, paymentProof } = req.body;
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+
+      if (paymentStatus === "Paid" && !order.paidAt) {
+        order.paidAt = new Date();
+      }
+    }
+
+    if (transactionId !== undefined) {
+      order.transactionId = transactionId;
+    }
+
+    if (paymentProof !== undefined) {
+      order.paymentProof = paymentProof;
+    }
+
+    res.status(200).json(await order.save());
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// DELETE ORDER
+app.delete("/api/orders/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const deletedOrder = await Order.findByIdAndDelete(req.params.id);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// USER ROUTES
 app.get("/api/users", async (req, res) => {
   try {
     res.status(200).json(await User.find({}));
@@ -510,6 +706,187 @@ app.delete("/api/admin/messages/:id", async (req, res) => {
     });
   }
 });
+
+const getDashboardStats = async (req, res) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const [
+      totalOrders,
+      paidOrders,
+      pendingPayments,
+      failedPayments,
+      processingOrders,
+      confirmedOrders,
+      completedOrders,
+      cancelledOrders,
+      totalProducts,
+      outOfStockProducts,
+      totalUsers,
+      unreadMessages,
+      recentOrders,
+      paidOrderDocs,
+      todayPaidOrders,
+      topProducts,
+    ] = await Promise.all([
+      Order.countDocuments(),
+
+      Order.countDocuments({ paymentStatus: "Paid" }),
+
+      Order.countDocuments({ paymentStatus: "Pending" }),
+
+      Order.countDocuments({ paymentStatus: "Failed" }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Processing" }, { status: "Processing" }],
+      }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Confirmed" }, { status: "Confirmed" }],
+      }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Completed" }, { status: "Completed" }],
+      }),
+
+      Order.countDocuments({
+        $or: [{ orderStatus: "Cancelled" }, { status: "Cancelled" }],
+      }),
+
+      Product.countDocuments(),
+
+      Product.countDocuments({ stockStatus: "Out of Stock" }),
+
+      User.countDocuments(),
+
+      Message.countDocuments({ isRead: false }),
+
+      Order.find({})
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .select(
+          "customerName email paymentMethod paymentStatus orderStatus status totalPrice grandTotal createdAt orderItems"
+        ),
+
+      Order.find({ paymentStatus: "Paid" }).select(
+        "totalPrice grandTotal orderItems createdAt"
+      ),
+
+      Order.find({
+        paymentStatus: "Paid",
+        createdAt: { $gte: startOfToday },
+      }).select("totalPrice grandTotal orderItems createdAt"),
+
+      Order.aggregate([
+        {
+          $match: {
+            paymentStatus: "Paid",
+          },
+        },
+        {
+          $unwind: "$orderItems",
+        },
+        {
+          $group: {
+            _id: {
+              productId: "$orderItems.productId",
+              title: "$orderItems.title",
+            },
+            title: { $first: "$orderItems.title" },
+            image: { $first: "$orderItems.image" },
+            quantitySold: { $sum: "$orderItems.qty" },
+            revenue: { $sum: "$orderItems.subtotal" },
+          },
+        },
+        {
+          $sort: {
+            quantitySold: -1,
+          },
+        },
+        {
+          $limit: 5,
+        },
+      ]),
+    ]);
+
+    const totalRevenue = paidOrderDocs.reduce((total, order) => {
+      return total + Number(order.grandTotal || order.totalPrice || 0);
+    }, 0);
+
+    const todayRevenue = todayPaidOrders.reduce((total, order) => {
+      return total + Number(order.grandTotal || order.totalPrice || 0);
+    }, 0);
+
+    const totalItemsSold = paidOrderDocs.reduce((total, order) => {
+      const orderQty =
+        order.orderItems?.reduce((sum, item) => {
+          return sum + Number(item.qty || 0);
+        }, 0) || 0;
+
+      return total + orderQty;
+    }, 0);
+
+    const todayItemsSold = todayPaidOrders.reduce((total, order) => {
+      const orderQty =
+        order.orderItems?.reduce((sum, item) => {
+          return sum + Number(item.qty || 0);
+        }, 0) || 0;
+
+      return total + orderQty;
+    }, 0);
+
+    const stats = {
+      totalOrders,
+      paidOrders,
+      pendingPayments,
+      failedPayments,
+      processingOrders,
+      confirmedOrders,
+      completedOrders,
+      cancelledOrders,
+      totalProducts,
+      outOfStockProducts,
+      totalUsers,
+      unreadMessages,
+      totalRevenue,
+      revenue: totalRevenue,
+      todayRevenue,
+      totalItemsSold,
+      todayItemsSold,
+      todayOrders: todayPaidOrders.length,
+
+      // extra compatibility
+      pendingOrders: processingOrders + confirmedOrders,
+      lowStockProducts: outOfStockProducts,
+      totalMessages: unreadMessages,
+    };
+
+    res.status(200).json({
+      success: true,
+      stats,
+      recentOrders,
+      topProducts,
+
+      // old frontend compatibility
+      totalOrders,
+      totalProducts,
+      totalUsers,
+      totalMessages: unreadMessages,
+      totalRevenue,
+      revenue: totalRevenue,
+      pendingOrders: processingOrders + confirmedOrders,
+      lowStockProducts: outOfStockProducts,
+    });
+  } catch (error) {
+    console.error("Dashboard stats error:", error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// ADMIN DASHBOARD ROUTES
+app.get("/api/admin/dashboard-stats", getDashboardStats);
+app.get("/api/admin/dashboard", getDashboardStats);
 
 // REPORT ROUTES
 app.get("/api/admin/daily-report", async (req, res) => {
