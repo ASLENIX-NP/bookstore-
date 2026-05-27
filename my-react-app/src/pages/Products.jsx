@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Star,
   Eye,
+  Heart,
   Search,
   RotateCcw,
   BookOpen,
@@ -182,6 +183,9 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [wishlist, setWishlist] = useState(
+    JSON.parse(localStorage.getItem("wishlist")) || []
+  );
 
   const categories = Object.keys(categoryOptions);
 
@@ -263,6 +267,7 @@ export default function Products() {
       });
       return;
     }
+    
 
     const status = getStatus(product);
     const isOutOfStock = status.toLowerCase() === "out of stock";
@@ -402,36 +407,90 @@ export default function Products() {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-75" />
 
           <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur ${
-                  isOutOfStock
-                    ? "bg-red-50/95 text-red-600 border-red-100"
-                    : "bg-emerald-50/95 text-emerald-600 border-emerald-100"
-                }`}
-              >
-                {status}
-              </span>
+  <div className="flex flex-wrap gap-2">
+    <span
+      className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur ${
+        isOutOfStock
+          ? "bg-red-50/95 text-red-600 border-red-100"
+          : "bg-emerald-50/95 text-emerald-600 border-emerald-100"
+      }`}
+    >
+      {status}
+    </span>
 
-              {selectedCollection !== "all" && (
-                <span className="px-3 py-1 rounded-full text-[11px] font-black bg-white/90 text-slate-800 border border-white/70 backdrop-blur">
-                  {currentCollectionInfo.label}
-                </span>
-              )}
-            </div>
+    {selectedCollection !== "all" && (
+      <span className="px-3 py-1 rounded-full text-[11px] font-black bg-white/90 text-slate-800 border border-white/70 backdrop-blur">
+        {currentCollectionInfo.label}
+      </span>
+    )}
+  </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openProductDetails(product._id);
-              }}
-              className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center shadow-lg transition-all"
-              title="View Details"
-            >
-              <Eye className="w-5 h-5" />
-            </button>
-          </div>
+  <div className="flex gap-2">
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        openProductDetails(product._id);
+      }}
+      className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center shadow-lg transition-all"
+      title="View Details"
+    >
+      <Eye className="w-5 h-5" />
+    </button>
+
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          toast.error("Please login first!");
+          navigate("/login");
+          return;
+        }
+
+        const existing = wishlist.find(
+          (item) => item._id === product._id
+        );
+
+        let updatedWishlist = [];
+
+        if (existing) {
+          updatedWishlist = wishlist.filter(
+            (item) => item._id !== product._id
+          );
+
+          toast.success("Removed from wishlist");
+        } else {
+          updatedWishlist = [...wishlist, product];
+
+          toast.success("Added to wishlist");
+        }
+
+        setWishlist(updatedWishlist);
+
+        localStorage.setItem(
+          "wishlist",
+          JSON.stringify(updatedWishlist)
+        );
+
+        window.dispatchEvent(new Event("storage"));
+      }}
+      className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white flex items-center justify-center shadow-lg transition-all"
+      title="Wishlist"
+    >
+      <Heart
+        className={`w-5 h-5 transition-all ${
+          wishlist.find((item) => item._id === product._id)
+            ? "fill-red-500 text-red-500"
+            : "text-slate-700"
+        }`}
+      />
+    </button>
+  </div>
+</div>
 
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
             <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm">

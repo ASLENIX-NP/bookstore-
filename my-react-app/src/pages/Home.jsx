@@ -6,6 +6,7 @@ import {
   Loader2,
   ShoppingCart,
   Eye,
+  Heart,
   Star,
   Sparkles,
   Layers,
@@ -67,7 +68,9 @@ export default function Home() {
   const [newArrivalProducts, setNewArrivalProducts] = useState([]);
 
   const [loading, setLoading] = useState(true);
-
+  const [wishlist, setWishlist] = useState(
+    JSON.parse(localStorage.getItem("wishlist")) || []
+  );
   useEffect(() => {
     const sliderTimer = setInterval(() => {
       setCurrentSlide((prev) =>
@@ -223,17 +226,79 @@ export default function Home() {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              openProductDetails(product._id);
-            }}
-            className="absolute top-4 right-4 w-11 h-11 rounded-2xl bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center shadow-lg backdrop-blur transition-all"
-            title="View Details"
-          >
-            <Eye className="w-5 h-5" />
-          </button>
+          <div className="absolute top-4 right-4 flex gap-2">
+
+<button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    openProductDetails(product._id);
+  }}
+  className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center shadow-lg backdrop-blur transition-all"
+  title="View Details"
+>
+  <Eye className="w-5 h-5" />
+</button>
+
+<button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      toast.error("Please login first!");
+      navigate("/login");
+      return;
+    }
+
+    const currentWishlist = JSON.parse(
+      localStorage.getItem("wishlist") || "[]"
+    );
+
+    const exists = currentWishlist.find(
+      (item) => item._id === product._id
+    );
+
+    let updatedWishlist = [];
+
+    if (exists) {
+      updatedWishlist = currentWishlist.filter(
+        (item) => item._id !== product._id
+      );
+
+      toast.success("Removed from wishlist");
+    } else {
+      updatedWishlist = [...currentWishlist, product];
+
+      toast.success("Added to wishlist");
+    }
+
+    setWishlist(updatedWishlist);
+
+    localStorage.setItem(
+      "wishlist",
+      JSON.stringify(updatedWishlist)
+    );
+    
+    window.dispatchEvent(new Event("storage"));
+  }}
+  className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white flex items-center justify-center shadow-lg backdrop-blur transition-all"
+  title="Wishlist"
+>
+  <Heart
+    className={`w-5 h-5 ${
+      wishlist.find(
+        (item) => item._id === product._id
+      )
+        ? "fill-red-500 text-red-500"
+        : "text-slate-700"
+    }`}
+  />
+</button>
+
+</div>
 
           <div className="absolute bottom-4 left-4 right-4">
             <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm">

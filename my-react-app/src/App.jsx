@@ -13,6 +13,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 
 import Cart from "./pages/Cart.jsx";
+import Wishlist from "./pages/Wishlist";
 import CheckoutDelivery from "./pages/CheckoutDelivery";
 import CheckoutPayment from "./pages/CheckoutPayment";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -32,38 +33,54 @@ import ManageMessages from "./pages/ManageMessages";
 export default function App() {
   return (
     <BrowserRouter>
-    <ScrollToTop />
+      <ScrollToTop />
+
       <Routes>
         {/* CUSTOMER SIDE ROUTES */}
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
+
           <Route path="about" element={<About />} />
+
           <Route path="contact" element={<Contact />} />
+
           <Route path="products" element={<Products />} />
+
           <Route
             path="products/:id"
             element={<ProductDetails />}
           />
+
           <Route path="location" element={<Location />} />
+
           <Route path="cart" element={<Cart />} />
+
+          <Route path="wishlist" element={<Wishlist />} />
+
           <Route
             path="checkout/delivery"
             element={<CheckoutDelivery />}
           />
+
           <Route
             path="checkout/payment"
             element={<CheckoutPayment />}
           />
+
           <Route
             path="order-success"
             element={<OrderSuccess />}
           />
+
           <Route path="my-orders" element={<MyOrders />} />
+          <Route path="wishlist" element={<Wishlist />} />
+
           <Route path="invoice/:id" element={<Invoice />} />
         </Route>
 
         {/* AUTH ROUTES */}
         <Route path="/login" element={<Login />} />
+
         <Route path="/signup" element={<Signup />} />
 
         {/* FORGOT PASSWORD ROUTES */}

@@ -7,6 +7,7 @@ import {
   Menu,
   X,
   User,
+  Heart,
   LogOut,
   LogIn,
   LayoutDashboard,
@@ -245,22 +246,32 @@ export default function Layout() {
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={handleCartClick}
-                className="relative w-11 h-11 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all"
-                title="Cart"
-              >
-                <ShoppingCart className="w-5 h-5" />
 
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-950 text-[11px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center border-2 border-white">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
+<Link
+  to="/wishlist"
+  className="relative w-11 h-11 rounded-2xl bg-white border border-slate-200 hover:bg-red-50 text-slate-700 hover:text-red-500 flex items-center justify-center shadow-md transition-all"
+>
+  <Heart
+    className="w-5 h-5 text-red-500 fill-red-500"
+  />
+</Link>
 
-              <div className="hidden md:block relative">
+<button
+  type="button"
+  onClick={handleCartClick}
+  className="relative w-11 h-11 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all"
+  title="Cart"
+>
+  <ShoppingCart className="w-5 h-5" />
+
+  {cartCount > 0 && (
+    <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-950 text-[11px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center border-2 border-white">
+      {cartCount}
+    </span>
+  )}
+</button>
+
+<div className="hidden md:block relative">
                 {isAuthenticated ? (
                   <>
                     <button
