@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   LocateFixed,
   Loader2,
+  MapPinned,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import LocationPickerModal from "../components/LocationPickerModal";
 
 const emptyAddress = {
   fullName: "",
@@ -37,6 +39,7 @@ export default function CheckoutDelivery() {
   const [formData, setFormData] = useState(emptyAddress);
   const [deliveryPreview, setDeliveryPreview] = useState(null);
   const [deliveryPreviewLoading, setDeliveryPreviewLoading] = useState(false);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
 
   const getCheckoutItems = () => {
     try {
@@ -205,7 +208,7 @@ export default function CheckoutDelivery() {
           lng,
         }));
 
-        toast.success("Location added successfully.", {
+        toast.success("Current location added successfully.", {
           id: "location-loading",
         });
       },
@@ -220,6 +223,21 @@ export default function CheckoutDelivery() {
         maximumAge: 0,
       }
     );
+  };
+
+  const handleSelectOnMap = () => {
+    setMapPickerOpen(true);
+  };
+
+  const handleConfirmMapLocation = (location) => {
+    setFormData((prev) => ({
+      ...prev,
+      lat: location.lat,
+      lng: location.lng,
+    }));
+
+    setMapPickerOpen(false);
+    toast.success("Map location selected successfully.");
   };
 
   const validateForm = () => {
@@ -240,7 +258,9 @@ export default function CheckoutDelivery() {
     const lng = Number(formData.lng);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      toast.error("Please click Use Current Location for delivery calculation.");
+      toast.error(
+        "Please use current location or select delivery location on map."
+      );
       return false;
     }
 
@@ -333,7 +353,7 @@ export default function CheckoutDelivery() {
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       toast.error(
-        "This address has no location coordinates. Please edit it and click Use Current Location."
+        "This address has no delivery location. Please edit it and use current location or select on map."
       );
       return;
     }
@@ -362,7 +382,7 @@ export default function CheckoutDelivery() {
               </h1>
 
               <p className="text-gray-500 mt-2">
-                Select a saved location or add a new delivery address.
+                Use current location or select delivery destination on map.
               </p>
             </div>
 
@@ -463,12 +483,13 @@ export default function CheckoutDelivery() {
 
                     {hasLocation ? (
                       <p className="text-xs font-bold text-emerald-600">
-                        Location saved: {Number(address.lat).toFixed(5)},{" "}
+                        Delivery location saved:{" "}
+                        {Number(address.lat).toFixed(5)},{" "}
                         {Number(address.lng).toFixed(5)}
                       </p>
                     ) : (
                       <p className="text-xs font-bold text-red-500">
-                        Location missing. Edit and click Use Current Location.
+                        Delivery location missing. Edit and select location.
                       </p>
                     )}
                   </div>
@@ -500,6 +521,7 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Full Name
                 </label>
+
                 <input
                   type="text"
                   name="fullName"
@@ -514,6 +536,7 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Phone Number
                 </label>
+
                 <input
                   type="text"
                   name="phone"
@@ -528,13 +551,14 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Region
                 </label>
+
                 <input
                   type="text"
                   name="region"
                   value={formData.region}
                   onChange={handleChange}
                   className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="Example: Bagmati"
+                  placeholder="Example: Gandaki"
                 />
               </div>
 
@@ -542,13 +566,14 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   City
                 </label>
+
                 <input
                   type="text"
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
                   className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="Example: Kathmandu"
+                  placeholder="Example: Pokhara"
                 />
               </div>
 
@@ -556,6 +581,7 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Building / House / Street / Floor
                 </label>
+
                 <input
                   type="text"
                   name="building"
@@ -570,6 +596,7 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Area
                 </label>
+
                 <input
                   type="text"
                   name="area"
@@ -584,6 +611,7 @@ export default function CheckoutDelivery() {
                 <label className="block text-xs font-black uppercase tracking-widest text-gray-400 mb-2">
                   Address Details
                 </label>
+
                 <textarea
                   name="address"
                   value={formData.address}
@@ -596,32 +624,59 @@ export default function CheckoutDelivery() {
 
               <div className="sm:col-span-2">
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
                     <div>
                       <p className="text-sm font-black text-slate-900">
                         Delivery Location Coordinates
                       </p>
 
                       <p className="text-xs text-slate-500 mt-1">
-                        Required for distance-based delivery charge.
+                        Choose the exact delivery destination for distance-based
+                        delivery charge.
                       </p>
 
-                      {formData.lat && formData.lng && (
+                      {formData.lat && formData.lng ? (
                         <p className="text-xs font-bold text-emerald-600 mt-2">
-                          Location added: {Number(formData.lat).toFixed(5)},{" "}
+                          Location selected: {Number(formData.lat).toFixed(5)},{" "}
                           {Number(formData.lng).toFixed(5)}
+                        </p>
+                      ) : (
+                        <p className="text-xs font-bold text-red-500 mt-2">
+                          No delivery location selected yet.
                         </p>
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleUseCurrentLocation}
-                      className="inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-sm font-black transition-all"
-                    >
-                      <LocateFixed className="w-4 h-4" />
-                      Use Current Location
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        className="inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-sm font-black transition-all"
+                      >
+                        <LocateFixed className="w-4 h-4" />
+                        Use Current Location
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSelectOnMap}
+                        className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl text-sm font-black transition-all"
+                      >
+                        <MapPinned className="w-4 h-4" />
+                        Select on Map
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 bg-white border border-slate-100 rounded-2xl p-4 text-xs text-slate-500 leading-relaxed">
+                    <span className="font-black text-slate-800">
+                      Example:
+                    </span>{" "}
+                    If you are in Kathmandu but want delivery in Pokhara, click{" "}
+                    <span className="font-black text-indigo-600">
+                      Select on Map
+                    </span>{" "}
+                    and choose the Pokhara delivery location.
                   </div>
                 </div>
               </div>
@@ -752,7 +807,8 @@ export default function CheckoutDelivery() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 font-bold">
-              Select an address with saved location coordinates to calculate delivery.
+              Select an address with saved delivery location to calculate
+              delivery.
             </p>
           )}
         </div>
@@ -762,8 +818,10 @@ export default function CheckoutDelivery() {
             <p className="text-sm font-black text-gray-950">
               Ready to continue?
             </p>
+
             <p className="text-sm text-gray-500">
-              Your selected delivery address will be used for this order.
+              Your selected delivery address and map location will be used for
+              this order.
             </p>
           </div>
 
@@ -777,6 +835,20 @@ export default function CheckoutDelivery() {
           </button>
         </div>
       </div>
+
+      <LocationPickerModal
+        open={mapPickerOpen}
+        onClose={() => setMapPickerOpen(false)}
+        onConfirm={handleConfirmMapLocation}
+        initialLocation={
+          formData.lat && formData.lng
+            ? {
+                lat: Number(formData.lat),
+                lng: Number(formData.lng),
+              }
+            : null
+        }
+      />
     </div>
   );
 }
