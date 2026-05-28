@@ -492,8 +492,8 @@ export default function Home() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="order-1 lg:order-1 lg:col-span-7">
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur">
                 <Sparkles className="w-4 h-4" />
                 Premium Bookstore Experience
@@ -525,32 +525,9 @@ export default function Home() {
                   Visit Store
                 </Link>
               </div>
-
-              <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
-                  <p className="text-3xl font-black text-white">100%</p>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Trusted checkout flow
-                  </p>
-                </div>
-
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
-                  <p className="text-3xl font-black text-white">VAT</p>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Invoice-ready orders
-                  </p>
-                </div>
-
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
-                  <p className="text-3xl font-black text-white">Fast</p>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Delivery processing
-                  </p>
-                </div>
-              </div>
             </div>
 
-            <div className="lg:col-span-5">
+            <div className="order-2 lg:order-2 lg:col-span-5">
               <div className="relative">
                 <div className="absolute -inset-4 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3rem]" />
 
@@ -595,6 +572,29 @@ export default function Home() {
                     />
                   ))}
                 </div>
+                </div>
+                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
+  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
+    <p className="text-3xl font-black text-white">100%</p>
+    <p className="text-sm text-slate-300 mt-1">
+      Trusted checkout flow
+    </p>
+  </div>
+
+  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
+    <p className="text-3xl font-black text-white">VAT</p>
+    <p className="text-sm text-slate-300 mt-1">
+      Invoice-ready orders
+    </p>
+  </div>
+
+  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
+    <p className="text-3xl font-black text-white">Fast</p>
+    <p className="text-sm text-slate-300 mt-1">
+      Delivery processing
+    </p>
+  </div>
+                
               </div>
             </div>
           </div>
