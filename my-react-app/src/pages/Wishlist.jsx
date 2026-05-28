@@ -6,13 +6,17 @@ export default function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
 
   useEffect(() => {
-    const savedWishlist =
-      JSON.parse(localStorage.getItem("wishlist")) || [];
+    const savedWishlist = JSON.parse(
+      localStorage.getItem("wishlist") || "[]"
+    );
 
     setWishlist(savedWishlist);
   }, []);
 
-  const removeFromWishlist = (id) => {
+  const removeFromWishlist = (event, id) => {
+    event.preventDefault();
+    event.stopPropagation();
+
     const updatedWishlist = wishlist.filter(
       (item) => item._id !== id
     );
@@ -24,7 +28,7 @@ export default function Wishlist() {
       JSON.stringify(updatedWishlist)
     );
 
-    window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new Event("wishlistUpdated"));
   };
 
   return (
@@ -81,8 +85,9 @@ export default function Wishlist() {
                   />
 
                   <button
-                    onClick={() =>
-                      removeFromWishlist(product._id)
+                    type="button"
+                    onClick={(event) =>
+                      removeFromWishlist(event, product._id)
                     }
                     className="absolute top-4 right-4 w-11 h-11 rounded-2xl bg-white shadow-lg flex items-center justify-center"
                   >
