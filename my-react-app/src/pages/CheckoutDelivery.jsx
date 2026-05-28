@@ -13,7 +13,7 @@ import {
   Loader2,
   MapPinned,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import LocationPickerModal from "../components/LocationPickerModal";
 
 const emptyAddress = {
@@ -372,10 +372,17 @@ export default function CheckoutDelivery() {
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div>
-              <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
-                <MapPin className="w-4 h-4" />
-                Delivery Information
-              </div>
+            <Link
+  to="/products"
+  className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-orange-500 transition-colors mb-4"
+>
+  ← Back to Products
+</Link>
+
+<div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4">
+  <MapPin className="w-4 h-4" />
+  Delivery Information
+</div>
 
               <h1 className="text-3xl md:text-4xl font-black text-gray-950">
                 Choose Delivery Address
