@@ -56,9 +56,8 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4 py-4">
-      <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
-
-        <div className="hidden lg:flex relative bg-slate-950 text-white p-10 flex-col justify-center">
+    <div className="w-full max-w-7xl min-h-[820px] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
+    <div className="hidden lg:flex relative bg-slate-950 text-white p-20 flex-col justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-amber-700/80" />
 
           <div className="relative z-10">
@@ -90,8 +89,8 @@ const AdminLogin = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-center p-5 sm:p-8">
-          <div className="w-full max-w-md">
+        <div className="flex items-center justify-center p-10 sm:p-16">
+        <div className="w-full max-w-xl">
 
             <Link
               to="/"
