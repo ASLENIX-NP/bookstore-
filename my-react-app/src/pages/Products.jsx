@@ -671,16 +671,65 @@ export default function Products() {
                 </label>
 
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 z-10" />
 
-                  <input
-                    type="text"
-                    placeholder="Search by product name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
-                  />
-                </div>
+  <input
+    type="text"
+    placeholder="Search by product name..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+  />
+
+  {searchTerm.trim() !== "" && (
+    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
+      {products
+        .filter((product) =>
+          String(product.name || "")
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase())
+        )
+        .slice(0, 6)
+        .map((product) => (
+          <button
+            key={product._id}
+            type="button"
+            onClick={() => {
+              setSearchTerm(product.name);
+              openProductDetails(product._id);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-all border-b border-slate-100 last:border-b-0 text-left"
+          >
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-12 h-12 rounded-xl object-cover"
+            />
+
+            <div className="flex-1">
+              <p className="text-sm font-black text-slate-900">
+                {product.name}
+              </p>
+
+              <p className="text-xs text-slate-500">
+                NPR {Number(product.price || 0).toLocaleString()}
+              </p>
+            </div>
+          </button>
+        ))}
+
+      {products.filter((product) =>
+        String(product.name || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
+      ).length === 0 && (
+        <div className="px-4 py-4 text-sm text-slate-500">
+          No products found
+        </div>
+      )}
+    </div>
+  )}
+</div>
               </div>
 
               <div className="lg:col-span-2">

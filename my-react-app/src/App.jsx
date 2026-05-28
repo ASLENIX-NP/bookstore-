@@ -21,6 +21,7 @@ import MyOrders from "./pages/MyOrders";
 import Invoice from "./pages/Invoice";
 
 // ADMIN PANEL IMPORTS
+import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import ManageBooks from "./pages/ManageBooks";
@@ -94,53 +95,55 @@ export default function App() {
           element={<ForgotPassword />}
         />
 
-        {/* ADMIN PANEL ROUTES */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route
-            index
-            element={
-              <Navigate
-                to="/admin/dashboard"
-                replace
-              />
-            }
-          />
+       {/* ADMIN PANEL ROUTES */}
+<Route path="/login/admin" element={<AdminLogin />} />
 
-          <Route
-            path="dashboard"
-            element={<AdminDashboard />}
-          />
+<Route path="/admin" element={<AdminLayout />}>
+  <Route
+    index
+    element={
+      <Navigate
+        to="/admin/dashboard"
+        replace
+      />
+    }
+  />
 
-          <Route
-            path="books"
-            element={<ManageBooks />}
-          />
+  <Route
+    path="dashboard"
+    element={<AdminDashboard />}
+  />
 
-          <Route
-            path="reports"
-            element={<Reports />}
-          />
+  <Route
+    path="books"
+    element={<ManageBooks />}
+  />
 
-          <Route
-            path="orders"
-            element={<ManageOrders />}
-          />
+  <Route
+    path="reports"
+    element={<Reports />}
+  />
 
-          <Route
-            path="users"
-            element={<ManageUsers />}
-          />
+  <Route
+    path="orders"
+    element={<ManageOrders />}
+  />
 
-          <Route
-            path="settings"
-            element={<AdminSettings />}
-          />
+  <Route
+    path="users"
+    element={<ManageUsers />}
+  />
 
-          <Route
-            path="messages"
-            element={<ManageMessages />}
-          />
-        </Route>
+  <Route
+    path="settings"
+    element={<AdminSettings />}
+  />
+
+  <Route
+    path="messages"
+    element={<ManageMessages />}
+  />
+</Route>
       </Routes>
     </BrowserRouter>
   );

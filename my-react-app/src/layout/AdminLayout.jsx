@@ -120,10 +120,10 @@ export default function AdminLayout() {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 z-50 transform transition-transform duration-300 lg:hidden ${
-          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+  className={`fixed left-0 top-0 bottom-0 w-72 max-w-[85vw] bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 z-50 transform transition-transform duration-300 lg:hidden overflow-y-auto ${
+    mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+  }`}
+>
         <div className="flex items-center justify-between px-5 py-5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <BookMarked className="w-6 h-6 text-orange-500" />
@@ -164,8 +164,20 @@ export default function AdminLayout() {
             );
           })}
         </nav>
+        <div className="p-5 border-t border-slate-800">
+  <button
+    type="button"
+    onClick={() => {
+      navigate('/');
+      setMobileSidebarOpen(false);
+    }}
+    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+  >
+    <ArrowLeft className="w-4 h-4" />
+    Back to Shop
+  </button>
+</div>
       </aside>
-
       {/* Main Content */}
       <div className="min-h-screen lg:pl-64 flex flex-col">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between lg:justify-end px-4 sm:px-6 lg:px-8 shrink-0 sticky top-0 z-30">
