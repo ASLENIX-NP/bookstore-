@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import Barcode from "react-barcode";
 import {
   PlusCircle,
   Layers,
@@ -84,7 +85,7 @@ export default function ManageBooks() {
     salePrice: "",
     image: "",
     stockStatus: "In Stock",
-
+    stock: "",
     description: "",
 
     featured: false,
@@ -137,6 +138,7 @@ export default function ManageBooks() {
       data.append("price", formData.price);
       data.append("salePrice", formData.salePrice);
       data.append("stockStatus", formData.stockStatus);
+      data.append("stock", formData.stock);
       data.append("description", formData.description);
   
       data.append("featured", formData.featured);
@@ -166,6 +168,7 @@ export default function ManageBooks() {
         price: "",
         salePrice: "",
         stockStatus: "In Stock",
+        stock: "",
         image: "",
         description: "",
         featured: false,
@@ -393,6 +396,27 @@ export default function ManageBooks() {
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
               />
             </div>
+
+            {/* STOCK QUANTITY */}
+
+<div>
+  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+    Stock Quantity
+  </label>
+
+  <input
+    type="number"
+    placeholder="50"
+    value={formData.stock}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        stock: e.target.value,
+      })
+    }
+    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
+  />
+</div>
 
             {/* SALE PRICE */}
 
@@ -647,6 +671,13 @@ export default function ManageBooks() {
                     <p className="text-xs text-gray-400">
                       {book.subcategory}
                     </p>
+                    <p className="text-xs text-indigo-500 mt-1">
+  SKU: {book.sku}
+</p>
+
+<p className="text-xs text-orange-500">
+<Barcode value={book.barcode} />
+</p>
 
                     {/* DESCRIPTION */}
 
@@ -663,7 +694,13 @@ export default function ManageBooks() {
                     <p className="font-bold text-gray-800">
                       NPR {book.price}
                     </p>
+                    <p className="text-xs text-gray-500 mt-1">
+  Stock Left: {book.stock || 0}
+</p>
 
+<p className="text-xs text-gray-400">
+  Sold: {book.sold || 0}
+</p>
                     <button
                       onClick={() =>
                         handleToggleStock(book)

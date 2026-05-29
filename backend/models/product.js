@@ -1,53 +1,31 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const productCategories = [
-  'Academic Books',
-  'Novels & Literature',
+  "Academic Books",
+  "Novels & Literature",
   "Children's Books",
-  'Religious Books',
-  'Notebooks, Copies & Files',
-  'Magazines & Newspapers',
-  'Stationery Items',
+  "Religious Books",
+  "Notebooks, Copies & Files",
+  "Magazines & Newspapers",
+  "Stationery Items",
 ];
 
 const reviewSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    email: {
-      type: String,
-      required: false,
-      trim: true,
-      lowercase: true,
-    },
-
-    rating: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5,
-    },
-
-    comment: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, required: true, trim: true },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 const productSchema = new mongoose.Schema(
   {
+    // ================= BASIC INFO =================
     name: {
       type: String,
-      required: [true, 'A product must have a name'],
+      required: [true, "A product must have a name"],
       trim: true,
     },
 
@@ -59,73 +37,91 @@ const productSchema = new mongoose.Schema(
 
     subcategory: {
       type: String,
-      required: false,
-      default: 'General',
+      default: "General",
       trim: true,
     },
 
-    price: {
-      type: Number,
-      required: [true, 'A product must have a price'],
-      min: [0, 'Price cannot be negative'],
+    description: {
+      type: String,
+      default: "No description provided for this catalog entry.",
     },
 
-    // FLASH SALE PRICE
+    image: {
+      type: String,
+      default:
+        "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500",
+    },
+
+    // ================= PRICING =================
+    price: {
+      type: Number,
+      required: [true, "A product must have a price"],
+      min: 0,
+    },
+
     salePrice: {
       type: Number,
       default: 0,
     },
 
-    image: {
-      type: String,
-      required: false,
-      default:
-        'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500',
+    costPrice: {
+      type: Number,
+      default: 0,
     },
 
-    description: {
-      type: String,
-      required: false,
-      default:
-        'No description provided for this catalog entry.',
+    discount: {
+      type: Number,
+      default: 0,
     },
 
-    // FEATURED PRODUCT
-    featured: {
-      type: Boolean,
-      default: false,
+    // ================= STOCK SYSTEM =================
+    stock: {
+      type: Number,
+      default: 0,
     },
 
-    // FLASH SALE
-    flashSale: {
-      type: Boolean,
-      default: false,
+    sold: {
+      type: Number,
+      default: 0,
     },
 
-    // BEST SELLER
-    bestSeller: {
-      type: Boolean,
-      default: false,
-    },
-
-    // NEW ARRIVAL
-    newArrival: {
-      type: Boolean,
-      default: false,
+    lowStockAlert: {
+      type: Number,
+      default: 5,
     },
 
     stockStatus: {
       type: String,
-      default: 'In Stock',
-      enum: ['In Stock', 'Out of Stock'],
+      enum: ["In Stock", "Out of Stock", "Low Stock"],
+      default: "In Stock",
     },
 
     statusFlag: {
       type: String,
-      default: 'In Stock',
-      enum: ['In Stock', 'Out of Stock'],
+      enum: ["In Stock", "Out of Stock"],
+      default: "In Stock",
     },
 
+    // ================= BARCODE SYSTEM =================
+    barcode: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+
+    sku: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+
+    // ================= PRODUCT FLAGS =================
+    featured: { type: Boolean, default: false },
+    flashSale: { type: Boolean, default: false },
+    bestSeller: { type: Boolean, default: false },
+    newArrival: { type: Boolean, default: false },
+
+    // ================= REVIEWS =================
     rating: {
       type: Number,
       default: 0,
@@ -140,6 +136,37 @@ const productSchema = new mongoose.Schema(
       type: [reviewSchema],
       default: [],
     },
+
+    // ================= ERP / POS SYSTEM =================
+    lastSoldAt: {
+      type: Date,
+      default: null,
+    },
+
+    totalRevenue: {
+      type: Number,
+      default: 0,
+    },
+
+    profitMargin: {
+      type: Number,
+      default: 0,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
+    barcodeType: {
+      type: String,
+      default: "CODE128",
+    },
+
+    taxRate: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -147,7 +174,6 @@ const productSchema = new mongoose.Schema(
 );
 
 const Product =
-  mongoose.models.Product ||
-  mongoose.model('Product', productSchema);
+  mongoose.models.Product || mongoose.model("Product", productSchema);
 
 module.exports = Product;

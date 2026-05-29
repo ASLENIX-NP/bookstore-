@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { ScanLine } from "lucide-react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -54,6 +55,7 @@ export default function AdminLayout() {
     { to: '/admin/orders', label: 'Orders Status', icon: ShoppingBag },
     { to: '/admin/users', label: 'Users List', icon: Users },
     { to: '/admin/messages', label: 'Messages', icon: Mail },
+    { to: '/admin/pos', label: 'POS System', icon: ScanLine },
   ];
 
   const DesktopSidebarContent = () => (

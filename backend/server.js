@@ -1,14 +1,14 @@
 ﻿const dns = require("dns");
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-const path = require("path");
+const path = require("path")
 
 require("dotenv").config({
   path: path.join(__dirname, ".env"),
 });
-
 const crypto = require("crypto");
 const express = require("express");
+const QRCode = require("qrcode");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
@@ -17,12 +17,14 @@ const calculateDelivery = require("./utils/deliveryCalculator");
 
 const imagekit = require("./config/imagekit");
 
+
 require("dotenv").config({
   path: path.join(__dirname, ".env"),
 });
 
 // IMPORT MODELS
-const Product = require("./models/product");
+const Product = require("./models/Product");
+const { v4: uuidv4 } = require("uuid");
 const AdminModel = require("./models/Admin");
 const User = require("./models/User");
 const Message = require("./models/Message");
@@ -282,7 +284,23 @@ const orderSchema = new mongoose.Schema(
 );
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+const getNextInvoiceNumber = async () => {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
 
+  const lastOrder = await Order.findOne({
+    createdAt: { $gte: startOfDay },
+  }).sort({ createdAt: -1 });
+
+  if (!lastOrder || !lastOrder.invoiceNumber) {
+    return "INV-00001";
+  }
+
+  const lastNum = parseInt(lastOrder.invoiceNumber.replace("INV-", ""));
+  const nextNum = lastNum + 1;
+
+  return `INV-${String(nextNum).padStart(5, "0")}`;
+};
 // POLICY SCHEMA & MODEL
 const policySchema = new mongoose.Schema(
   {
@@ -737,6 +755,84 @@ app.get("/api/products/:id", async (req, res) => {
     });
   }
 });
+app.get("/api/products/barcode/:barcode", async (req, res) => {
+  try {
+
+    const product = await Product.findOne({
+      barcode: req.params.barcode.trim(),
+    }).lean();
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    res.json(product);
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+});
+
+app.post("/api/products/pos-checkout", async (req, res) => {
+  try {
+    const { cart, paymentMethod } = req.body;
+
+    if (!cart || cart.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
+    }
+
+    let total = 0;
+
+    // convert frontend cart → backend schema
+    const cleanedItems = cart.map((item) => {
+      const qty = item.quantity || 1;
+      const price = item.price || 0;
+
+      total += price * qty;
+
+      return {
+        title: item.name,
+        qty: qty,
+        price: price,
+      };
+    });
+
+    // reduce stock
+    for (const item of cart) {
+      await Product.findByIdAndUpdate(item._id, {
+        $inc: { stock: -item.quantity },
+      });
+    }
+
+    const order = await Order.create({
+      email: "pos@system.com",
+      orderItems: cleanedItems,
+      totalPrice: total,
+      grandTotal: total,
+      paymentMethod,
+      paymentStatus: "Paid",
+      status: "confirmed",
+    });
+
+    return res.json({
+      success: true,
+      orderId: order._id,
+    });
+
+  } catch (error) {
+    console.log("POS CHECKOUT ERROR:", error);
+    res.status(500).json({
+      message: "Checkout failed",
+      error: error.message,
+    });
+  }
+});
 
 app.post("/api/products", async (req, res) => {
   try {
@@ -758,9 +854,30 @@ app.post("/api/products", async (req, res) => {
       imageUrl = uploadResponse.url;
     }
 
+    const barcode = crypto.randomBytes(6).toString("hex");
+
+    const sku = uuidv4().slice(0, 8).toUpperCase();
+    
+    const stockValue = Number(req.body.stock || 0);
+    
     const product = new Product({
       ...req.body,
+    
       image: imageUrl,
+    
+      barcode,
+    
+      sku,
+    
+      stock: stockValue,
+    
+      sold: 0,
+    
+      stockStatus:
+        stockValue <= 0 ? "Out of Stock" : "In Stock",
+    
+      statusFlag:
+        stockValue <= 0 ? "Out of Stock" : "In Stock",
     });
 
     await product.save();
@@ -1009,9 +1126,16 @@ app.post("/api/orders", async (req, res) => {
 
     const selectedPaymentMethod = paymentMethod || "Cash on Delivery";
     const selectedPaymentMethodId = paymentMethodId || "cod";
+    const invoiceNumber = await getNextInvoiceNumber();
 
+    const invoiceQR = await QRCode.toDataURL(
+      `Invoice: ${invoiceNumber} | Total: ${totalPrice}`
+    );
     const newOrder = await Order.create({
+      invoiceNumber,
+invoiceQR,
       email: String(email).toLowerCase().trim(),
+      invoiceNumber: await getNextInvoiceNumber(),
 
       customerName,
 

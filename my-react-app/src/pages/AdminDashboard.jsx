@@ -15,6 +15,16 @@ import {
   AlertTriangle,
   Truck,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -38,6 +48,10 @@ export default function AdminDashboard() {
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
+  const revenueChartData = recentOrders.map((o) => ({
+    date: new Date(o.createdAt).toLocaleDateString(),
+    revenue: o.totalPrice || 0,
+  }));
   const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -256,7 +270,6 @@ export default function AdminDashboard() {
                       {card.subtitle}
                     </p>
                   </div>
-
                   <div
                     className={`w-12 h-12 rounded-2xl flex items-center justify-center ${card.color}`}
                   >
@@ -266,7 +279,60 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
+{/* 📊 ERP CHART SECTION */}
+<div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
 
+  {/* REVENUE CHART */}
+  <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+    <h2 className="text-lg font-black mb-4">
+      📈 Revenue Trend
+    </h2>
+
+    <ResponsiveContainer width="100%" height={250}>
+      <LineChart data={revenueChartData}>
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Tooltip />
+        <Line
+          type="monotone"
+          dataKey="revenue"
+          stroke="#f97316"
+          strokeWidth={3}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+
+  {/* ORDERS CHART */}
+  <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+    <h2 className="text-lg font-black mb-4">
+      📦 Orders Overview
+    </h2>
+
+    <ResponsiveContainer width="100%" height={250}>
+      <BarChart data={revenueChartData}>
+        <XAxis dataKey="date" />
+        <YAxis />
+        <Tooltip />
+        <Bar dataKey="revenue" fill="#4f46e5" />
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+
+</div>
+<div className="bg-green-50 border border-green-200 rounded-2xl p-5 mb-6">
+  <h2 className="font-black text-green-800">
+    💰 Estimated Profit (ERP)
+  </h2>
+
+  <p className="text-sm text-green-700 mt-2">
+    Profit = Revenue - Cost Price
+  </p>
+
+  <h3 className="text-2xl font-black mt-2 text-green-900">
+    NPR {(stats.totalRevenue * 0.35).toFixed(0)}
+  </h3>
+</div>
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
             {secondaryCards.map((card, index) => (
               <div

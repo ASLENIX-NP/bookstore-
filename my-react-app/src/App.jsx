@@ -20,11 +20,13 @@ import OrderSuccess from "./pages/OrderSuccess";
 import MyOrders from "./pages/MyOrders";
 import Invoice from "./pages/Invoice";
 
+
 // ADMIN PANEL IMPORTS
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import ManageBooks from "./pages/ManageBooks";
+import POS from "./pages/POS";
 import Reports from "./pages/Reports";
 import ManageOrders from "./pages/ManageOrders";
 import ManageUsers from "./pages/ManageUsers";
@@ -95,54 +97,67 @@ export default function App() {
           element={<ForgotPassword />}
         />
 
-       {/* ADMIN PANEL ROUTES */}
+      {/* ADMIN PANEL ROUTES */}
 <Route path="/login/admin" element={<AdminLogin />} />
 
 <Route path="/admin" element={<AdminLayout />}>
+
+  {/* redirect admin root to dashboard */}
   <Route
     index
     element={
-      <Navigate
-        to="/admin/dashboard"
-        replace
-      />
+      <Navigate to="/admin/dashboard" replace />
     }
   />
 
+  {/* DASHBOARD */}
   <Route
     path="dashboard"
     element={<AdminDashboard />}
   />
 
+  {/* MANAGE BOOKS */}
   <Route
     path="books"
     element={<ManageBooks />}
   />
 
+  {/* POS SYSTEM (FIXED) */}
+  <Route
+    path="pos"
+    element={<POS />}
+  />
+
+  {/* REPORTS */}
   <Route
     path="reports"
     element={<Reports />}
   />
 
+  {/* ORDERS */}
   <Route
     path="orders"
     element={<ManageOrders />}
   />
 
+  {/* USERS */}
   <Route
     path="users"
     element={<ManageUsers />}
   />
 
+  {/* SETTINGS */}
   <Route
     path="settings"
     element={<AdminSettings />}
   />
 
+  {/* MESSAGES */}
   <Route
     path="messages"
     element={<ManageMessages />}
   />
+
 </Route>
       </Routes>
     </BrowserRouter>
