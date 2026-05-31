@@ -32,6 +32,7 @@ import ManageOrders from "./pages/ManageOrders";
 import ManageUsers from "./pages/ManageUsers";
 import AdminSettings from "./pages/Settings";
 import ManageMessages from "./pages/ManageMessages";
+import VatBillSettings from "./pages/VatBillSettings";
 
 export default function App() {
   return (
@@ -50,20 +51,11 @@ export default function App() {
           <Route path="cart" element={<Cart />} />
           <Route path="wishlist" element={<Wishlist />} />
 
-          <Route
-            path="checkout/delivery"
-            element={<CheckoutDelivery />}
-          />
+          <Route path="checkout/delivery" element={<CheckoutDelivery />} />
 
-          <Route
-            path="checkout/payment"
-            element={<CheckoutPayment />}
-          />
+          <Route path="checkout/payment" element={<CheckoutPayment />} />
 
-          <Route
-            path="order-success"
-            element={<OrderSuccess />}
-          />
+          <Route path="order-success" element={<OrderSuccess />} />
 
           <Route path="my-orders" element={<MyOrders />} />
           <Route path="invoice/:id" element={<Invoice />} />
@@ -74,70 +66,36 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
 
         {/* FORGOT PASSWORD ROUTES */}
-        <Route
-          path="/forgot-password"
-          element={<ForgotPassword />}
-        />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        <Route
-          path="/admin-forgot-password"
-          element={<ForgotPassword />}
-        />
+        <Route path="/admin-forgot-password" element={<ForgotPassword />} />
 
         {/* ADMIN LOGIN */}
         <Route path="/login/admin" element={<AdminLogin />} />
 
         {/* ADMIN PANEL ROUTES */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route
-            index
-            element={<Navigate to="/admin/dashboard" replace />}
-          />
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
-          <Route
-            path="dashboard"
-            element={<AdminDashboard />}
-          />
+          <Route path="dashboard" element={<AdminDashboard />} />
 
-          <Route
-            path="books"
-            element={<ManageBooks />}
-          />
+          <Route path="books" element={<ManageBooks />} />
 
-          <Route
-            path="pos"
-            element={<POS />}
-          />
+          <Route path="pos" element={<POS />} />
 
-          <Route
-            path="print-barcode"
-            element={<PrintBarcode />}
-          />
+          <Route path="print-barcode" element={<PrintBarcode />} />
 
-          <Route
-            path="reports"
-            element={<Reports />}
-          />
+          <Route path="reports" element={<Reports />} />
 
-          <Route
-            path="orders"
-            element={<ManageOrders />}
-          />
+          <Route path="orders" element={<ManageOrders />} />
 
-          <Route
-            path="users"
-            element={<ManageUsers />}
-          />
+          <Route path="users" element={<ManageUsers />} />
 
-          <Route
-            path="settings"
-            element={<AdminSettings />}
-          />
+          <Route path="settings" element={<AdminSettings />} />
 
-          <Route
-            path="messages"
-            element={<ManageMessages />}
-          />
+          <Route path="messages" element={<ManageMessages />} />
+
+          <Route path="vat-bill-settings" element={<VatBillSettings />} />
         </Route>
       </Routes>
     </BrowserRouter>

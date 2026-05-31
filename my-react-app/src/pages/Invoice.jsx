@@ -12,22 +12,32 @@ import {
 
 import { Link, useNavigate, useParams } from "react-router-dom";
 
-const SELLER = {
-  name: "PatraPatrika Center",
-  vatPan: "000000",
-  address: "000000",
-  phone: "000000",
-  email: "000000",
+const DEFAULT_INVOICE_SETTINGS = {
+  sellerName: "PatraPatrika Center",
+  sellerVatPan: "000000",
+  sellerAddress: "000000",
+  sellerPhone: "000000",
+  sellerEmail: "000000",
+  sellerWebsite: "",
+  invoiceTitle: "TAX INVOICE",
+  invoicePrefix: "VAT",
+  vatRate: 13,
+  defaultBuyerVatPan: "000000",
+  invoiceNote: "",
+  declaration: "",
+  footerText: "",
 };
 
-const roundMoney = (value) =>
-  Math.round(Number(value || 0) * 100) / 100;
+const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
 
 export default function Invoice() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [order, setOrder] = useState(null);
+  const [invoiceSettings, setInvoiceSettings] = useState(
+    DEFAULT_INVOICE_SETTINGS
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -47,23 +57,39 @@ export default function Invoice() {
         setLoading(true);
         setError("");
 
-        const response = await axios.get(
+        const orderResponse = await axios.get(
           `http://localhost:5000/api/orders/${id}`
         );
 
         const orderData =
-          response.data?.order ||
-          response.data?.data ||
-          response.data;
+          orderResponse.data?.order ||
+          orderResponse.data?.data ||
+          orderResponse.data;
 
         setOrder(orderData);
+
+        try {
+          const settingsResponse = await axios.get(
+            "http://localhost:5000/api/invoice-settings"
+          );
+
+          const settingsData =
+            settingsResponse.data?.settings ||
+            settingsResponse.data?.data ||
+            settingsResponse.data;
+
+          setInvoiceSettings({
+            ...DEFAULT_INVOICE_SETTINGS,
+            ...(settingsData || {}),
+          });
+        } catch (settingsError) {
+          console.warn("Invoice settings fallback used:", settingsError);
+          setInvoiceSettings(DEFAULT_INVOICE_SETTINGS);
+        }
       } catch (err) {
         console.error("Invoice fetch error:", err);
 
-        setError(
-          err.response?.data?.error ||
-            "Unable to load invoice."
-        );
+        setError(err.response?.data?.error || "Unable to load invoice.");
       } finally {
         setLoading(false);
       }
@@ -99,9 +125,7 @@ export default function Invoice() {
           <div>
             <h1 className="font-black">Invoice Error</h1>
 
-            <p className="text-sm mt-1">
-              {error || "Invoice not found."}
-            </p>
+            <p className="text-sm mt-1">{error || "Invoice not found."}</p>
 
             <button
               type="button"
@@ -118,8 +142,7 @@ export default function Invoice() {
 
   const paymentStatus = order?.paymentStatus || "Pending";
 
-  const isPaid =
-    String(paymentStatus).toLowerCase() === "paid";
+  const isPaid = String(paymentStatus).toLowerCase() === "paid";
 
   if (!isPaid && !isAdmin) {
     return (
@@ -160,11 +183,16 @@ export default function Invoice() {
 
   const deliveryCharge = roundMoney(order.deliveryCharge || 0);
 
-  const taxableAmount = roundMoney(productSubtotal / 1.13);
+  const vatRate = Number(invoiceSettings.vatRate || order.vatRate || 13);
+  const vatDivisor = 1 + vatRate / 100;
+
+  const taxableAmount = roundMoney(productSubtotal / vatDivisor);
   const vatAmount = roundMoney(productSubtotal - taxableAmount);
   const grandTotal = roundMoney(productSubtotal + deliveryCharge);
 
-  const invoiceNo = `VAT-${String(order._id)
+  const invoicePrefix = invoiceSettings.invoicePrefix || "VAT";
+
+  const invoiceNo = `${invoicePrefix}-${String(order._id)
     .slice(-8)
     .toUpperCase()}`;
 
@@ -238,49 +266,51 @@ export default function Invoice() {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 border-b-2 border-gray-900 pb-6">
           <div>
             <h1 className="text-3xl font-black text-gray-950">
-              {SELLER.name}
+              {invoiceSettings.sellerName}
             </h1>
 
             <p className="text-sm text-gray-600 mt-2">
-              Address: {SELLER.address}
+              Address: {invoiceSettings.sellerAddress}
             </p>
 
             <p className="text-sm text-gray-600">
-              Phone: {SELLER.phone}
+              Phone: {invoiceSettings.sellerPhone}
             </p>
 
             <p className="text-sm text-gray-600">
-              Email: {SELLER.email}
+              Email: {invoiceSettings.sellerEmail}
             </p>
+
+            {invoiceSettings.sellerWebsite && (
+              <p className="text-sm text-gray-600">
+                Website: {invoiceSettings.sellerWebsite}
+              </p>
+            )}
 
             <p className="text-sm font-black text-gray-900 mt-2">
-              VAT/PAN No: {SELLER.vatPan}
+              VAT/PAN No: {invoiceSettings.sellerVatPan}
             </p>
           </div>
 
           <div className="text-left sm:text-right">
             <div className="inline-flex items-center gap-2 bg-gray-950 text-white px-4 py-2 rounded-xl text-sm font-black mb-3">
               <ReceiptText className="w-4 h-4" />
-              TAX INVOICE
+              {invoiceSettings.invoiceTitle || "TAX INVOICE"}
             </div>
 
             <p className="text-sm text-gray-600">
-              Invoice No:{" "}
-              <span className="font-black">{invoiceNo}</span>
+              Invoice No: <span className="font-black">{invoiceNo}</span>
             </p>
 
             <p className="text-sm text-gray-600">
               Invoice Date:{" "}
               <span className="font-black">
-                {new Date(
-                  order.createdAt || Date.now()
-                ).toLocaleDateString()}
+                {new Date(order.createdAt || Date.now()).toLocaleDateString()}
               </span>
             </p>
 
             <p className="text-sm text-gray-600">
-              Order ID:{" "}
-              <span className="font-black">#{order._id}</span>
+              Order ID: <span className="font-black">#{order._id}</span>
             </p>
           </div>
         </div>
@@ -293,9 +323,7 @@ export default function Invoice() {
 
             <p className="text-sm">
               <strong>Name:</strong>{" "}
-              {order.deliveryInfo?.fullName ||
-                order.customerName ||
-                "N/A"}
+              {order.deliveryInfo?.fullName || order.customerName || "N/A"}
             </p>
 
             <p className="text-sm">
@@ -308,7 +336,11 @@ export default function Invoice() {
             </p>
 
             <p className="text-sm">
-              <strong>Buyer VAT/PAN:</strong> 000000
+              <strong>Buyer VAT/PAN:</strong>{" "}
+              {order.deliveryInfo?.vatPan ||
+                order.buyerVatPan ||
+                invoiceSettings.defaultBuyerVatPan ||
+                "N/A"}
             </p>
           </div>
 
@@ -366,7 +398,7 @@ export default function Invoice() {
             </thead>
 
             <tbody>
-              {order.orderItems?.map((item, index) => (
+              {(order.orderItems || []).map((item, index) => (
                 <tr key={index}>
                   <td className="border border-gray-300 px-3 py-3">
                     {index + 1}
@@ -402,7 +434,7 @@ export default function Invoice() {
             </div>
 
             <div className="flex justify-between px-4 py-3 border-b border-gray-300">
-              <span>VAT 13%</span>
+              <span>VAT {vatRate}%</span>
 
               <strong>NPR {vatAmount.toFixed(2)}</strong>
             </div>
@@ -428,6 +460,30 @@ export default function Invoice() {
             </div>
           </div>
         </div>
+
+        {(invoiceSettings.invoiceNote ||
+          invoiceSettings.declaration ||
+          invoiceSettings.footerText) && (
+          <div className="mt-8 border-t border-gray-200 pt-5 text-sm text-gray-600 space-y-3">
+            {invoiceSettings.invoiceNote && (
+              <p>
+                <strong>Note:</strong> {invoiceSettings.invoiceNote}
+              </p>
+            )}
+
+            {invoiceSettings.declaration && (
+              <p>
+                <strong>Declaration:</strong> {invoiceSettings.declaration}
+              </p>
+            )}
+
+            {invoiceSettings.footerText && (
+              <p className="text-center font-bold text-gray-500">
+                {invoiceSettings.footerText}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
