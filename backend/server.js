@@ -963,7 +963,40 @@ app.put("/api/admin/invoice-settings", async (req, res) => {
     });
   }
 });
+// PRODUCT ROUTES
+app.get("/api/products", async (req, res) => {
+  try {
+    const query = {};
 
+    if (req.query.featured === "true") {
+      query.featured = true;
+    }
+
+    if (req.query.flashSale === "true") {
+      query.flashSale = true;
+    }
+
+    if (req.query.bestSeller === "true") {
+      query.bestSeller = true;
+    }
+
+    if (req.query.newArrival === "true") {
+      query.newArrival = true;
+    }
+
+    const products = await Product.find(query).sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Fetch products error:", error);
+
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
 app.get("/api/products/:id", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
