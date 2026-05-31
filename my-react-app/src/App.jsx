@@ -20,13 +20,13 @@ import OrderSuccess from "./pages/OrderSuccess";
 import MyOrders from "./pages/MyOrders";
 import Invoice from "./pages/Invoice";
 
-
 // ADMIN PANEL IMPORTS
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import ManageBooks from "./pages/ManageBooks";
 import POS from "./pages/POS";
+import PrintBarcode from "./pages/PrintBarcode";
 import Reports from "./pages/Reports";
 import ManageOrders from "./pages/ManageOrders";
 import ManageUsers from "./pages/ManageUsers";
@@ -42,22 +42,12 @@ export default function App() {
         {/* CUSTOMER SIDE ROUTES */}
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-
           <Route path="about" element={<About />} />
-
           <Route path="contact" element={<Contact />} />
-
           <Route path="products" element={<Products />} />
-
-          <Route
-            path="products/:id"
-            element={<ProductDetails />}
-          />
-
+          <Route path="products/:id" element={<ProductDetails />} />
           <Route path="location" element={<Location />} />
-
           <Route path="cart" element={<Cart />} />
-
           <Route path="wishlist" element={<Wishlist />} />
 
           <Route
@@ -76,14 +66,11 @@ export default function App() {
           />
 
           <Route path="my-orders" element={<MyOrders />} />
-          <Route path="wishlist" element={<Wishlist />} />
-
           <Route path="invoice/:id" element={<Invoice />} />
         </Route>
 
         {/* AUTH ROUTES */}
         <Route path="/login" element={<Login />} />
-
         <Route path="/signup" element={<Signup />} />
 
         {/* FORGOT PASSWORD ROUTES */}
@@ -97,68 +84,61 @@ export default function App() {
           element={<ForgotPassword />}
         />
 
-      {/* ADMIN PANEL ROUTES */}
-<Route path="/login/admin" element={<AdminLogin />} />
+        {/* ADMIN LOGIN */}
+        <Route path="/login/admin" element={<AdminLogin />} />
 
-<Route path="/admin" element={<AdminLayout />}>
+        {/* ADMIN PANEL ROUTES */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route
+            index
+            element={<Navigate to="/admin/dashboard" replace />}
+          />
 
-  {/* redirect admin root to dashboard */}
-  <Route
-    index
-    element={
-      <Navigate to="/admin/dashboard" replace />
-    }
-  />
+          <Route
+            path="dashboard"
+            element={<AdminDashboard />}
+          />
 
-  {/* DASHBOARD */}
-  <Route
-    path="dashboard"
-    element={<AdminDashboard />}
-  />
+          <Route
+            path="books"
+            element={<ManageBooks />}
+          />
 
-  {/* MANAGE BOOKS */}
-  <Route
-    path="books"
-    element={<ManageBooks />}
-  />
+          <Route
+            path="pos"
+            element={<POS />}
+          />
 
-  {/* POS SYSTEM (FIXED) */}
-  <Route
-    path="pos"
-    element={<POS />}
-  />
+          <Route
+            path="print-barcode"
+            element={<PrintBarcode />}
+          />
 
-  {/* REPORTS */}
-  <Route
-    path="reports"
-    element={<Reports />}
-  />
+          <Route
+            path="reports"
+            element={<Reports />}
+          />
 
-  {/* ORDERS */}
-  <Route
-    path="orders"
-    element={<ManageOrders />}
-  />
+          <Route
+            path="orders"
+            element={<ManageOrders />}
+          />
 
-  {/* USERS */}
-  <Route
-    path="users"
-    element={<ManageUsers />}
-  />
+          <Route
+            path="users"
+            element={<ManageUsers />}
+          />
 
-  {/* SETTINGS */}
-  <Route
-    path="settings"
-    element={<AdminSettings />}
-  />
+          <Route
+            path="settings"
+            element={<AdminSettings />}
+          />
 
-  {/* MESSAGES */}
-  <Route
-    path="messages"
-    element={<ManageMessages />}
-  />
-
-</Route>
+          <Route
+            path="messages"
+            element={<ManageMessages />}
+          />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

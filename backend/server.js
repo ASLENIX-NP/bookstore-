@@ -166,11 +166,11 @@ const orderSchema = new mongoose.Schema(
       default: 0,
     },
 
-    checkoutType: {
-      type: String,
-      default: "Cart",
-      enum: ["Cart", "Buy Now"],
-    },
+   checkoutType: {
+  type: String,
+  enum: ["Cart", "Buy Now", "POS"],
+  default: "Cart",
+},
 
     paymentMethod: {
       type: String,
@@ -780,57 +780,239 @@ app.get("/api/products/barcode/:barcode", async (req, res) => {
 });
 
 app.post("/api/products/pos-checkout", async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
-    const { cart, paymentMethod } = req.body;
+    let createdOrder = null;
 
-    if (!cart || cart.length === 0) {
-      return res.status(400).json({ message: "Cart is empty" });
-    }
+    await session.withTransaction(async () => {
+      const { cart, paymentMethod = "cash" } = req.body;
 
-    let total = 0;
+      if (!cart || !Array.isArray(cart) || cart.length === 0) {
+        const error = new Error("Cart is empty");
+        error.statusCode = 400;
+        throw error;
+      }
 
-    // convert frontend cart → backend schema
-    const cleanedItems = cart.map((item) => {
-      const qty = item.quantity || 1;
-      const price = item.price || 0;
+      const quantityMap = new Map();
 
-      total += price * qty;
+      cart.forEach((item) => {
+        const productId = item._id || item.productId || item.id;
+        const quantity = Number(item.quantity || item.qty || 1);
 
-      return {
-        title: item.name,
-        qty: qty,
-        price: price,
-      };
-    });
+        if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+          const error = new Error("Invalid product in POS cart");
+          error.statusCode = 400;
+          throw error;
+        }
 
-    // reduce stock
-    for (const item of cart) {
-      await Product.findByIdAndUpdate(item._id, {
-        $inc: { stock: -item.quantity },
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+          const error = new Error("Invalid product quantity in POS cart");
+          error.statusCode = 400;
+          throw error;
+        }
+
+        const previousQty = quantityMap.get(String(productId)) || 0;
+        quantityMap.set(String(productId), previousQty + quantity);
       });
-    }
 
-    const order = await Order.create({
-      email: "pos@system.com",
-      orderItems: cleanedItems,
-      totalPrice: total,
-      grandTotal: total,
-      paymentMethod,
-      paymentStatus: "Paid",
-      status: "confirmed",
+      const productIds = [...quantityMap.keys()];
+
+      const products = await Product.find({
+        _id: { $in: productIds },
+      }).session(session);
+
+      const productMap = new Map(
+        products.map((product) => [String(product._id), product])
+      );
+
+      for (const productId of productIds) {
+        const product = productMap.get(productId);
+        const requiredQty = Number(quantityMap.get(productId) || 0);
+
+        if (!product) {
+          const error = new Error("One or more scanned products were not found");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const availableStock = Number(product.stock || 0);
+
+        if (availableStock <= 0) {
+          const error = new Error(`"${product.name}" is out of stock`);
+          error.statusCode = 400;
+          throw error;
+        }
+
+        if (availableStock < requiredQty) {
+          const error = new Error(
+            `Only ${availableStock} stock available for "${product.name}"`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
+      const orderItems = productIds.map((productId) => {
+        const product = productMap.get(productId);
+        const qty = Number(quantityMap.get(productId) || 0);
+        const price = Number(product.salePrice || product.price || 0);
+
+        return {
+          productId: product._id,
+          title: product.name,
+          image: product.image || "",
+          qty,
+          price,
+          subtotal: Math.round(price * qty * 100) / 100,
+        };
+      });
+
+      const productSubtotal = Math.round(
+        orderItems.reduce((sum, item) => sum + Number(item.subtotal || 0), 0) *
+          100
+      ) / 100;
+
+      const vatRate = 13;
+
+      const taxableAmount =
+        Math.round((productSubtotal / (1 + vatRate / 100)) * 100) / 100;
+
+      const vatAmount =
+        Math.round((productSubtotal - taxableAmount) * 100) / 100;
+
+      const grandTotal = productSubtotal;
+
+      const stockOperations = productIds.map((productId) => {
+        const product = productMap.get(productId);
+        const requiredQty = Number(quantityMap.get(productId) || 0);
+
+        const currentStock = Number(product.stock || 0);
+        const newStock = currentStock - requiredQty;
+        const lowStockAlert = Number(product.lowStockAlert || 5);
+
+        const newStockStatus =
+          newStock <= 0
+            ? "Out of Stock"
+            : newStock <= lowStockAlert
+            ? "Low Stock"
+            : "In Stock";
+
+        const newStatusFlag = newStock <= 0 ? "Out of Stock" : "In Stock";
+
+        const price = Number(product.salePrice || product.price || 0);
+
+        return {
+          updateOne: {
+            filter: {
+              _id: product._id,
+              stock: { $gte: requiredQty },
+            },
+            update: {
+              $inc: {
+                stock: -requiredQty,
+                sold: requiredQty,
+                totalRevenue: price * requiredQty,
+              },
+              $set: {
+                stockStatus: newStockStatus,
+                statusFlag: newStatusFlag,
+                lastSoldAt: new Date(),
+              },
+            },
+          },
+        };
+      });
+
+      const stockResult = await Product.bulkWrite(stockOperations, {
+        session,
+      });
+
+      if (stockResult.modifiedCount !== stockOperations.length) {
+        const error = new Error(
+          "Stock update failed. Product stock may have changed. Please try again."
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const orderDocs = await Order.create(
+        [
+          {
+            email: "pos@system.com",
+            customerName: "Walk-in Customer",
+            phone: "POS Sale",
+
+            deliveryInfo: {
+              fullName: "Walk-in Customer",
+              phone: "POS Sale",
+              region: "Store",
+              city: "Store",
+              building: "Physical Store",
+              area: "POS Counter",
+              address: "In-store purchase",
+              label: "Store",
+            },
+
+            orderItems,
+
+            productSubtotal,
+            deliveryCharge: 0,
+            deliveryDistanceKm: 0,
+            estimatedDelivery: "In-store purchase",
+
+            taxableAmount,
+            vatRate,
+            vatAmount,
+            grandTotal,
+            totalPrice: grandTotal,
+
+            checkoutType: "Cart",
+            paymentMethod:
+              paymentMethod === "card" ? "Card" : "Cash",
+            paymentMethodId: paymentMethod,
+            paymentGateway: "pos",
+
+            paymentStatus: "Paid",
+            orderStatus: "Completed",
+            status: "Completed",
+
+            transactionId: `POS-${Date.now()}`,
+            paymentProof: "",
+
+            paidAt: new Date(),
+
+            trackingSteps: [
+              {
+                title: "POS Sale Completed",
+                completed: true,
+                date: new Date(),
+              },
+            ],
+          },
+        ],
+        { session }
+      );
+
+      createdOrder = orderDocs[0];
     });
 
-    return res.json({
+    return res.status(201).json({
       success: true,
-      orderId: order._id,
+      message: "POS sale completed successfully",
+      orderId: createdOrder._id,
+      order: createdOrder,
     });
-
   } catch (error) {
-    console.log("POS CHECKOUT ERROR:", error);
-    res.status(500).json({
+    console.error("POS CHECKOUT ERROR:", error);
+
+    return res.status(error.statusCode || 500).json({
+      success: false,
       message: "Checkout failed",
       error: error.message,
     });
+  } finally {
+    session.endSession();
   }
 });
 
@@ -1028,202 +1210,345 @@ app.post("/api/delivery/calculate", async (req, res) => {
 
 // ORDER CREATE ROUTE
 app.post("/api/orders", async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
-    const {
-      email,
-      customerName,
-      phone,
-      deliveryInfo,
-      orderItems,
-      productSubtotal,
-      taxableAmount,
-      vatRate,
-      vatAmount,
-      grandTotal,
-      totalPrice,
-      checkoutType,
-      paymentMethod,
-      paymentMethodId,
-      paymentStatus,
-      orderStatus,
-      transactionId,
-      paymentProof,
-    } = req.body;
+    let createdOrder = null;
 
-    if (!email || !customerName || !phone) {
-      return res.status(400).json({
-        success: false,
-        error: "Customer name, email, and phone are required",
+    await session.withTransaction(async () => {
+      const {
+        email,
+        customerName,
+        phone,
+        deliveryInfo,
+        orderItems,
+        productSubtotal,
+        deliveryCharge,
+        taxableAmount,
+        vatRate,
+        vatAmount,
+        grandTotal,
+        totalPrice,
+        checkoutType,
+        paymentMethod,
+        paymentMethodId,
+        paymentStatus,
+        orderStatus,
+        transactionId,
+        paymentProof,
+      } = req.body;
+
+      if (!email || !customerName || !phone) {
+        const error = new Error("Customer name, email, and phone are required");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!deliveryInfo) {
+        const error = new Error("Delivery information is required");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+        const error = new Error("Order must contain at least one product");
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const cleanedItems = orderItems.map((item) => {
+        const qty = Number(item.qty || item.quantity || 1);
+        const price = Number(item.price || 0);
+        const rawProductId = item.productId || item._id || item.id || "";
+
+        return {
+          productId:
+            rawProductId && mongoose.Types.ObjectId.isValid(rawProductId)
+              ? rawProductId
+              : undefined,
+          title: item.title || item.name || "Product",
+          image: item.image || "",
+          qty,
+          price,
+          subtotal: roundMoney(price * qty),
+        };
       });
-    }
 
-    if (!deliveryInfo) {
-      return res.status(400).json({
-        success: false,
-        error: "Delivery information is required",
+      for (const item of cleanedItems) {
+        if (!item.productId) {
+          const error = new Error(
+            `Product ID missing for "${item.title}". Cannot update stock.`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+
+        if (!Number.isFinite(item.qty) || item.qty <= 0) {
+          const error = new Error(`Invalid quantity for "${item.title}".`);
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
+      const stockRequiredMap = new Map();
+
+      cleanedItems.forEach((item) => {
+        const productId = String(item.productId);
+        const previousQty = stockRequiredMap.get(productId) || 0;
+        stockRequiredMap.set(productId, previousQty + Number(item.qty || 0));
       });
-    }
 
-    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "Order must contain at least one product",
+      const productIds = [...stockRequiredMap.keys()];
+
+      const productsFromDb = await Product.find({
+        _id: { $in: productIds },
+      }).session(session);
+
+      const productMap = new Map(
+        productsFromDb.map((product) => [String(product._id), product])
+      );
+
+      for (const productId of productIds) {
+        const product = productMap.get(productId);
+        const requiredQty = Number(stockRequiredMap.get(productId) || 0);
+
+        if (!product) {
+          const error = new Error("One or more products were not found.");
+          error.statusCode = 404;
+          throw error;
+        }
+
+        const availableStock = Number(product.stock || 0);
+
+        if (availableStock <= 0) {
+          const error = new Error(`"${product.name}" is out of stock.`);
+          error.statusCode = 400;
+          throw error;
+        }
+
+        if (availableStock < requiredQty) {
+          const error = new Error(
+            `Only ${availableStock} stock available for "${product.name}".`
+          );
+          error.statusCode = 400;
+          throw error;
+        }
+      }
+
+      const calculatedProductSubtotal = roundMoney(
+        cleanedItems.reduce(
+          (total, item) => total + Number(item.subtotal || 0),
+          0
+        )
+      );
+
+      const finalProductSubtotal =
+        Number(productSubtotal || 0) || calculatedProductSubtotal;
+
+      let distanceKm = 0;
+
+      const region = deliveryInfo?.region?.toLowerCase() || "";
+      const city = deliveryInfo?.city?.toLowerCase() || "";
+
+      if (
+        region.includes("hetauda") ||
+        region.includes("makwanpur") ||
+        city.includes("hetauda")
+      ) {
+        distanceKm = 10;
+      } else if (
+        region.includes("chitwan") ||
+        region.includes("bharatpur")
+      ) {
+        distanceKm = 90;
+      } else if (
+        region.includes("kathmandu") ||
+        region.includes("lalitpur") ||
+        region.includes("bhaktapur")
+      ) {
+        distanceKm = 140;
+      } else if (
+        region.includes("pokhara") ||
+        region.includes("dharan") ||
+        region.includes("butwal")
+      ) {
+        distanceKm = 250;
+      } else {
+        distanceKm = 500;
+      }
+
+      const deliveryData = calculateDelivery(distanceKm);
+
+           const finalDeliveryCharge =
+        Number(deliveryCharge || 0) || Number(deliveryData.charge || 0);
+
+      const finalTaxableAmount =
+        Number(taxableAmount || 0) ||
+        roundMoney(finalProductSubtotal + finalDeliveryCharge);
+
+      const finalVatRate = Number(vatRate ?? 13);
+
+      const finalVatAmount =
+        Number(vatAmount || 0) ||
+        roundMoney((finalTaxableAmount * finalVatRate) / 100);
+
+      const finalGrandTotal =
+        Number(grandTotal || totalPrice || 0) ||
+        roundMoney(finalTaxableAmount + finalVatAmount);
+
+      const selectedPaymentMethod = paymentMethod || "Cash on Delivery";
+      const selectedPaymentMethodId = paymentMethodId || "cod";
+
+      const orderDocs = await Order.create(
+        [
+          {
+            email: String(email).toLowerCase().trim(),
+
+            customerName,
+
+            phone,
+
+            deliveryInfo,
+
+            orderItems: cleanedItems,
+
+            productSubtotal: finalProductSubtotal,
+
+            deliveryCharge: finalDeliveryCharge,
+
+            taxableAmount: finalTaxableAmount,
+
+            vatRate: finalVatRate,
+
+            vatAmount: finalVatAmount,
+
+            grandTotal: finalGrandTotal,
+
+            totalPrice: finalGrandTotal,
+
+            checkoutType: checkoutType || "Cart",
+
+            paymentMethod: selectedPaymentMethod,
+
+            paymentMethodId: selectedPaymentMethodId,
+
+            paymentGateway: selectedPaymentMethodId,
+
+            paymentStatus: paymentStatus || "Pending",
+
+            orderStatus: orderStatus || "Processing",
+
+            status: "Processing",
+
+            trackingSteps: [
+              {
+                title: "Order Placed",
+                completed: true,
+                date: new Date(),
+              },
+
+              {
+                title: "Order Confirmed",
+                completed: false,
+              },
+
+              {
+                title: "Packaging",
+                completed: false,
+              },
+
+              {
+                title: "Shipped",
+                completed: false,
+              },
+
+              {
+                title: "Delivered",
+                completed: false,
+              },
+            ],
+
+            estimatedDelivery: deliveryData.days,
+
+            transactionId: transactionId || "",
+
+            paymentProof: paymentProof || "",
+          },
+        ],
+        { session }
+      );
+
+      createdOrder = orderDocs[0];
+
+      const stockBulkOperations = productIds.map((productId) => {
+        const product = productMap.get(productId);
+        const requiredQty = Number(stockRequiredMap.get(productId) || 0);
+
+        const currentStock = Number(product.stock || 0);
+        const newStock = currentStock - requiredQty;
+        const lowStockAlert = Number(product.lowStockAlert || 5);
+
+        const newStockStatus =
+          newStock <= 0
+            ? "Out of Stock"
+            : newStock <= lowStockAlert
+            ? "Low Stock"
+            : "In Stock";
+
+        const newStatusFlag = newStock <= 0 ? "Out of Stock" : "In Stock";
+
+        return {
+          updateOne: {
+            filter: {
+              _id: product._id,
+              stock: { $gte: requiredQty },
+            },
+            update: {
+              $inc: {
+                stock: -requiredQty,
+                sold: requiredQty,
+                totalRevenue: Number(product.price || 0) * requiredQty,
+              },
+              $set: {
+                stockStatus: newStockStatus,
+                statusFlag: newStatusFlag,
+                lastSoldAt: new Date(),
+              },
+            },
+          },
+        };
       });
-    }
 
-    const customerLat = Number(deliveryInfo?.lat);
-    const customerLng = Number(deliveryInfo?.lng);
-
-    if (!Number.isFinite(customerLat) || !Number.isFinite(customerLng)) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Customer location is required for delivery calculation. Please use current location on delivery page.",
+      const stockUpdateResult = await Product.bulkWrite(stockBulkOperations, {
+        session,
       });
-    }
 
-    const deliveryData = calculateDelivery({
-      lat: customerLat,
-      lng: customerLng,
-    });
-
-    const finalDeliveryCharge = Number(deliveryData.charge || 0);
-
-    const cleanedItems = orderItems.map((item) => {
-      const qty = Number(item.qty || item.quantity || 1);
-      const price = Number(item.price || 0);
-
-      return {
-        productId: item.productId || item._id || undefined,
-        title: item.title || item.name || "Product",
-        image: item.image || "",
-        qty,
-        price,
-        subtotal: roundMoney(price * qty),
-      };
-    });
-
-    const calculatedProductSubtotal = roundMoney(
-      cleanedItems.reduce((total, item) => total + Number(item.subtotal || 0), 0)
-    );
-
-    const finalProductSubtotal =
-      Number(productSubtotal || 0) || calculatedProductSubtotal;
-
-    const finalTaxableAmount =
-      Number(taxableAmount || 0) ||
-      roundMoney(finalProductSubtotal + finalDeliveryCharge);
-
-    const finalVatRate = Number(vatRate ?? 13);
-
-    const finalVatAmount =
-      Number(vatAmount || 0) ||
-      roundMoney((finalTaxableAmount * finalVatRate) / 100);
-
-    const finalGrandTotal =
-      Number(grandTotal || totalPrice || 0) ||
-      roundMoney(finalProductSubtotal + finalDeliveryCharge);
-
-    const selectedPaymentMethod = paymentMethod || "Cash on Delivery";
-    const selectedPaymentMethodId = paymentMethodId || "cod";
-    const invoiceNumber = await getNextInvoiceNumber();
-
-    const invoiceQR = await QRCode.toDataURL(
-      `Invoice: ${invoiceNumber} | Total: ${totalPrice}`
-    );
-    const newOrder = await Order.create({
-      invoiceNumber,
-invoiceQR,
-      email: String(email).toLowerCase().trim(),
-      invoiceNumber: await getNextInvoiceNumber(),
-
-      customerName,
-
-      phone,
-
-      deliveryInfo: {
-        ...deliveryInfo,
-        lat: customerLat,
-        lng: customerLng,
-      },
-
-      orderItems: cleanedItems,
-
-      productSubtotal: finalProductSubtotal,
-
-      deliveryCharge: finalDeliveryCharge,
-
-      deliveryDistanceKm: deliveryData.distanceKm,
-
-      estimatedDelivery: deliveryData.days,
-
-      taxableAmount: finalTaxableAmount,
-
-      vatRate: finalVatRate,
-
-      vatAmount: finalVatAmount,
-
-      grandTotal: finalGrandTotal,
-
-      totalPrice: finalGrandTotal,
-
-      checkoutType: checkoutType || "Cart",
-
-      paymentMethod: selectedPaymentMethod,
-
-      paymentMethodId: selectedPaymentMethodId,
-
-      paymentGateway: selectedPaymentMethodId,
-
-      paymentStatus: paymentStatus || "Pending",
-
-      orderStatus: orderStatus || "Processing",
-
-      status: "pending",
-
-      trackingSteps: [
-        {
-          title: "Order Placed",
-          completed: true,
-          date: new Date(),
-        },
-        {
-          title: "Order Confirmed",
-          completed: false,
-        },
-        {
-          title: "Packaging",
-          completed: false,
-        },
-        {
-          title: "Shipped",
-          completed: false,
-        },
-        {
-          title: "Delivered",
-          completed: false,
-        },
-      ],
-
-      transactionId: transactionId || "",
-
-      paymentProof: paymentProof || "",
+      if (stockUpdateResult.modifiedCount !== stockBulkOperations.length) {
+        const error = new Error(
+          "Stock update failed. Please try again because product stock may have changed."
+        );
+        error.statusCode = 400;
+        throw error;
+      }
     });
 
     res.status(201).json({
       success: true,
-      message: "Order created successfully",
-      order: newOrder,
+      message: "Order created successfully and stock updated",
+      order: createdOrder,
     });
   } catch (error) {
     console.error("Order creation error:", error);
 
-    res.status(400).json({
+    res.status(error.statusCode || 400).json({
       success: false,
       error: error.message,
     });
+  } finally {
+    session.endSession();
   }
 });
+
 // GET ALL ORDERS
 app.get("/api/orders", async (req, res) => {
   try {
@@ -2957,9 +3282,9 @@ const startServer = async () => {
     await seedAdminAccount();
     await seedPolicies();
 
-    app.listen(PORT, () => {
-      console.log(`Server running on port: ${PORT}`);
-    });
+    app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port: ${PORT}`);
+});
   } catch (error) {
     console.error("MongoDB connection failed:", error);
     process.exit(1);

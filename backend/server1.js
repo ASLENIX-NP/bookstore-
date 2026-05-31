@@ -165,10 +165,10 @@ const orderSchema = new mongoose.Schema(
     },
 
     checkoutType: {
-      type: String,
-      default: "Cart",
-      enum: ["Cart", "Buy Now"],
-    },
+  type: String,
+  enum: ["Cart", "Buy Now", "POS"],
+  default: "Cart",
+},
 
     paymentMethod: {
       type: String,
