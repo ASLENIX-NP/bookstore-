@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -181,8 +181,11 @@ export default function Products() {
   const [selectedSubcategory, setSelectedSubcategory] = useState("all");
   const [sortBy, setSortBy] = useState("name");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const searchBoxRef = useRef(null);
 
   const [wishlist, setWishlist] = useState(() => {
     try {
@@ -223,6 +226,116 @@ export default function Products() {
     fetchProducts();
   }, [selectedCollection]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        searchBoxRef.current &&
+        !searchBoxRef.current.contains(event.target)
+      ) {
+        setShowSearchSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const normalizeText = (value) => {
+    return String(value || "").toLowerCase().trim();
+  };
+
+  const getProductSearchText = (product) => {
+    return [
+      product.name,
+      product.title,
+      product.category,
+      product.subcategory,
+      product.language,
+      product.author,
+      product.publisher,
+      product.description,
+      product.details,
+    ]
+      .map((item) => normalizeText(item))
+      .join(" ");
+  };
+
+  const getShortcutWords = (query) => {
+    const cleanQuery = normalizeText(query);
+
+    const shortcutMap = {
+      e: ["english"],
+      en: ["english"],
+      eng: ["english"],
+      n: ["nepali"],
+      ne: ["nepali"],
+      nep: ["nepali"],
+      h: ["hindi"],
+      hi: ["hindi"],
+    };
+
+    return shortcutMap[cleanQuery] || [];
+  };
+
+  const productMatchesSearch = (product, value) => {
+    const query = normalizeText(value);
+
+    if (!query) {
+      return true;
+    }
+
+    const productText = getProductSearchText(product);
+    const shortcutWords = getShortcutWords(query);
+
+    const shortcutOnlyQueries = ["e", "en", "eng", "n", "ne", "nep", "h", "hi"];
+
+    if (shortcutOnlyQueries.includes(query)) {
+      return shortcutWords.some((word) => productText.includes(word));
+    }
+
+    return (
+      productText.includes(query) ||
+      shortcutWords.some((word) => productText.includes(word))
+    );
+  };
+
+  const getSuggestionLabel = (product) => {
+    const query = normalizeText(searchTerm);
+    const productText = getProductSearchText(product);
+
+    if (["e", "en", "eng"].includes(query) && productText.includes("english")) {
+      return "English book recommendation";
+    }
+
+    if (["n", "ne", "nep"].includes(query) && productText.includes("nepali")) {
+      return "Nepali book recommendation";
+    }
+
+    if (["h", "hi"].includes(query) && productText.includes("hindi")) {
+      return "Hindi book recommendation";
+    }
+
+    if (product.subcategory) {
+      return product.subcategory;
+    }
+
+    if (product.category) {
+      return product.category;
+    }
+
+    return "Product suggestion";
+  };
+
+  const searchSuggestions =
+    searchTerm.trim() === ""
+      ? []
+      : products
+          .filter((product) => productMatchesSearch(product, searchTerm))
+          .slice(0, 8);
+
   const getStatus = (product) => {
     return product.stockStatus || product.statusFlag || "In Stock";
   };
@@ -239,6 +352,7 @@ export default function Products() {
     setSelectedCategory("all");
     setSelectedSubcategory("all");
     setSearchTerm("");
+    setShowSearchSuggestions(false);
     setSortBy("name");
 
     if (collection === "all") {
@@ -259,6 +373,7 @@ export default function Products() {
     setSelectedSubcategory("all");
     setSortBy("name");
     setSearchTerm("");
+    setShowSearchSuggestions(false);
     setSearchParams({});
   };
 
@@ -382,9 +497,7 @@ export default function Products() {
       latestWishlist = [];
     }
 
-    const existing = latestWishlist.find(
-      (item) => item._id === product._id
-    );
+    const existing = latestWishlist.find((item) => item._id === product._id);
 
     let updatedWishlist = [];
 
@@ -402,10 +515,7 @@ export default function Products() {
 
     setWishlist(updatedWishlist);
 
-    localStorage.setItem(
-      "wishlist",
-      JSON.stringify(updatedWishlist)
-    );
+    localStorage.setItem("wishlist", JSON.stringify(updatedWishlist));
 
     window.dispatchEvent(new Event("wishlistUpdated"));
 
@@ -424,11 +534,7 @@ export default function Products() {
       selectedSubcategory === "all" ||
       product.subcategory === selectedSubcategory;
 
-    const searchMatch =
-      searchTerm.trim() === "" ||
-      String(product.name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+    const searchMatch = productMatchesSearch(product, searchTerm);
 
     return categoryMatch && subcategoryMatch && searchMatch;
   });
@@ -705,16 +811,93 @@ export default function Products() {
                   Search Product
                 </label>
 
-                <div className="relative">
+                <div className="relative" ref={searchBoxRef}>
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
 
                   <input
                     type="text"
-                    placeholder="Search by product name..."
+                    placeholder="Type e for English, n for Nepali..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setShowSearchSuggestions(true);
+                    }}
+                    onFocus={() => {
+                      if (searchTerm.trim() !== "") {
+                        setShowSearchSuggestions(true);
+                      }
+                    }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
                   />
+
+                  {showSearchSuggestions && searchTerm.trim() !== "" && (
+                    <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
+                      {searchSuggestions.length > 0 ? (
+                        <>
+                          <div className="border-b border-slate-100 px-4 py-3">
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                              Recommended Products
+                            </p>
+                          </div>
+
+                          <div className="max-h-80 overflow-y-auto">
+                            {searchSuggestions.map((product) => (
+                              <button
+                                key={product._id}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSearchTerm(product.name || "");
+                                  setShowSearchSuggestions(false);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 transition-all border-b border-slate-50 last:border-b-0"
+                              >
+                                <ProductImage
+                                  src={product.image}
+                                  alt={product.name}
+                                  className="w-12 h-14 rounded-xl object-cover bg-slate-100 shrink-0"
+                                />
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-black text-slate-900 truncate">
+                                    {product.name || "Untitled Product"}
+                                  </p>
+
+                                  <p className="text-xs font-bold text-slate-500 truncate">
+                                    {getSuggestionLabel(product)}
+                                  </p>
+                                </div>
+
+                                <div className="text-right shrink-0">
+                                  <p className="text-xs font-black text-[#f57224]">
+                                    NPR{" "}
+                                    {Number(
+                                      product.salePrice || product.price || 0
+                                    ).toLocaleString()}
+                                  </p>
+
+                                  <p className="text-[10px] font-black text-slate-400 uppercase">
+                                    Select
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="px-4 py-5 text-center">
+                          <p className="text-sm font-black text-slate-700">
+                            No recommendations found
+                          </p>
+
+                          <p className="text-xs text-slate-400 mt-1">
+                            Try English, Nepali, book name, category, or
+                            subcategory.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
