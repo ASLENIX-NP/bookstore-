@@ -903,7 +903,7 @@ export default function Products() {
 
               <div className="lg:col-span-2">
                 <label className="block text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-2">
-                  Collection
+                  Collections
                 </label>
 
                 <select
