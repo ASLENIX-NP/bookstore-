@@ -12,6 +12,8 @@ import {
   Layers,
   MapPin,
   ShieldCheck,
+  Flame,
+  BadgePercent,
 } from "lucide-react";
 import axios from "axios";
 
@@ -71,6 +73,7 @@ export default function Home() {
   const [wishlist, setWishlist] = useState(
     JSON.parse(localStorage.getItem("wishlist")) || []
   );
+
   useEffect(() => {
     const sliderTimer = setInterval(() => {
       setCurrentSlide((prev) =>
@@ -160,7 +163,7 @@ export default function Home() {
     const token = localStorage.getItem("token");
 
     if (!token) {
-     toast.error("Please login first to buy products.");
+      toast.error("Please login first to buy products.");
       navigate("/login", { state: { from: "/" } });
       return;
     }
@@ -193,24 +196,48 @@ export default function Home() {
 
   const ProductCard = ({ product, type }) => {
     const isOutOfStock = getStatus(product).toLowerCase() === "out of stock";
+    const isFlashSale = type === "Flash Sale";
 
     return (
-      <div className="group bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/80 transition-all duration-300">
+      <div
+        className={`group relative bg-white rounded-[2rem] overflow-hidden border shadow-sm transition-all duration-300 hover:-translate-y-2 ${
+          isFlashSale
+            ? "border-orange-200 hover:shadow-2xl hover:shadow-orange-200/70"
+            : "border-slate-100 hover:shadow-2xl hover:shadow-slate-200/80"
+        }`}
+      >
+        {isFlashSale && (
+          <div className="absolute -top-14 -right-14 w-36 h-36 bg-orange-400/20 blur-3xl rounded-full pointer-events-none group-hover:bg-orange-400/35 transition-all duration-500" />
+        )}
+
         <div
-          className="relative cursor-pointer bg-slate-100"
+          className="relative cursor-pointer bg-slate-100 overflow-hidden"
           onClick={() => openProductDetails(product._id)}
         >
           <LocalImageWithFallback
             src={product.image}
             alt={product.name}
-            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-700"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-70" />
+          <div
+            className={`absolute inset-0 ${
+              isFlashSale
+                ? "bg-gradient-to-t from-orange-950/65 via-slate-950/15 to-transparent"
+                : "bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-70"
+            }`}
+          />
+
+          {isFlashSale && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-orange-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-all">
+              <Flame className="w-3.5 h-3.5 fill-white" />
+              HOT DEAL
+            </div>
+          )}
 
           <div className="absolute top-4 left-4 flex flex-wrap gap-2">
             <span
-              className={`px-3 py-1 rounded-full text-[11px] font-black border ${
+              className={`px-3 py-1 rounded-full text-[11px] font-black border transition-all group-hover:scale-105 ${
                 isOutOfStock
                   ? "bg-red-50 text-red-600 border-red-100"
                   : "bg-emerald-50 text-emerald-600 border-emerald-100"
@@ -220,101 +247,116 @@ export default function Home() {
             </span>
 
             {type && (
-              <span className="px-3 py-1 rounded-full text-[11px] font-black bg-white/90 text-slate-800 border border-white/70 backdrop-blur">
+              <span
+                className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
+                  isFlashSale
+                    ? "bg-white/95 text-orange-600 border-orange-100"
+                    : "bg-white/90 text-slate-800 border-white/70"
+                }`}
+              >
                 {type}
               </span>
             )}
           </div>
 
           <div className="absolute top-4 right-4 flex gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openProductDetails(product._id);
+              }}
+              className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 text-slate-900 flex items-center justify-center shadow-lg backdrop-blur transition-all"
+              title="View Details"
+            >
+              <Eye className="w-5 h-5" />
+            </button>
 
-<button
-  type="button"
-  onClick={(e) => {
-    e.stopPropagation();
-    openProductDetails(product._id);
-  }}
-  className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center shadow-lg backdrop-blur transition-all"
-  title="View Details"
->
-  <Eye className="w-5 h-5" />
-</button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
 
-<button
-  type="button"
-  onClick={(e) => {
-    e.stopPropagation();
+                const token = localStorage.getItem("token");
 
-    const token = localStorage.getItem("token");
+                if (!token) {
+                  toast.error("Please login first!");
+                  navigate("/login");
+                  return;
+                }
 
-    if (!token) {
-      toast.error("Please login first!");
-      navigate("/login");
-      return;
-    }
+                const currentWishlist = JSON.parse(
+                  localStorage.getItem("wishlist") || "[]"
+                );
 
-    const currentWishlist = JSON.parse(
-      localStorage.getItem("wishlist") || "[]"
-    );
+                const exists = currentWishlist.find(
+                  (item) => item._id === product._id
+                );
 
-    const exists = currentWishlist.find(
-      (item) => item._id === product._id
-    );
+                let updatedWishlist = [];
 
-    let updatedWishlist = [];
+                if (exists) {
+                  updatedWishlist = currentWishlist.filter(
+                    (item) => item._id !== product._id
+                  );
 
-    if (exists) {
-      updatedWishlist = currentWishlist.filter(
-        (item) => item._id !== product._id
-      );
+                  toast.success("Removed from wishlist");
+                } else {
+                  updatedWishlist = [...currentWishlist, product];
 
-      toast.success("Removed from wishlist");
-    } else {
-      updatedWishlist = [...currentWishlist, product];
+                  toast.success("Added to wishlist");
+                }
 
-      toast.success("Added to wishlist");
-    }
+                setWishlist(updatedWishlist);
 
-    setWishlist(updatedWishlist);
+                localStorage.setItem(
+                  "wishlist",
+                  JSON.stringify(updatedWishlist)
+                );
 
-    localStorage.setItem(
-      "wishlist",
-      JSON.stringify(updatedWishlist)
-    );
-    
-    window.dispatchEvent(new Event("storage"));
-  }}
-  className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white flex items-center justify-center shadow-lg backdrop-blur transition-all"
-  title="Wishlist"
->
-  <Heart
-    className={`w-5 h-5 ${
-      wishlist.find(
-        (item) => item._id === product._id
-      )
-        ? "fill-red-500 text-red-500"
-        : "text-slate-700"
-    }`}
-  />
-</button>
+                window.dispatchEvent(new Event("storage"));
+              }}
+              className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center shadow-lg backdrop-blur transition-all"
+              title="Wishlist"
+            >
+              <Heart
+                className={`w-5 h-5 transition-all ${
+                  wishlist.find((item) => item._id === product._id)
+                    ? "fill-red-500 text-red-500"
+                    : "text-slate-700"
+                }`}
+              />
+            </button>
+          </div>
 
-</div>
-
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm">
+          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm transition-all group-hover:scale-105">
               <Star className="w-3.5 h-3.5 fill-slate-950" />
               {Number(product.rating || 0).toFixed(1)}
             </div>
+
+            {isFlashSale && (
+              <div className="inline-flex items-center gap-1.5 bg-white/95 text-orange-600 px-3 py-1.5 rounded-full text-xs font-black shadow-sm transition-all group-hover:scale-105">
+                <BadgePercent className="w-3.5 h-3.5" />
+                Deal
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 relative">
           <button
             type="button"
             onClick={() => openProductDetails(product._id)}
             className="text-left w-full"
           >
-            <h3 className="font-black text-slate-950 text-lg leading-snug group-hover:text-indigo-700 transition-colors">
+            <h3
+              className={`font-black text-lg leading-snug transition-colors ${
+                isFlashSale
+                  ? "text-slate-950 group-hover:text-orange-600"
+                  : "text-slate-950 group-hover:text-indigo-700"
+              }`}
+            >
               {product.name || "Untitled Product"}
             </h3>
           </button>
@@ -326,71 +368,64 @@ export default function Home() {
           </p>
 
           <div className="mt-4 flex items-end justify-between gap-3">
-  <div>
-    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-      {type === "Flash Sale" ? "Flash Sale Price" : "Price"}
-    </p>
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                {isFlashSale ? "Flash Sale Price" : "Price"}
+              </p>
 
-    {/* SALE PRICE */}
-    <p
-      className={`text-2xl font-black ${
-        type === "Flash Sale"
-          ? "text-[#f57224]"
-          : "text-slate-950"
-      }`}
-    >
-    NPR{" "}
-{Number(
-  type === "Flash Sale"
-    ? product.salePrice || product.price || 0
-    : product.price || 0
-).toLocaleString()}
-    </p>
+              <p
+                className={`text-2xl font-black transition-all group-hover:scale-[1.03] origin-left ${
+                  isFlashSale ? "text-[#f57224]" : "text-slate-950"
+                }`}
+              >
+                NPR{" "}
+                {Number(
+                  isFlashSale
+                    ? product.salePrice || product.price || 0
+                    : product.price || 0
+                ).toLocaleString()}
+              </p>
 
-    {/* ONLY FOR FLASH SALE */}
-    {type === "Flash Sale" && (
-      <div className="flex items-center gap-2 mt-1">
-        <p className="text-sm text-slate-400 line-through font-bold">
-          NPR{" "}
-          {Number(
-           product.price || 0
-          ).toLocaleString()}
-        </p>
+              {isFlashSale && (
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-sm text-slate-400 line-through font-bold">
+                    NPR {Number(product.price || 0).toLocaleString()}
+                  </p>
 
-        <span className="text-xs font-black text-emerald-600">
-  -
-  {Math.round(
-    (
-      ((product.price || 0) -
-        (product.salePrice || 0)) /
-      (product.price || 1)
-    ) * 100
-  )}
-  %
-</span>
-      </div>
-    )}
-  </div>
+                  <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-600">
+                    -
+                    {Math.round(
+                      (((product.price || 0) - (product.salePrice || 0)) /
+                        (product.price || 1)) *
+                        100
+                    )}
+                    %
+                  </span>
+                </div>
+              )}
+            </div>
 
-  <div className="text-right">
-    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-      Reviews
-    </p>
+            <div className="text-right">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+                Reviews
+              </p>
 
-    <p className="text-sm font-black text-slate-700">
-      {product.numReviews || product.reviews?.length || 0}
-    </p>
-  </div>
-</div>
+              <p className="text-sm font-black text-slate-700">
+                {product.numReviews || product.reviews?.length || 0}
+              </p>
+            </div>
+          </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => addToCart(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : isFlashSale
+                  ? "bg-orange-50 hover:bg-orange-100 text-orange-700"
                   : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
               }`}
             >
@@ -402,12 +437,15 @@ export default function Home() {
               type="button"
               onClick={() => handleBuyNow(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : isFlashSale
+                  ? "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
                   : "bg-slate-950 hover:bg-indigo-700 text-white shadow-md"
               }`}
             >
+              {isFlashSale && <Flame className="w-4 h-4 fill-white" />}
               Buy Now
             </button>
           </div>
@@ -426,47 +464,95 @@ export default function Home() {
     viewAllLink = "/products",
   }) => {
     const visibleProducts = Array.isArray(products) ? products.slice(0, 4) : [];
+    const isFlashSale = type === "Flash Sale";
 
     return (
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-7">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4">
-              {icon}
-              {badge}
+        <div
+          className={`transition-all duration-300 ${
+            isFlashSale
+              ? "relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-orange-50 via-white to-red-50 border border-orange-100 p-5 sm:p-7 shadow-lg shadow-orange-100/70 hover:shadow-2xl hover:shadow-orange-200/70"
+              : ""
+          }`}
+        >
+          {isFlashSale && (
+            <>
+              <div className="absolute -top-20 -right-16 w-64 h-64 bg-orange-300/25 blur-3xl rounded-full" />
+              <div className="absolute -bottom-24 -left-20 w-64 h-64 bg-red-300/20 blur-3xl rounded-full" />
+            </>
+          )}
+
+          <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-7">
+            <div>
+              <div
+                className={`inline-flex items-center gap-2 border px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4 transition-all hover:-translate-y-1 hover:scale-105 ${
+                  isFlashSale
+                    ? "bg-orange-500 text-white border-orange-400 shadow-md shadow-orange-500/20"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
+                }`}
+              >
+                {isFlashSale ? <Flame className="w-4 h-4 fill-white" /> : icon}
+                {badge}
+              </div>
+
+              <h2 className="text-3xl sm:text-4xl font-black text-slate-950">
+                {title}
+              </h2>
+
+              <p
+                className={`mt-2 max-w-2xl ${
+                  isFlashSale ? "text-slate-600" : "text-slate-500"
+                }`}
+              >
+                {subtitle}
+              </p>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl font-black text-slate-950">
-              {title}
-            </h2>
-
-            <p className="text-slate-500 mt-2 max-w-2xl">{subtitle}</p>
+            <Link
+              to={viewAllLink}
+              className={`inline-flex items-center justify-center gap-2 border px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-sm hover:-translate-y-1 hover:scale-[1.02] ${
+                isFlashSale
+                  ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 shadow-orange-500/20"
+                  : "bg-white hover:bg-slate-950 text-slate-800 hover:text-white border-slate-200"
+              }`}
+            >
+              {isFlashSale ? "View All Deals" : "View All"}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
-          <Link
-            to={viewAllLink}
-            className="inline-flex items-center justify-center gap-2 bg-white hover:bg-slate-950 text-slate-800 hover:text-white border border-slate-200 px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-sm"
-          >
-            View All
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          {visibleProducts.length === 0 ? (
+            <div
+              className={`relative border border-dashed rounded-[2rem] p-10 text-center transition-all hover:-translate-y-1 hover:shadow-lg ${
+                isFlashSale
+                  ? "bg-white/70 border-orange-200"
+                  : "bg-white border-slate-200"
+              }`}
+            >
+              {isFlashSale ? (
+                <Flame className="w-10 h-10 text-orange-400 fill-orange-400 mx-auto mb-3" />
+              ) : (
+                <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              )}
+
+              <p className="font-black text-slate-800">
+                {isFlashSale
+                  ? "No flash sale products found"
+                  : "No products found"}
+              </p>
+
+              <p className="text-sm text-slate-500 mt-1">
+                Products will appear here after they are added from admin.
+              </p>
+            </div>
+          ) : (
+            <div className="relative grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+              {visibleProducts.map((product) => (
+                <ProductCard key={product._id} product={product} type={type} />
+              ))}
+            </div>
+          )}
         </div>
-
-        {visibleProducts.length === 0 ? (
-          <div className="bg-white border border-dashed border-slate-200 rounded-[2rem] p-10 text-center">
-            <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="font-black text-slate-800">No products found</p>
-            <p className="text-sm text-slate-500 mt-1">
-              Products will appear here after they are added from admin.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-            {visibleProducts.map((product) => (
-              <ProductCard key={product._id} product={product} type={type} />
-            ))}
-          </div>
-        )}
       </section>
     );
   };
@@ -492,9 +578,9 @@ export default function Home() {
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-        <div className="order-1 lg:order-1 lg:col-span-7">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="order-1 lg:order-1 lg:col-span-7">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur transition-all hover:bg-white/15 hover:-translate-y-1">
                 <Sparkles className="w-4 h-4" />
                 Premium Bookstore Experience
               </div>
@@ -511,7 +597,7 @@ export default function Home() {
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Link
                   to="/products"
-                  className="inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-7 py-4 rounded-2xl text-sm font-black shadow-lg shadow-amber-500/20 transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-7 py-4 rounded-2xl text-sm font-black shadow-lg shadow-amber-500/20 transition-all hover:-translate-y-1 hover:scale-[1.02] hover:shadow-amber-500/40"
                 >
                   Shop Products
                   <ArrowRight className="w-5 h-5" />
@@ -519,7 +605,7 @@ export default function Home() {
 
                 <Link
                   to="/location"
-                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white border border-white/15 px-7 py-4 rounded-2xl text-sm font-black backdrop-blur transition-all"
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 text-white border border-white/15 px-7 py-4 rounded-2xl text-sm font-black backdrop-blur transition-all hover:-translate-y-1 hover:scale-[1.02]"
                 >
                   <MapPin className="w-5 h-5" />
                   Visit Store
@@ -528,19 +614,19 @@ export default function Home() {
             </div>
 
             <div className="order-2 lg:order-2 lg:col-span-5">
-              <div className="relative">
-                <div className="absolute -inset-4 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3rem]" />
+              <div className="relative group">
+                <div className="absolute -inset-4 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3rem] transition-all duration-500 group-hover:from-amber-400/45 group-hover:to-indigo-500/45" />
 
-                <div className="relative bg-white/10 border border-white/10 rounded-[3rem] p-4 backdrop-blur-xl shadow-2xl">
+                <div className="relative bg-white/10 border border-white/10 rounded-[3rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                   <img
                     src={heroImages[currentSlide].url}
                     alt={heroImages[currentSlide].alt}
-                    className="w-full h-[420px] object-cover rounded-[2.4rem]"
+                    className="w-full h-[420px] object-cover rounded-[2.4rem] transition-transform duration-700 group-hover:scale-[1.03]"
                   />
 
-                  <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl">
+                  <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center transition-all hover:scale-110">
                         <ShieldCheck className="w-6 h-6" />
                       </div>
 
@@ -563,7 +649,7 @@ export default function Home() {
                       key={index}
                       type="button"
                       onClick={() => setCurrentSlide(index)}
-                      className={`h-2.5 rounded-full transition-all ${
+                      className={`h-2.5 rounded-full transition-all hover:bg-amber-300 hover:scale-125 ${
                         index === currentSlide
                           ? "w-10 bg-amber-400"
                           : "w-2.5 bg-white/30"
@@ -572,39 +658,39 @@ export default function Home() {
                     />
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+                  <p className="text-3xl font-black text-white">100%</p>
+                  <p className="text-sm text-slate-300 mt-1">
+                    Trusted checkout flow
+                  </p>
                 </div>
-                <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
-  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
-    <p className="text-3xl font-black text-white">100%</p>
-    <p className="text-sm text-slate-300 mt-1">
-      Trusted checkout flow
-    </p>
-  </div>
 
-  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
-    <p className="text-3xl font-black text-white">VAT</p>
-    <p className="text-sm text-slate-300 mt-1">
-      Invoice-ready orders
-    </p>
-  </div>
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+                  <p className="text-3xl font-black text-white">VAT</p>
+                  <p className="text-sm text-slate-300 mt-1">
+                    Invoice-ready orders
+                  </p>
+                </div>
 
-  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur">
-    <p className="text-3xl font-black text-white">Fast</p>
-    <p className="text-sm text-slate-300 mt-1">
-      Delivery processing
-    </p>
-  </div>
-                
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+                  <p className="text-3xl font-black text-white">Fast</p>
+                  <p className="text-sm text-slate-300 mt-1">
+                    Delivery processing
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
-
+      
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-xl shadow-slate-200/70">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center mb-4">
+          <div className="group bg-white border border-slate-100 rounded-[2rem] p-6 shadow-xl shadow-slate-200/70 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-100">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center mb-4 transition-all group-hover:scale-110 group-hover:bg-indigo-100">
               <Layers className="w-6 h-6" />
             </div>
 
@@ -618,8 +704,8 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-xl shadow-slate-200/70">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4">
+          <div className="group bg-white border border-slate-100 rounded-[2rem] p-6 shadow-xl shadow-slate-200/70 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-amber-100">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 transition-all group-hover:scale-110 group-hover:bg-amber-100">
               <ShoppingCart className="w-6 h-6" />
             </div>
 
@@ -633,8 +719,8 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-xl shadow-slate-200/70">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+          <div className="group bg-white border border-slate-100 rounded-[2rem] p-6 shadow-xl shadow-slate-200/70 transition-all hover:-translate-y-2 hover:shadow-2xl hover:shadow-emerald-100">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 transition-all group-hover:scale-110 group-hover:bg-emerald-100">
               <ShieldCheck className="w-6 h-6" />
             </div>
 
@@ -660,55 +746,55 @@ export default function Home() {
       ) : (
         <>
           <ProductSection
-  title="Featured Collection"
-  subtitle="Handpicked products selected for readers and learners."
-  badge="Featured"
-  icon={<Sparkles className="w-4 h-4" />}
-  products={featuredProducts}
-  type="Featured"
-  viewAllLink="/products?collection=featured"
-/>
+            title="Flash Sale"
+            subtitle="Special products and limited-time selections for quick buyers."
+            badge="Limited Deals"
+            icon={<Flame className="w-4 h-4 fill-white" />}
+            products={flashSaleProducts}
+            type="Flash Sale"
+            viewAllLink="/products?collection=flashSale"
+          />
 
-<ProductSection
-  title="Flash Sale"
-  subtitle="Special products and limited-time selections for quick buyers."
-  badge="Limited Deals"
-  icon={<Star className="w-4 h-4" />}
-  products={flashSaleProducts}
-  type="Flash Sale"
-  viewAllLink="/products?collection=flashSale"
-/>
+          <ProductSection
+            title="Best Sellers"
+            subtitle="Popular choices customers are buying and reviewing."
+            badge="Popular"
+            icon={<ShoppingCart className="w-4 h-4" />}
+            products={bestSellerProducts}
+            type="Best Seller"
+            viewAllLink="/products?collection=bestSeller"
+          />
 
-<ProductSection
-  title="Best Sellers"
-  subtitle="Popular choices customers are buying and reviewing."
-  badge="Popular"
-  icon={<ShoppingCart className="w-4 h-4" />}
-  products={bestSellerProducts}
-  type="Best Seller"
-  viewAllLink="/products?collection=bestSeller"
-/>
+          <ProductSection
+            title="Featured Collection"
+            subtitle="Handpicked products selected for readers and learners."
+            badge="Featured"
+            icon={<Sparkles className="w-4 h-4" />}
+            products={featuredProducts}
+            type="Featured"
+            viewAllLink="/products?collection=featured"
+          />
 
-<ProductSection
-  title="New Arrivals"
-  subtitle="Freshly added products from the latest collection."
-  badge="New"
-  icon={<Layers className="w-4 h-4" />}
-  products={newArrivalProducts}
-  type="New Arrival"
-  viewAllLink="/products?collection=newArrival"
-/>
+          <ProductSection
+            title="New Arrivals"
+            subtitle="Freshly added products from the latest collection."
+            badge="New"
+            icon={<Layers className="w-4 h-4" />}
+            products={newArrivalProducts}
+            type="New Arrival"
+            viewAllLink="/products?collection=newArrival"
+          />
         </>
       )}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="relative overflow-hidden rounded-[3rem] bg-slate-950 p-8 sm:p-12">
+        <div className="relative overflow-hidden rounded-[3rem] bg-slate-950 p-8 sm:p-12 transition-all hover:-translate-y-1 hover:shadow-2xl">
           <div className="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/25 blur-3xl rounded-full" />
           <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-400/20 blur-3xl rounded-full" />
 
           <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-5">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-5 transition-all hover:bg-white/15 hover:-translate-y-1">
                 <ShieldCheck className="w-4 h-4" />
                 Ready to Order
               </div>
@@ -725,7 +811,7 @@ export default function Home() {
 
             <Link
               to="/products"
-              className="inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-7 py-4 rounded-2xl text-sm font-black shadow-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 px-7 py-4 rounded-2xl text-sm font-black shadow-lg transition-all hover:-translate-y-1 hover:scale-[1.02] hover:shadow-amber-500/30"
             >
               Explore All Products
               <ArrowRight className="w-5 h-5" />
