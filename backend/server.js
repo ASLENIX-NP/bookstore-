@@ -325,6 +325,151 @@ const policySchema = new mongoose.Schema(
 
 const Policy =
   mongoose.models.Policy || mongoose.model("Policy", policySchema);
+  // INVOICE SETTINGS SCHEMA & MODEL
+const invoiceSettingsSchema = new mongoose.Schema(
+  {
+    key: {
+      type: String,
+      required: true,
+      unique: true,
+      default: "default",
+    },
+
+    sellerName: {
+      type: String,
+      default: "PatraPatrika Center",
+    },
+
+    sellerVatPan: {
+      type: String,
+      default: "000000",
+    },
+
+    sellerAddress: {
+      type: String,
+      default: "000000",
+    },
+
+    sellerPhone: {
+      type: String,
+      default: "000000",
+    },
+
+    sellerEmail: {
+      type: String,
+      default: "000000",
+    },
+
+    sellerWebsite: {
+      type: String,
+      default: "",
+    },
+
+    invoiceTitle: {
+      type: String,
+      default: "TAX INVOICE",
+    },
+
+    invoicePrefix: {
+      type: String,
+      default: "VAT",
+    },
+
+    vatRate: {
+      type: Number,
+      default: 13,
+    },
+
+    defaultBuyerVatPan: {
+      type: String,
+      default: "000000",
+    },
+
+    invoiceNote: {
+      type: String,
+      default: "",
+    },
+
+    declaration: {
+      type: String,
+      default: "",
+    },
+
+    footerText: {
+      type: String,
+      default: "",
+    },
+  },
+  { timestamps: true }
+);
+
+const InvoiceSettings =
+  mongoose.models.InvoiceSettings ||
+  mongoose.model("InvoiceSettings", invoiceSettingsSchema);
+
+const defaultInvoiceSettings = {
+  key: "default",
+  sellerName: "PatraPatrika Center",
+  sellerVatPan: "000000",
+  sellerAddress: "000000",
+  sellerPhone: "000000",
+  sellerEmail: "000000",
+  sellerWebsite: "",
+  invoiceTitle: "TAX INVOICE",
+  invoicePrefix: "VAT",
+  vatRate: 13,
+  defaultBuyerVatPan: "000000",
+  invoiceNote: "",
+  declaration: "",
+  footerText: "",
+};
+
+const seedInvoiceSettings = async () => {
+  try {
+    await InvoiceSettings.findOneAndUpdate(
+      { key: "default" },
+      {
+        $setOnInsert: defaultInvoiceSettings,
+      },
+      {
+        upsert: true,
+        returnDocument: "after",
+      }
+    );
+
+    console.log("Invoice settings ready ✅");
+  } catch (error) {
+    console.error("Invoice settings seed error:", error.message);
+  }
+};
+
+const getInvoiceSettingsDocument = async () => {
+  let settings = await InvoiceSettings.findOne({ key: "default" });
+
+  if (!settings) {
+    settings = await InvoiceSettings.create(defaultInvoiceSettings);
+  }
+
+  return settings;
+};
+
+const cleanInvoiceSettingsPayload = (body = {}) => {
+  return {
+    sellerName: String(body.sellerName || "").trim(),
+    sellerVatPan: String(body.sellerVatPan || "").trim(),
+    sellerAddress: String(body.sellerAddress || "").trim(),
+    sellerPhone: String(body.sellerPhone || "").trim(),
+    sellerEmail: String(body.sellerEmail || "").trim(),
+    sellerWebsite: String(body.sellerWebsite || "").trim(),
+    invoiceTitle: String(body.invoiceTitle || "TAX INVOICE").trim(),
+    invoicePrefix: String(body.invoicePrefix || "VAT").trim().toUpperCase(),
+    vatRate: Number(body.vatRate || 0),
+    defaultBuyerVatPan: String(body.defaultBuyerVatPan || "").trim(),
+    invoiceNote: String(body.invoiceNote || "").trim(),
+    declaration: String(body.declaration || "").trim(),
+    footerText: String(body.footerText || "").trim(),
+  };
+};
 
 const defaultPolicies = [
   {
@@ -704,35 +849,116 @@ app.put("/api/admin/policies/:key", async (req, res) => {
     });
   }
 });
-
-// PRODUCT ROUTES
-app.get("/api/products", async (req, res) => {
+// INVOICE SETTINGS ROUTES
+app.get("/api/invoice-settings", async (req, res) => {
   try {
-    const query = {};
+    const settings = await getInvoiceSettingsDocument();
 
-    if (req.query.featured === "true") {
-      query.featured = true;
-    }
-
-    if (req.query.flashSale === "true") {
-      query.flashSale = true;
-    }
-
-    if (req.query.bestSeller === "true") {
-      query.bestSeller = true;
-    }
-
-    if (req.query.newArrival === "true") {
-      query.newArrival = true;
-    }
-
-    const products = await Product.find(query).sort({
-      createdAt: -1,
+    res.status(200).json({
+      success: true,
+      settings,
+      data: settings,
     });
-
-    res.status(200).json(products);
   } catch (error) {
+    console.error("Fetch invoice settings error:", error);
+
     res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/admin/invoice-settings", async (req, res) => {
+  try {
+    const settings = await getInvoiceSettingsDocument();
+
+    res.status(200).json({
+      success: true,
+      settings,
+      data: settings,
+    });
+  } catch (error) {
+    console.error("Admin fetch invoice settings error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/admin/invoice-settings", async (req, res) => {
+  try {
+    const payload = cleanInvoiceSettingsPayload(req.body);
+
+    if (!payload.sellerName) {
+      return res.status(400).json({
+        success: false,
+        error: "Seller name is required",
+      });
+    }
+
+    if (!payload.sellerVatPan) {
+      return res.status(400).json({
+        success: false,
+        error: "VAT/PAN number is required",
+      });
+    }
+
+    if (!payload.sellerAddress) {
+      return res.status(400).json({
+        success: false,
+        error: "Seller address is required",
+      });
+    }
+
+    if (!payload.sellerPhone) {
+      return res.status(400).json({
+        success: false,
+        error: "Seller phone is required",
+      });
+    }
+
+    if (!payload.sellerEmail) {
+      return res.status(400).json({
+        success: false,
+        error: "Seller email is required",
+      });
+    }
+
+    if (!Number.isFinite(payload.vatRate) || payload.vatRate < 0) {
+      return res.status(400).json({
+        success: false,
+        error: "VAT rate must be a valid positive number",
+      });
+    }
+
+    const updatedSettings = await InvoiceSettings.findOneAndUpdate(
+      { key: "default" },
+      {
+        $set: payload,
+        $setOnInsert: {
+          key: "default",
+        },
+      },
+      {
+        upsert: true,
+        returnDocument: "after",
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Invoice settings updated successfully",
+      settings: updatedSettings,
+      data: updatedSettings,
+    });
+  } catch (error) {
+    console.error("Update invoice settings error:", error);
+
+    res.status(500).json({
+      success: false,
       error: error.message,
     });
   }
@@ -3279,8 +3505,9 @@ const startServer = async () => {
 
     console.log("Connected to MongoDB Atlas! âœ…");
 
-    await seedAdminAccount();
-    await seedPolicies();
+   await seedAdminAccount();
+await seedPolicies();
+await seedInvoiceSettings();
 
     app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port: ${PORT}`);

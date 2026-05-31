@@ -16,6 +16,7 @@ import {
   Mail,
   ScanLine,
   Barcode,
+   ReceiptText,
 } from "lucide-react";
 
 export default function AdminLayout() {
@@ -50,15 +51,20 @@ export default function AdminLayout() {
   };
 
   const navLinks = [
-    { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/admin/books", label: "Manage Books", icon: BookOpen },
-    { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-    { to: "/admin/orders", label: "Orders Status", icon: ShoppingBag },
-    { to: "/admin/users", label: "Users List", icon: Users },
-    { to: "/admin/messages", label: "Messages", icon: Mail },
-    { to: "/admin/pos", label: "POS System", icon: ScanLine },
-    { to: "/admin/print-barcode", label: "Print Barcode", icon: Barcode },
-  ];
+  { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/admin/books", label: "Manage Books", icon: BookOpen },
+  { to: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { to: "/admin/orders", label: "Orders Status", icon: ShoppingBag },
+  { to: "/admin/users", label: "Users List", icon: Users },
+  { to: "/admin/messages", label: "Messages", icon: Mail },
+  { to: "/admin/pos", label: "POS System", icon: ScanLine },
+  { to: "/admin/print-barcode", label: "Print Barcode", icon: Barcode },
+  {
+    to: "/admin/vat-bill-settings",
+    label: "VAT Bill Settings",
+    icon: ReceiptText,
+  },
+];
 
   const DesktopSidebarContent = () => (
     <>
