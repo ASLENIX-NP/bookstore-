@@ -1425,10 +1425,12 @@ app.post("/api/products", async (req, res) => {
 
     res.status(201).json(product);
   } catch (error) {
-    console.error("PRODUCT CREATE ERROR:", error);
-
+    console.error("PRODUCT CREATE ERROR:");
+    console.error(error);
+  
     res.status(500).json({
-      error: error.message,
+      message: error.message,
+      stack: error.stack,
     });
   }
 });
