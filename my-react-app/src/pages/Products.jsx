@@ -5,7 +5,6 @@ import {
   ShoppingCart,
   AlertCircle,
   Star,
-  Eye,
   Heart,
   Search,
   RotateCcw,
@@ -15,6 +14,8 @@ import {
   SlidersHorizontal,
   Loader2,
   Sparkles,
+  Flame,
+  BadgePercent,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -199,6 +200,8 @@ export default function Products() {
 
   const subcategories =
     selectedCategory === "all" ? [] : categoryOptions[selectedCategory] || [];
+
+  const isFlashCollection = selectedCollection === "flashSale";
 
   useEffect(() => {
     const currentCollection = searchParams.get("collection") || "all";
@@ -570,7 +573,17 @@ export default function Products() {
       Number(product.salePrice || 0) < Number(product.price || 0);
 
     return (
-      <div className="group bg-white rounded-[1.6rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/70 transition-all duration-300">
+      <div
+        className={`group relative rounded-[1.6rem] border overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-2 ${
+          isFlashCollection
+            ? "bg-white border-orange-200 hover:shadow-2xl hover:shadow-orange-200/70"
+            : "bg-white border-slate-100 hover:shadow-xl hover:shadow-slate-200/70"
+        }`}
+      >
+        {isFlashCollection && (
+          <div className="absolute -top-16 -right-16 w-40 h-40 bg-orange-400/20 blur-3xl rounded-full pointer-events-none group-hover:bg-orange-400/35 transition-all duration-500" />
+        )}
+
         <div
           className="relative bg-slate-100 cursor-pointer overflow-hidden"
           onClick={() => openProductDetails(product._id)}
@@ -578,10 +591,23 @@ export default function Products() {
           <ProductImage
             src={product.image}
             alt={product.name}
-            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-700"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-75" />
+          <div
+            className={`absolute inset-0 ${
+              isFlashCollection
+                ? "bg-gradient-to-t from-orange-950/65 via-slate-950/15 to-transparent"
+                : "bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-75"
+            }`}
+          />
+
+          {isFlashCollection && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-orange-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-all">
+              <Flame className="w-3.5 h-3.5 fill-white" />
+              HOT DEAL
+            </div>
+          )}
 
           <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
             <div className="flex flex-wrap gap-2">
@@ -596,64 +622,68 @@ export default function Products() {
               </span>
 
               {selectedCollection !== "all" && (
-                <span className="px-3 py-1 rounded-full text-[11px] font-black bg-white/90 text-slate-800 border border-white/70 backdrop-blur">
+                <span
+                  className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur ${
+                    isFlashCollection
+                      ? "bg-white/95 text-orange-600 border-orange-100"
+                      : "bg-white/90 text-slate-800 border-white/70"
+                  }`}
+                >
                   {currentCollectionInfo.label}
                 </span>
               )}
             </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  openProductDetails(product._id);
-                }}
-                className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center shadow-lg transition-all"
-                title="View Details"
-              >
-                <Eye className="w-5 h-5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => handleWishlistClick(e, product)}
-                className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white flex items-center justify-center shadow-lg transition-all"
-                title="Wishlist"
-              >
-                <Heart
-                  className={`w-5 h-5 transition-all ${
-                    wishlist.find((item) => item._id === product._id)
-                      ? "fill-red-500 text-red-500"
-                      : "text-slate-700"
-                  }`}
-                />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={(e) => handleWishlistClick(e, product)}
+              className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center shadow-lg transition-all"
+              title="Wishlist"
+            >
+              <Heart
+                className={`w-5 h-5 transition-all ${
+                  wishlist.find((item) => item._id === product._id)
+                    ? "fill-red-500 text-red-500"
+                    : "text-slate-700"
+                }`}
+              />
+            </button>
           </div>
 
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm">
+            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm transition-all group-hover:scale-105">
               <Star className="w-3.5 h-3.5 fill-slate-950" />
               {Number(product.rating || 0).toFixed(1)}
             </div>
 
-            {product.category && (
-              <span className="text-[11px] font-black bg-slate-950/80 text-white px-3 py-1.5 rounded-full border border-white/10 backdrop-blur">
-                {product.category}
+            {isFlashCollection ? (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-black bg-white/95 text-orange-600 px-3 py-1.5 rounded-full border border-orange-100 backdrop-blur">
+                <BadgePercent className="w-3.5 h-3.5" />
+                Deal
               </span>
+            ) : (
+              product.category && (
+                <span className="text-[11px] font-black bg-slate-950/80 text-white px-3 py-1.5 rounded-full border border-white/10 backdrop-blur">
+                  {product.category}
+                </span>
+              )
             )}
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-5 relative">
           <button
             type="button"
             onClick={() => openProductDetails(product._id)}
             className="text-left w-full"
           >
-            <h3 className="font-black text-slate-950 text-lg leading-snug group-hover:text-indigo-700 transition-colors">
+            <h3
+              className={`font-black text-lg leading-snug transition-colors ${
+                isFlashCollection
+                  ? "text-slate-950 group-hover:text-orange-600"
+                  : "text-slate-950 group-hover:text-indigo-700"
+              }`}
+            >
               {product.name || "Untitled Product"}
             </h3>
           </button>
@@ -666,32 +696,37 @@ export default function Products() {
 
           <div className="mt-4 flex items-end justify-between gap-4">
             <div>
-              {hasSalePrice ? (
+              {hasSalePrice || isFlashCollection ? (
                 <>
                   <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
                     Flash Sale Price
                   </p>
 
-                  <p className="text-2xl font-black text-[#f57224]">
-                    NPR {Number(product.salePrice || 0).toLocaleString()}
+                  <p className="text-2xl font-black text-[#f57224] transition-all group-hover:scale-[1.03] origin-left">
+                    NPR{" "}
+                    {Number(
+                      product.salePrice || product.price || 0
+                    ).toLocaleString()}
                   </p>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-sm text-slate-400 line-through font-bold">
-                      NPR {Number(product.price || 0).toLocaleString()}
-                    </p>
+                  {hasSalePrice && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-slate-400 line-through font-bold">
+                        NPR {Number(product.price || 0).toLocaleString()}
+                      </p>
 
-                    <span className="text-xs font-black text-emerald-600">
-                      -
-                      {Math.round(
-                        ((Number(product.price || 0) -
-                          Number(product.salePrice || 0)) /
-                          Number(product.price || 1)) *
-                          100
-                      )}
-                      %
-                    </span>
-                  </div>
+                      <span className="text-xs font-black text-emerald-600">
+                        -
+                        {Math.round(
+                          ((Number(product.price || 0) -
+                            Number(product.salePrice || 0)) /
+                            Number(product.price || 1)) *
+                            100
+                        )}
+                        %
+                      </span>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -722,9 +757,11 @@ export default function Products() {
               type="button"
               onClick={() => addToCart(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : isFlashCollection
+                  ? "bg-orange-50 hover:bg-orange-100 text-orange-700"
                   : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
               }`}
             >
@@ -736,12 +773,15 @@ export default function Products() {
               type="button"
               onClick={() => handleBuyNow(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-md transition-all ${
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-md transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                  : isFlashCollection
+                  ? "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20"
                   : "bg-slate-950 hover:bg-indigo-700 text-white"
               }`}
             >
+              {isFlashCollection && <Flame className="w-4 h-4 fill-white" />}
               Buy Now
             </button>
           </div>
@@ -751,49 +791,125 @@ export default function Products() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <section className="bg-white border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      className={`min-h-screen ${
+        isFlashCollection
+          ? "bg-gradient-to-br from-orange-50 via-white to-red-50"
+          : "bg-[#F8FAFC]"
+      }`}
+    >
+      <section
+        className={`border-b ${
+          isFlashCollection
+            ? "relative overflow-hidden bg-gradient-to-br from-slate-950 via-orange-950 to-red-950 border-orange-900/30 text-white"
+            : "bg-white border-slate-100"
+        }`}
+      >
+        {isFlashCollection && (
+          <>
+            <div className="absolute -top-24 -right-20 w-80 h-80 bg-orange-500/25 blur-3xl rounded-full" />
+            <div className="absolute -bottom-24 -left-20 w-80 h-80 bg-red-500/20 blur-3xl rounded-full" />
+            <Flame className="hidden lg:block absolute right-20 top-10 w-24 h-24 text-orange-300/20 fill-orange-300/20 animate-pulse" />
+          </>
+        )}
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
             <div>
-              <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4">
-                <BookOpen className="w-4 h-4" />
+              <div
+                className={`inline-flex items-center gap-2 border px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4 ${
+                  isFlashCollection
+                    ? "bg-orange-500 text-white border-orange-400 shadow-lg shadow-orange-500/20"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                }`}
+              >
+                {isFlashCollection ? (
+                  <Flame className="w-4 h-4 fill-white" />
+                ) : (
+                  <BookOpen className="w-4 h-4" />
+                )}
                 {currentCollectionInfo.label}
               </div>
 
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-950">
+              <h1
+                className={`text-3xl sm:text-5xl font-black ${
+                  isFlashCollection ? "text-white" : "text-slate-950"
+                }`}
+              >
                 {currentCollectionInfo.title}
               </h1>
 
-              <p className="text-slate-500 mt-2 max-w-2xl">
+              <p
+                className={`mt-2 max-w-2xl ${
+                  isFlashCollection ? "text-orange-100/80" : "text-slate-500"
+                }`}
+              >
                 {currentCollectionInfo.subtitle}
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-center">
-                <p className="text-xl font-black text-slate-950">
+              <div
+                className={`border rounded-2xl px-4 py-3 text-center ${
+                  isFlashCollection
+                    ? "bg-white/10 border-white/10 backdrop-blur"
+                    : "bg-slate-50 border-slate-100"
+                }`}
+              >
+                <p
+                  className={`text-xl font-black ${
+                    isFlashCollection ? "text-white" : "text-slate-950"
+                  }`}
+                >
                   {products.length}
                 </p>
-                <p className="text-[11px] font-black text-slate-400 uppercase">
+                <p
+                  className={`text-[11px] font-black uppercase ${
+                    isFlashCollection ? "text-orange-100/70" : "text-slate-400"
+                  }`}
+                >
                   Total
                 </p>
               </div>
 
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-center">
-                <p className="text-xl font-black text-emerald-600">
+              <div
+                className={`border rounded-2xl px-4 py-3 text-center ${
+                  isFlashCollection
+                    ? "bg-white/10 border-white/10 backdrop-blur"
+                    : "bg-slate-50 border-slate-100"
+                }`}
+              >
+                <p className="text-xl font-black text-emerald-500">
                   {totalInStock}
                 </p>
-                <p className="text-[11px] font-black text-slate-400 uppercase">
+                <p
+                  className={`text-[11px] font-black uppercase ${
+                    isFlashCollection ? "text-orange-100/70" : "text-slate-400"
+                  }`}
+                >
                   Stock
                 </p>
               </div>
 
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 text-center">
-                <p className="text-xl font-black text-indigo-600">
+              <div
+                className={`border rounded-2xl px-4 py-3 text-center ${
+                  isFlashCollection
+                    ? "bg-white/10 border-white/10 backdrop-blur"
+                    : "bg-slate-50 border-slate-100"
+                }`}
+              >
+                <p
+                  className={`text-xl font-black ${
+                    isFlashCollection ? "text-orange-300" : "text-indigo-600"
+                  }`}
+                >
                   {filteredProducts.length}
                 </p>
-                <p className="text-[11px] font-black text-slate-400 uppercase">
+                <p
+                  className={`text-[11px] font-black uppercase ${
+                    isFlashCollection ? "text-orange-100/70" : "text-slate-400"
+                  }`}
+                >
                   Result
                 </p>
               </div>
@@ -802,9 +918,21 @@ export default function Products() {
         </div>
       </section>
 
-      <section className="bg-[#F8FAFC] border-b border-slate-100">
+      <section
+        className={`border-b ${
+          isFlashCollection
+            ? "bg-transparent border-orange-100"
+            : "bg-[#F8FAFC] border-slate-100"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="bg-white border border-slate-100 rounded-[1.6rem] p-4 shadow-sm">
+          <div
+            className={`border rounded-[1.6rem] p-4 shadow-sm ${
+              isFlashCollection
+                ? "bg-white/90 border-orange-100 shadow-orange-100/60"
+                : "bg-white border-slate-100"
+            }`}
+          >
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               <div className="lg:col-span-3">
                 <label className="block text-xs font-black uppercase tracking-[0.18em] text-slate-400 mb-2">
@@ -827,7 +955,11 @@ export default function Products() {
                         setShowSearchSuggestions(true);
                       }
                     }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+                    className={`w-full bg-slate-50 border rounded-2xl pl-12 pr-4 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 ${
+                      isFlashCollection
+                        ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
+                        : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
+                    }`}
                   />
 
                   {showSearchSuggestions && searchTerm.trim() !== "" && (
@@ -850,7 +982,11 @@ export default function Products() {
                                   setSearchTerm(product.name || "");
                                   setShowSearchSuggestions(false);
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 transition-all border-b border-slate-50 last:border-b-0"
+                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-slate-50 last:border-b-0 ${
+                                  isFlashCollection
+                                    ? "hover:bg-orange-50"
+                                    : "hover:bg-indigo-50"
+                                }`}
                               >
                                 <ProductImage
                                   src={product.image}
@@ -909,7 +1045,11 @@ export default function Products() {
                 <select
                   value={selectedCollection}
                   onChange={(e) => handleCollectionSelect(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
+                    isFlashCollection
+                      ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
+                      : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
+                  }`}
                 >
                   {collectionOptions.map((collection) => (
                     <option key={collection.value} value={collection.value}>
@@ -927,7 +1067,11 @@ export default function Products() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => handleCategorySelect(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
+                    isFlashCollection
+                      ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
+                      : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
+                  }`}
                 >
                   <option value="all">All Categories</option>
 
@@ -948,7 +1092,11 @@ export default function Products() {
                   value={selectedSubcategory}
                   onChange={(e) => setSelectedSubcategory(e.target.value)}
                   disabled={selectedCategory === "all"}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-4 ${
+                    isFlashCollection
+                      ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
+                      : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
+                  }`}
                 >
                   <option value="all">All Subcategories</option>
 
@@ -968,7 +1116,11 @@ export default function Products() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
+                    isFlashCollection
+                      ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
+                      : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
+                  }`}
                 >
                   <option value="name">Name</option>
                   <option value="newest">Newest</option>
@@ -981,7 +1133,11 @@ export default function Products() {
 
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-slate-100 pt-4">
               <div className="inline-flex items-center gap-2 text-sm text-slate-500">
-                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                <SlidersHorizontal
+                  className={`w-4 h-4 ${
+                    isFlashCollection ? "text-orange-500" : "text-indigo-600"
+                  }`}
+                />
                 <span>
                   Showing{" "}
                   <span className="font-black text-slate-950">
@@ -998,7 +1154,11 @@ export default function Products() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-2xl text-sm font-black transition-all"
+                className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-sm font-black transition-all ${
+                  isFlashCollection
+                    ? "bg-orange-50 hover:bg-orange-100 text-orange-700"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                }`}
               >
                 <RotateCcw className="w-4 h-4" />
                 Reset Filters
@@ -1012,7 +1172,11 @@ export default function Products() {
         {loading && (
           <div className="min-h-[420px] flex items-center justify-center">
             <div className="bg-white border border-slate-100 rounded-[2rem] shadow-sm p-8 flex items-center gap-3">
-              <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
+              <Loader2
+                className={`w-7 h-7 animate-spin ${
+                  isFlashCollection ? "text-orange-500" : "text-indigo-600"
+                }`}
+              />
               <p className="font-black text-slate-600">Loading products...</p>
             </div>
           </div>
@@ -1030,7 +1194,11 @@ export default function Products() {
 
         {!loading && !error && filteredProducts.length === 0 && (
           <div className="bg-white border border-dashed border-slate-200 rounded-[2rem] p-12 text-center">
-            <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            {isFlashCollection ? (
+              <Flame className="w-12 h-12 text-orange-400 fill-orange-400 mx-auto mb-4" />
+            ) : (
+              <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            )}
 
             <h2 className="text-xl font-black text-slate-900">
               No products found
@@ -1044,7 +1212,11 @@ export default function Products() {
             <button
               type="button"
               onClick={resetFilters}
-              className="mt-6 inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl text-sm font-black transition-all"
+              className={`mt-6 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-black transition-all ${
+                isFlashCollection
+                  ? "bg-orange-500 hover:bg-orange-600 text-white"
+                  : "bg-slate-950 hover:bg-indigo-700 text-white"
+              }`}
             >
               <RotateCcw className="w-4 h-4" />
               Reset Filters
@@ -1056,8 +1228,18 @@ export default function Products() {
           <>
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
               <div>
-                <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-3">
-                  <Grid3X3 className="w-4 h-4" />
+                <div
+                  className={`inline-flex items-center gap-2 border px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-3 ${
+                    isFlashCollection
+                      ? "bg-orange-500 text-white border-orange-400 shadow-md shadow-orange-500/20"
+                      : "bg-indigo-50 text-indigo-700 border-indigo-100"
+                  }`}
+                >
+                  {isFlashCollection ? (
+                    <Flame className="w-4 h-4 fill-white" />
+                  ) : (
+                    <Grid3X3 className="w-4 h-4" />
+                  )}
                   {currentCollectionInfo.label}
                 </div>
 
@@ -1084,5 +1266,4 @@ export default function Products() {
       </main>
     </div>
   );
-  
 }

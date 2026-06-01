@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Loader2,
   ShoppingCart,
-  Eye,
   Heart,
   Star,
   Sparkles,
@@ -16,7 +15,6 @@ import {
   BadgePercent,
 } from "lucide-react";
 import axios from "axios";
-
 
 const CART_IMAGE_PLACEHOLDER =
   "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500";
@@ -72,16 +70,14 @@ export default function Home() {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        const res = await axios.get(
-          "http://localhost:5000/api/hero"
-        );
-  
+        const res = await axios.get("http://localhost:5000/api/hero");
+
         setHeroData(res.data);
       } catch (error) {
         console.log(error);
       }
     };
-  
+
     const fetchProducts = async () => {
       try {
         const [featuredRes, flashSaleRes, bestSellerRes, newArrivalRes] =
@@ -91,36 +87,35 @@ export default function Home() {
             axios.get("http://localhost:5000/api/products?bestSeller=true"),
             axios.get("http://localhost:5000/api/products?newArrival=true"),
           ]);
-  
+
         setFeaturedProducts(featuredRes.data);
         setFlashSaleProducts(flashSaleRes.data);
         setBestSellerProducts(bestSellerRes.data);
         setNewArrivalProducts(newArrivalRes.data);
-  
+
         setLoading(false);
       } catch (error) {
         console.error("Error fetching products:", error);
         setLoading(false);
       }
     };
-  
+
     fetchHero();
     fetchProducts();
   }, []);
-  
+
   useEffect(() => {
     if (!heroData.sliderImages?.length) return;
-  
+
     const sliderTimer = setInterval(() => {
       setCurrentSlide((prev) =>
-        prev >= heroData.sliderImages.length - 1
-          ? 0
-          : prev + 1
+        prev >= heroData.sliderImages.length - 1 ? 0 : prev + 1
       );
     }, 3500);
-  
+
     return () => clearInterval(sliderTimer);
   }, [heroData.sliderImages]);
+
   const openProductDetails = (productId) => {
     navigate(`/products/${productId}`);
   };
@@ -248,33 +243,21 @@ export default function Home() {
             </div>
           )}
 
-{type && (
-  <div className="absolute top-4 left-4">
-    <span
-      className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
-        isFlashSale
-          ? "bg-white/95 text-orange-600 border-orange-100"
-          : "bg-white/90 text-slate-800 border-white/70"
-      }`}
-    >
-      {type}
-    </span>
-  </div>
-)}
+          {type && (
+            <div className="absolute top-4 left-4">
+              <span
+                className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
+                  isFlashSale
+                    ? "bg-white/95 text-orange-600 border-orange-100"
+                    : "bg-white/90 text-slate-800 border-white/70"
+                }`}
+              >
+                {type}
+              </span>
+            </div>
+          )}
 
           <div className="absolute top-4 right-4 flex gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openProductDetails(product._id);
-              }}
-              className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 text-slate-900 flex items-center justify-center shadow-lg backdrop-blur transition-all"
-              title="View Details"
-            >
-              <Eye className="w-5 h-5" />
-            </button>
-
             <button
               type="button"
               onClick={(e) => {
@@ -353,27 +336,27 @@ export default function Home() {
             onClick={() => openProductDetails(product._id)}
             className="text-left w-full"
           >
-          <div className="flex items-center justify-between gap-3">
-  <h3
-    className={`font-black text-lg leading-snug transition-colors ${
-      isFlashSale
-        ? "text-slate-950 group-hover:text-orange-600"
-        : "text-slate-950 group-hover:text-indigo-700"
-    }`}
-  >
-    {product.name || "Untitled Product"}
-  </h3>
+            <div className="flex items-center justify-between gap-3">
+              <h3
+                className={`font-black text-lg leading-snug transition-colors ${
+                  isFlashSale
+                    ? "text-slate-950 group-hover:text-orange-600"
+                    : "text-slate-950 group-hover:text-indigo-700"
+                }`}
+              >
+                {product.name || "Untitled Product"}
+              </h3>
 
-  <span
-    className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-black ${
-      isOutOfStock
-        ? "bg-red-100 text-red-600"
-        : "bg-green-100 text-green-600"
-    }`}
-  >
-    {isOutOfStock ? "Out of Stock" : "In Stock"}
-  </span>
-</div>
+              <span
+                className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-black ${
+                  isOutOfStock
+                    ? "bg-red-100 text-red-600"
+                    : "bg-green-100 text-green-600"
+                }`}
+              >
+                {isOutOfStock ? "Out of Stock" : "In Stock"}
+              </span>
+            </div>
           </button>
 
           <p className="mt-2 text-sm text-slate-500 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] min-h-[44px]">
@@ -575,26 +558,26 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <section className="relative overflow-hidden bg-slate-950">
-      <div className="absolute inset-0">
-  {heroData.sliderImages.map((image, index) => (
-    <img
-      key={index}
-      src={image}
-      alt={`Hero ${index + 1}`}
-      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-        index === currentSlide ? "opacity-45" : "opacity-0"
-      }`}
-    />
-  ))}
+        <div className="absolute inset-0">
+          {heroData.sliderImages.map((image, index) => (
+            <img
+              key={index}
+              src={image}
+              alt={`Hero ${index + 1}`}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                index === currentSlide ? "opacity-45" : "opacity-0"
+              }`}
+            />
+          ))}
 
-  <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-indigo-950/80" />
-  <div className="absolute -top-32 -right-20 w-96 h-96 bg-indigo-500/20 blur-3xl rounded-full" />
-  <div className="absolute -bottom-32 -left-20 w-96 h-96 bg-amber-400/10 blur-3xl rounded-full" />
-</div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-indigo-950/80" />
+          <div className="absolute -top-32 -right-20 w-96 h-96 bg-indigo-500/20 blur-3xl rounded-full" />
+          <div className="absolute -bottom-32 -left-20 w-96 h-96 bg-amber-400/10 blur-3xl rounded-full" />
+        </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="order-1 lg:order-1 lg:col-span-7">
+        <div className="relative max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-10 items-center">
+            <div className="order-1 lg:order-1 lg:col-span-6">
               <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur transition-all hover:bg-white/15 hover:-translate-y-1">
                 <Sparkles className="w-4 h-4" />
                 Premium Bookstore Experience
@@ -628,15 +611,15 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="order-2 lg:order-2 lg:col-span-5">
+            <div className="order-2 lg:order-2 lg:col-span-6 xl:-mr-16">
               <div className="relative group">
-                <div className="absolute -inset-4 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3rem] transition-all duration-500 group-hover:from-amber-400/45 group-hover:to-indigo-500/45" />
+                <div className="absolute -inset-5 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3.4rem] transition-all duration-500 group-hover:from-amber-400/45 group-hover:to-indigo-500/45" />
 
-                <div className="relative bg-white/10 border border-white/10 rounded-[3rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
+                <div className="relative bg-white/10 border border-white/10 rounded-[3.4rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                   <img
-                  src={heroData.sliderImages[currentSlide] || ""}
-                  alt="Hero Image"
-                    className="w-full h-[420px] object-cover rounded-[2.4rem] transition-transform duration-700 group-hover:scale-[1.03]"
+                    src={heroData.sliderImages[currentSlide] || ""}
+                    alt="Hero Image"
+                    className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
                   />
 
                   <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
@@ -659,19 +642,19 @@ export default function Home() {
                 </div>
 
                 <div className="flex justify-center gap-2 mt-5">
-                {heroData.sliderImages.map((_, index) => (
-  <button
-    key={index}
-    type="button"
-    onClick={() => setCurrentSlide(index)}
-    className={`h-2.5 rounded-full transition-all hover:bg-amber-300 hover:scale-125 ${
-      index === currentSlide
-        ? "w-10 bg-amber-400"
-        : "w-2.5 bg-white/30"
-    }`}
-    aria-label={`Go to slide ${index + 1}`}
-  />
-))}
+                  {heroData.sliderImages.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setCurrentSlide(index)}
+                      className={`h-2.5 rounded-full transition-all hover:bg-amber-300 hover:scale-125 ${
+                        index === currentSlide
+                          ? "w-10 bg-amber-400"
+                          : "w-2.5 bg-white/30"
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
 

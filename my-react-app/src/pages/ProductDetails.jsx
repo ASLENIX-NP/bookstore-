@@ -27,6 +27,14 @@ import {
 const CART_IMAGE_PLACEHOLDER =
   'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500';
 
+const ratingLabels = {
+  1: 'Poor',
+  2: 'Average',
+  3: 'Good',
+  4: 'Very Good',
+  5: 'Excellent',
+};
+
 const getSafeCartImage = (image) => {
   if (!image) return CART_IMAGE_PLACEHOLDER;
 
@@ -50,6 +58,8 @@ export default function ProductDetails() {
       rating: 5,
       comment: '',
     });
+
+  const [hoverRating, setHoverRating] = useState(0);
 
   const [loading, setLoading] =
     useState(true);
@@ -292,6 +302,8 @@ export default function ProductDetails() {
         comment: '',
       });
 
+      setHoverRating(0);
+
       toast.success(
         'Review submitted successfully!'
       );
@@ -332,6 +344,53 @@ export default function ProductDetails() {
             />
           )
         )}
+      </div>
+    );
+  };
+
+  const renderRatingInput = () => {
+    const activeRating =
+      hoverRating ||
+      Number(reviewForm.rating || 0);
+
+    return (
+      <div>
+        <div className="flex items-center gap-1.5">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() =>
+                setReviewForm({
+                  ...reviewForm,
+                  rating: star,
+                })
+              }
+              onMouseEnter={() => setHoverRating(star)}
+              onMouseLeave={() => setHoverRating(0)}
+              onFocus={() => setHoverRating(star)}
+              onBlur={() => setHoverRating(0)}
+              className="rounded-xl p-1.5 transition-all hover:bg-amber-50 focus:outline-none focus:ring-4 focus:ring-amber-100"
+              aria-label={`${ratingLabels[star]} rating`}
+            >
+              <Star
+                className={`w-9 h-9 transition-all hover:scale-110 ${
+                  star <= activeRating
+                    ? 'text-amber-400 fill-current drop-shadow-sm'
+                    : 'text-gray-300 hover:text-amber-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-100 px-4 py-2 rounded-full text-sm font-black">
+          {renderStars(reviewForm.rating, 'w-4 h-4')}
+
+          <span>
+            {reviewForm.rating} - {ratingLabels[reviewForm.rating]}
+          </span>
+        </div>
       </div>
     );
   };
@@ -663,7 +722,10 @@ export default function ProductDetails() {
 
               <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-full text-sm font-black">
 
-                <Star className="w-4 h-4 fill-current" />
+                {renderStars(
+                  product.rating,
+                  'w-4 h-4'
+                )}
 
                 {Number(
                   product.rating || 0
@@ -760,41 +822,7 @@ export default function ProductDetails() {
                   Rating
                 </label>
 
-                <select
-                  value={
-                    reviewForm.rating
-                  }
-                  onChange={(e) =>
-                    setReviewForm({
-                      ...reviewForm,
-                      rating:
-                        e.target.value,
-                    })
-                  }
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3"
-                >
-
-                  <option value="5">
-                    5 - Excellent
-                  </option>
-
-                  <option value="4">
-                    4 - Very Good
-                  </option>
-
-                  <option value="3">
-                    3 - Good
-                  </option>
-
-                  <option value="2">
-                    2 - Average
-                  </option>
-
-                  <option value="1">
-                    1 - Poor
-                  </option>
-
-                </select>
+                {renderRatingInput()}
 
               </div>
 
