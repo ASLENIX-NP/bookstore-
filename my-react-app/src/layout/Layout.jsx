@@ -343,88 +343,84 @@ export default function Layout() {
       </main>
 
       <footer className="bg-slate-950 text-white mt-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-amber-300" />
-                </div>
-
-                <div>
-                  <p className="font-black text-lg">PatraPatrika Center</p>
-                  <p className="text-xs text-slate-400 font-bold">
-                    Books • Stationery • Reading Culture
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-sm text-slate-400 mt-4 leading-relaxed">
-                A clean and trusted destination for books, stationery, and
-                learning essentials.
-              </p>
-            </div>
-
-            <div>
-              <p className="font-black mb-4">Quick Links</p>
-
-              <div className="space-y-2 text-sm text-slate-400">
-                <Link to="/products" className="block hover:text-amber-300">
-                  Products
-                </Link>
-
-                <Link to="/location" className="block hover:text-amber-300">
-                  Location
-                </Link>
-
-                <Link to="/about" className="block hover:text-amber-300">
-                  About Us
-                </Link>
-
-                <Link to="/contact" className="block hover:text-amber-300">
-                  Contact
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <p className="font-black mb-4">Policies</p>
-
-              <div className="space-y-2 text-sm text-slate-400">
-                <Link
-                  to="/policies/terms"
-                  className="block hover:text-amber-300"
-                >
-                  Terms
-                </Link>
-
-                <Link
-                  to="/policies/privacy"
-                  className="block hover:text-amber-300"
-                >
-                  Privacy
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <p className="font-black mb-4">Store Promise</p>
-
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-4 py-2 text-sm font-black text-amber-300">
-                <Sparkles className="w-4 h-4" />
-                Quality books. Reliable service.
-              </div>
-            </div>
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 items-start">
+      
+      <div className="md:justify-self-start max-w-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-amber-300" />
           </div>
 
-          <div className="border-t border-white/10 mt-10 pt-6 text-center">
-            <p className="text-xs text-slate-500">
-              © {new Date().getFullYear()} PatraPatrika Center. All rights
-              reserved.
+          <div>
+            <p className="font-black text-lg">PatraPatrika Center</p>
+            <p className="text-xs text-slate-400 font-bold">
+              Books • Stationery • Reading Culture
             </p>
           </div>
         </div>
-      </footer>
+
+        <p className="text-sm text-slate-400 mt-4 leading-relaxed">
+          A clean and trusted destination for books, stationery, and learning
+          essentials.
+        </p>
+      </div>
+
+      <div className="md:justify-self-center md:min-w-[180px] md:translate-x-10 lg:translate-x-14">
+        <p className="font-black mb-4">Quick Links</p>
+
+        <div className="space-y-2 text-sm text-slate-400">
+          <Link to="/products" className="block hover:text-amber-300">
+            Products
+          </Link>
+
+          <Link to="/location" className="block hover:text-amber-300">
+            Location
+          </Link>
+
+          <Link to="/about" className="block hover:text-amber-300">
+            About Us
+          </Link>
+
+          <Link to="/contact" className="block hover:text-amber-300">
+            Contact
+          </Link>
+        </div>
+      </div>
+
+      <div className="md:justify-self-end md:min-w-[260px]">
+        <p className="font-black mb-4">Store Promise</p>
+
+        <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-4 py-2 text-sm font-black text-amber-300">
+          <Sparkles className="w-4 h-4" />
+          Quality books. Reliable service.
+        </div>
+      </div>
+    </div>
+
+    <div className="border-t border-white/10 mt-10 pt-6 relative">
+      <p className="text-xs text-slate-500 text-center">
+        © {new Date().getFullYear()} PatraPatrika Center. All rights reserved.
+      </p>
+
+      <div className="mt-4 sm:mt-0 flex items-center justify-center sm:justify-end gap-5 text-xs text-slate-400 sm:absolute sm:right-0 sm:top-6">
+        <Link
+          to="/policies/terms"
+          className="hover:text-amber-300 transition"
+        >
+          Terms
+        </Link>
+
+        <Link
+          to="/policies/privacy"
+          className="hover:text-amber-300 transition"
+        >
+          Privacy
+        </Link>
+      </div>
+    </div>
+  </div>
+</footer>
     </div>
   );
 }

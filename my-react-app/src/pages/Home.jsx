@@ -589,8 +589,7 @@ export default function Home() {
 
         <div className="relative max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-10 items-center">
-            <div className="order-1 lg:order-1 lg:col-span-6">
-              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur transition-all hover:bg-white/15 hover:-translate-y-1">
+<div className="order-1 lg:order-1 lg:col-span-6 lg:-translate-y-8 xl:-translate-y-25 transition-transform">              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur transition-all hover:bg-white/15 hover:-translate-y-1">
                 <Sparkles className="w-4 h-4" />
                 Premium Bookstore Experience
               </div>
