@@ -32,11 +32,6 @@ export default function Layout() {
     }
   });
 
-  const [policies, setPolicies] = useState({});
-  const [activePolicy, setActivePolicy] = useState(null);
-  const [policyModalOpen, setPolicyModalOpen] = useState(false);
-  const [policyLoading, setPolicyLoading] = useState(false);
-
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
 
@@ -63,39 +58,9 @@ export default function Layout() {
     { path: "/location", label: "Location" },
     { path: "/about", label: "About Us" },
     { path: "/contact", label: "Contact" },
-  
-    ...(isAuthenticated
-      ? [{ path: "/settings", label: "Settings" }]
-      : []),
-  ];
 
-  const policyFallbacks = {
-    terms: {
-      key: "terms",
-      title: "Terms & Conditions",
-      content: "Terms and Conditions content is not available right now.",
-    },
-    privacy: {
-      key: "privacy",
-      title: "Privacy Policy",
-      content: "Privacy Policy content is not available right now.",
-    },
-    return: {
-      key: "return",
-      title: "Return / Refund Policy",
-      content: "Return and Refund Policy content is not available right now.",
-    },
-    shipping: {
-      key: "shipping",
-      title: "Shipping Policy",
-      content: "Shipping Policy content is not available right now.",
-    },
-    contact: {
-      key: "contact",
-      title: "Contact Information",
-      content: "Contact information is not available right now.",
-    },
-  };
+    ...(isAuthenticated ? [{ path: "/settings", label: "Settings" }] : []),
+  ];
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
@@ -116,7 +81,7 @@ export default function Layout() {
     window.dispatchEvent(new Event("storage"));
 
     navigate("/");
-};
+  };
 
   const handleCartClick = () => {
     const currentToken = localStorage.getItem("token");
@@ -154,47 +119,6 @@ export default function Layout() {
     } catch {
       return 0;
     }
-  };
-
-  const openPolicyModal = async (key) => {
-    try {
-      setPolicyModalOpen(true);
-      setPolicyLoading(true);
-      setActivePolicy(policies[key] || policyFallbacks[key]);
-
-      let selectedPolicy = policies[key];
-
-      if (!selectedPolicy) {
-        const response = await fetch("http://localhost:5000/api/policies");
-        const data = await response.json();
-
-        if (!data.success || !Array.isArray(data.policies)) {
-          throw new Error("Invalid policy response");
-        }
-
-        const policyMap = {};
-
-        data.policies.forEach((policy) => {
-          policyMap[policy.key] = policy;
-        });
-
-        setPolicies(policyMap);
-        selectedPolicy = policyMap[key] || policyFallbacks[key];
-      }
-
-      setActivePolicy(selectedPolicy);
-    } catch (error) {
-      console.error("Policy load error:", error);
-      setActivePolicy(policyFallbacks[key]);
-      toast.error("Failed to load latest policy content.");
-    } finally {
-      setPolicyLoading(false);
-    }
-  };
-
-  const closePolicyModal = () => {
-    setPolicyModalOpen(false);
-    setActivePolicy(null);
   };
 
   const cartCount = getCartCount();
@@ -236,32 +160,29 @@ export default function Layout() {
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                to="/wishlist"
+                className="relative w-11 h-11 rounded-2xl bg-white border border-slate-200 hover:bg-red-50 text-slate-700 hover:text-red-500 flex items-center justify-center shadow-md transition-all"
+              >
+                <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+              </Link>
 
-<Link
-  to="/wishlist"
-  className="relative w-11 h-11 rounded-2xl bg-white border border-slate-200 hover:bg-red-50 text-slate-700 hover:text-red-500 flex items-center justify-center shadow-md transition-all"
->
-  <Heart
-    className="w-5 h-5 text-red-500 fill-red-500"
-  />
-</Link>
+              <button
+                type="button"
+                onClick={handleCartClick}
+                className="relative w-11 h-11 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all"
+                title="Cart"
+              >
+                <ShoppingCart className="w-5 h-5" />
 
-<button
-  type="button"
-  onClick={handleCartClick}
-  className="relative w-11 h-11 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all"
-  title="Cart"
->
-  <ShoppingCart className="w-5 h-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-950 text-[11px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center border-2 border-white">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
 
-  {cartCount > 0 && (
-    <span className="absolute -top-1 -right-1 bg-amber-400 text-slate-950 text-[11px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center border-2 border-white">
-      {cartCount}
-    </span>
-  )}
-</button>
-
-<div className="hidden md:block relative">
+              <div className="hidden md:block relative">
                 {isAuthenticated ? (
                   <>
                     <button
@@ -292,21 +213,23 @@ export default function Layout() {
                         </div>
 
                         <Link
-  to="/settings"
-  onClick={() => setUserMenuOpen(false)}
-  className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3 block"
->
-  <User className="w-4 h-4" />
-  My Profile
-</Link>
-<button
-  type="button"
-  onClick={handleMyOrdersClick}
-  className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3"
->
-  <PackageCheck className="w-4 h-4" />
-  My Orders
-</button>
+                          to="/settings"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3 block"
+                        >
+                          <User className="w-4 h-4" />
+                          My Profile
+                        </Link>
+
+                        <button
+                          type="button"
+                          onClick={handleMyOrdersClick}
+                          className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3"
+                        >
+                          <PackageCheck className="w-4 h-4" />
+                          My Orders
+                        </button>
+
                         {user?.role === "admin" && (
                           <Link
                             to="/admin"
@@ -359,7 +282,6 @@ export default function Layout() {
           <div className="lg:hidden border-t border-slate-100 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2">
               {navItems.map((item) => (
-                
                 <Link
                   key={item.path}
                   to={item.path}
@@ -372,14 +294,16 @@ export default function Layout() {
                   {item.label}
                 </Link>
               ))}
+
               {isAuthenticated && (
-  <Link
-    to="/settings"
-    className="block px-4 py-3 rounded-2xl bg-slate-50 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm font-black"
-  >
-    Settings
-  </Link>
-)}
+                <Link
+                  to="/settings"
+                  className="block px-4 py-3 rounded-2xl bg-slate-50 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm font-black"
+                >
+                  Settings
+                </Link>
+              )}
+
               {user?.role === "admin" && (
                 <Link
                   to="/admin"
@@ -419,7 +343,7 @@ export default function Layout() {
       </main>
 
       <footer className="bg-slate-950 text-white mt-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-3">
@@ -467,45 +391,19 @@ export default function Layout() {
               <p className="font-black mb-4">Policies</p>
 
               <div className="space-y-2 text-sm text-slate-400">
-                <button
-                  type="button"
-                  onClick={() => openPolicyModal("terms")}
-                  className="block hover:text-amber-300 text-left"
+                <Link
+                  to="/policies/terms"
+                  className="block hover:text-amber-300"
                 >
-                  Terms & Conditions
-                </button>
+                  Terms
+                </Link>
 
-                <button
-                  type="button"
-                  onClick={() => openPolicyModal("privacy")}
-                  className="block hover:text-amber-300 text-left"
+                <Link
+                  to="/policies/privacy"
+                  className="block hover:text-amber-300"
                 >
-                  Privacy Policy
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openPolicyModal("return")}
-                  className="block hover:text-amber-300 text-left"
-                >
-                  Return / Refund Policy
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openPolicyModal("shipping")}
-                  className="block hover:text-amber-300 text-left"
-                >
-                  Shipping Policy
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openPolicyModal("contact")}
-                  className="block hover:text-amber-300 text-left"
-                >
-                  Contact Info
-                </button>
+                  Privacy
+                </Link>
               </div>
             </div>
 
@@ -516,54 +414,17 @@ export default function Layout() {
                 <Sparkles className="w-4 h-4" />
                 Quality books. Reliable service.
               </div>
-
-              <p className="text-xs text-slate-500 mt-5">
-                © {new Date().getFullYear()} PatraPatrika Center. All rights
-                reserved.
-              </p>
             </div>
+          </div>
+
+          <div className="border-t border-white/10 mt-10 pt-6 text-center">
+            <p className="text-xs text-slate-500">
+              © {new Date().getFullYear()} PatraPatrika Center. All rights
+              reserved.
+            </p>
           </div>
         </div>
       </footer>
-
-      {policyModalOpen && (
-        <div className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-[2rem] shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-slate-100">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-indigo-600">
-                  PatraPatrika Center
-                </p>
-
-                <h2 className="text-2xl font-black text-slate-950 mt-1">
-                  {activePolicy?.title || "Policy"}
-                </h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={closePolicyModal}
-                className="w-10 h-10 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center text-xl font-black"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[65vh]">
-              {policyLoading ? (
-                <p className="text-sm font-bold text-slate-500">
-                  Loading policy...
-                </p>
-              ) : (
-                <div className="whitespace-pre-line text-sm leading-7 text-slate-600 font-medium">
-                  {activePolicy?.content ||
-                    "Policy content is not available right now."}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
