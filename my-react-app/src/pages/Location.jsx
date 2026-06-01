@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
 import {
   MapPin,
   Clock,
@@ -11,10 +11,43 @@ import {
 } from "lucide-react";
 
 const Location = () => {
+  const [heroData, setHeroData] = useState({
+    backgroundImage: "",
+    sliderImages: [],
+  });
+
+  useEffect(() => {
+    const fetchHero = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/hero");
+        const data = await response.json();
+        setHeroData(data);
+      } catch (error) {
+        console.error("Hero background fetch error:", error);
+      }
+    };
+
+    fetchHero();
+  }, []);
+
+  const heroBackgroundImage =
+    heroData.backgroundImage || heroData.sliderImages?.[0] || "";
+
+  const heroBackgroundStyle = heroBackgroundImage
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(2, 6, 23, 0.94), rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.82)), url("${heroBackgroundImage}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : {};
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 animate-in fade-in duration-500">
       {/* Header Section */}
-      <section className="relative overflow-hidden bg-slate-950 text-white">
+      <section
+        className="relative overflow-hidden bg-slate-950 text-white"
+        style={heroBackgroundStyle}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.35),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(249,115,22,0.25),transparent_35%)]" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-20 lg:py-24">
@@ -80,13 +113,16 @@ const Location = () => {
                     <h4 className="font-black text-gray-950">Store Hours</h4>
                     <div className="mt-2 space-y-1">
                       <p className="text-gray-600 text-sm">
-                        <span className="font-bold">Mon - Fri:</span> 9:00 AM - 8:00 PM
+                        <span className="font-bold">Mon - Fri:</span> 9:00 AM -
+                        8:00 PM
                       </p>
                       <p className="text-gray-600 text-sm">
-                        <span className="font-bold">Sat:</span> 10:00 AM - 6:00 PM
+                        <span className="font-bold">Sat:</span> 10:00 AM - 6:00
+                        PM
                       </p>
                       <p className="text-gray-600 text-sm">
-                        <span className="font-bold">Sun:</span> 11:00 AM - 5:00 PM
+                        <span className="font-bold">Sun:</span> 11:00 AM - 5:00
+                        PM
                       </p>
                     </div>
                   </div>

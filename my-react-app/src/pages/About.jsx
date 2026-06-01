@@ -25,6 +25,11 @@ const About = () => {
   const [aboutContent, setAboutContent] = useState(defaultAboutContent);
   const [contentLoading, setContentLoading] = useState(true);
 
+  const [heroData, setHeroData] = useState({
+    backgroundImage: "",
+    sliderImages: [],
+  });
+
   useEffect(() => {
     const fetchAboutContent = async () => {
       try {
@@ -47,8 +52,31 @@ const About = () => {
       }
     };
 
+    const fetchHeroBackground = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/hero");
+        const data = await response.json();
+
+        setHeroData(data);
+      } catch (error) {
+        console.error("Hero background fetch error:", error);
+      }
+    };
+
     fetchAboutContent();
+    fetchHeroBackground();
   }, []);
+
+  const heroBackgroundImage =
+    heroData.backgroundImage || heroData.sliderImages?.[0] || "";
+
+  const heroBackgroundStyle = heroBackgroundImage
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(2, 6, 23, 0.94), rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.82)), url("${heroBackgroundImage}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : {};
 
   const stats = [
     {
@@ -76,7 +104,10 @@ const About = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 animate-in fade-in duration-700">
       {/* Hero Header */}
-      <section className="relative overflow-hidden bg-slate-950 text-white">
+      <section
+        className="relative overflow-hidden bg-slate-950 text-white"
+        style={heroBackgroundStyle}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.35),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(249,115,22,0.25),transparent_35%)]" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-20 lg:py-24">
