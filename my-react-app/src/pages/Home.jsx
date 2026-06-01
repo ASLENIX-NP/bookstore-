@@ -70,7 +70,9 @@ export default function Home() {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/hero");
+        const res = await axios.get(
+          "http://localhost:5000/api/admin/hero"
+        );
 
         setHeroData(res.data);
       } catch (error) {
@@ -149,12 +151,17 @@ export default function Home() {
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
+      const finalPrice =
+        Number(product.salePrice) > 0
+          ? Number(product.salePrice)
+          : Number(product.price || 0);
+    
       currentCart.push({
         _id: product._id,
         productId: product._id,
         title: product.name,
         name: product.name,
-        price: Number(product.price || 0),
+        price: finalPrice,
         image: getSafeCartImage(product.image),
         quantity: 1,
       });
@@ -183,18 +190,23 @@ export default function Home() {
       return;
     }
 
-    const buyNowItem = [
-      {
-        _id: product._id,
-        productId: product._id,
-        title: product.name,
-        name: product.name,
-        price: Number(product.price || 0),
-        image: getSafeCartImage(product.image),
-        quantity: 1,
-        subtotal: Number(product.price || 0),
-      },
-    ];
+    const finalPrice =
+    Number(product.salePrice) > 0
+      ? Number(product.salePrice)
+      : Number(product.price || 0);
+  
+  const buyNowItem = [
+    {
+      _id: product._id,
+      productId: product._id,
+      title: product.name,
+      name: product.name,
+      price: finalPrice,
+      image: getSafeCartImage(product.image),
+      quantity: 1,
+      subtotal: finalPrice,
+    },
+  ];
 
     localStorage.setItem("checkoutItems", JSON.stringify(buyNowItem));
     localStorage.setItem("checkoutType", "Buy Now");
@@ -616,11 +628,17 @@ export default function Home() {
                 <div className="absolute -inset-5 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3.4rem] transition-all duration-500 group-hover:from-amber-400/45 group-hover:to-indigo-500/45" />
 
                 <div className="relative bg-white/10 border border-white/10 rounded-[3.4rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
-                  <img
-                    src={heroData.sliderImages[currentSlide] || ""}
-                    alt="Hero Image"
-                    className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
-                  />
+                <img
+  src={
+    heroData?.sliderImages?.length > 0
+      ? heroData.sliderImages[
+          currentSlide % heroData.sliderImages.length
+        ]
+      : ""
+  }
+  alt="Hero Image"
+  className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
+/>
 
                   <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
                     <div className="flex items-start gap-4">

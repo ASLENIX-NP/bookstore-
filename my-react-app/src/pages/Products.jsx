@@ -411,7 +411,11 @@ export default function Products() {
         productId: product._id,
         title: product.name,
         name: product.name,
-        price: Number(product.price || 0),
+        price:
+  product.flashSale &&
+  Number(product.salePrice || 0) > 0
+    ? Number(product.salePrice)
+    : Number(product.price),
         image: getSafeCartImage(product.image),
         quantity: 1,
       });
@@ -440,18 +444,24 @@ export default function Products() {
       return;
     }
 
-    const buyNowProduct = [
-      {
-        _id: product._id,
-        productId: product._id,
-        title: product.name,
-        name: product.name,
-        price: Number(product.price || 0),
-        image: getSafeCartImage(product.image),
-        quantity: 1,
-        subtotal: Number(product.price || 0),
-      },
-    ];
+    const finalPrice =
+    product.flashSale &&
+    Number(product.salePrice || 0) > 0
+      ? Number(product.salePrice)
+      : Number(product.price);
+  
+  const buyNowProduct = [
+    {
+      _id: product._id,
+      productId: product._id,
+      title: product.name,
+      name: product.name,
+      price: finalPrice,
+      image: getSafeCartImage(product.image),
+      quantity: 1,
+      subtotal: finalPrice,
+    },
+  ];
 
     localStorage.setItem("checkoutItems", JSON.stringify(buyNowProduct));
     localStorage.setItem("checkoutType", "Buy Now");
@@ -542,23 +552,29 @@ export default function Products() {
     return categoryMatch && subcategoryMatch && searchMatch;
   });
 
+  const getDisplayPrice = (product) =>
+    product.flashSale &&
+    Number(product.salePrice || 0) > 0
+      ? Number(product.salePrice)
+      : Number(product.price || 0);
+  
   filteredProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === "price-low") {
-      return Number(a.price || 0) - Number(b.price || 0);
+      return getDisplayPrice(a) - getDisplayPrice(b);
     }
-
+  
     if (sortBy === "price-high") {
-      return Number(b.price || 0) - Number(a.price || 0);
+      return getDisplayPrice(b) - getDisplayPrice(a);
     }
-
+  
     if (sortBy === "rating") {
       return Number(b.rating || 0) - Number(a.rating || 0);
     }
-
+  
     if (sortBy === "newest") {
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     }
-
+  
     return String(a.name || "").localeCompare(String(b.name || ""));
   });
 

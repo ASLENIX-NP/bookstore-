@@ -981,8 +981,8 @@ app.put("/api/admin/invoice-settings", async (req, res) => {
   }
 });
 // HERO SETTINGS
-
-app.get("/api/hero", async (req, res) => {
+/* ADD THIS */
+app.get("/api/admin/hero", async (req, res) => {
   try {
     let hero = await Hero.findOne();
 
@@ -1000,6 +1000,7 @@ app.get("/api/hero", async (req, res) => {
     });
   }
 });
+/* END */
 
 app.put("/api/admin/hero", async (req, res) => {
   try {
@@ -1208,7 +1209,10 @@ app.post("/api/products/pos-checkout", async (req, res) => {
       const orderItems = productIds.map((productId) => {
         const product = productMap.get(productId);
         const qty = Number(quantityMap.get(productId) || 0);
-        const price = Number(product.salePrice || product.price || 0);
+        const price =
+  Number(product.salePrice) > 0
+    ? Number(product.salePrice)
+    : Number(product.price || 0);
 
         return {
           productId: product._id,
@@ -1252,7 +1256,10 @@ app.post("/api/products/pos-checkout", async (req, res) => {
 
         const newStatusFlag = newStock <= 0 ? "Out of Stock" : "In Stock";
 
-        const price = Number(product.salePrice || product.price || 0);
+        const price =
+  Number(product.salePrice) > 0
+    ? Number(product.salePrice)
+    : Number(product.price || 0);
 
         return {
           updateOne: {
