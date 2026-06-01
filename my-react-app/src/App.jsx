@@ -19,11 +19,12 @@ import CheckoutPayment from "./pages/CheckoutPayment";
 import OrderSuccess from "./pages/OrderSuccess";
 import MyOrders from "./pages/MyOrders";
 import Invoice from "./pages/Invoice";
-
+import UserSettings from "./pages/UserSettings";
 // ADMIN PANEL IMPORTS
 import AdminLogin from "./pages/AdminLogin";
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
+import HeroSettings from "./pages/HeroSettings";
 import ManageBooks from "./pages/ManageBooks";
 import POS from "./pages/POS";
 import PrintBarcode from "./pages/PrintBarcode";
@@ -56,7 +57,7 @@ export default function App() {
           <Route path="checkout/payment" element={<CheckoutPayment />} />
 
           <Route path="order-success" element={<OrderSuccess />} />
-
+          <Route path="settings" element={<UserSettings />} />
           <Route path="my-orders" element={<MyOrders />} />
           <Route path="invoice/:id" element={<Invoice />} />
         </Route>
@@ -78,6 +79,7 @@ export default function App() {
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
           <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="hero-settings" element={<HeroSettings />} />
 
           <Route path="books" element={<ManageBooks />} />
 

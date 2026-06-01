@@ -262,10 +262,10 @@ export default function Invoice() {
         </button>
       </div>
 
-      <div className="invoice-sheet max-w-5xl mx-auto bg-white rounded-[1.5rem] shadow-xl border border-gray-100 p-8 sm:p-10">
+      <div className="invoice-sheet max-w-5xl mx-auto bg-white rounded-[1.5rem] shadow-xl border border-gray-100 p-4 sm:p-8 md:p-10">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 border-b-2 border-gray-900 pb-6">
           <div>
-            <h1 className="text-3xl font-black text-gray-950">
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-950 break-words">
               {invoiceSettings.sellerName}
             </h1>
 
@@ -371,8 +371,8 @@ export default function Invoice() {
           </div>
         </div>
 
-        <div className="py-6">
-          <table className="w-full border-collapse text-sm">
+        <div className="py-6 overflow-x-auto">
+        <table className="w-full min-w-[650px] border-collapse text-xs sm:text-sm">
             <thead>
               <tr className="bg-gray-950 text-white">
                 <th className="border border-gray-300 px-3 py-3 text-left">
@@ -454,7 +454,7 @@ export default function Invoice() {
             <div className="flex justify-between px-4 py-4 bg-gray-950 text-white">
               <span className="font-black">Grand Total</span>
 
-              <strong className="text-xl">
+              <strong className="text-lg sm:text-xl">
                 NPR {grandTotal.toLocaleString()}
               </strong>
             </div>

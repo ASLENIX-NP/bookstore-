@@ -11,9 +11,9 @@ import {
   LogOut,
   LogIn,
   LayoutDashboard,
-  PackageCheck,
   ChevronDown,
   Sparkles,
+  PackageCheck,
 } from "lucide-react";
 
 export default function Layout() {
@@ -63,6 +63,10 @@ export default function Layout() {
     { path: "/location", label: "Location" },
     { path: "/about", label: "About Us" },
     { path: "/contact", label: "Contact" },
+  
+    ...(isAuthenticated
+      ? [{ path: "/settings", label: "Settings" }]
+      : []),
   ];
 
   const policyFallbacks = {
@@ -229,20 +233,6 @@ export default function Layout() {
                   {item.label}
                 </Link>
               ))}
-
-              {isAuthenticated && (
-                <button
-                  type="button"
-                  onClick={handleMyOrdersClick}
-                  className={`px-4 py-2 rounded-full text-sm font-black transition-all ${
-                    isActive("/my-orders")
-                      ? "bg-slate-950 text-white shadow-md"
-                      : "text-slate-600 hover:bg-white hover:text-indigo-600 hover:shadow-sm"
-                  }`}
-                >
-                  My Orders
-                </button>
-              )}
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
@@ -301,15 +291,22 @@ export default function Layout() {
                           </p>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={handleMyOrdersClick}
-                          className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3"
-                        >
-                          <PackageCheck className="w-4 h-4" />
-                          My Orders
-                        </button>
-
+                        <Link
+  to="/settings"
+  onClick={() => setUserMenuOpen(false)}
+  className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3 block"
+>
+  <User className="w-4 h-4" />
+  My Profile
+</Link>
+<button
+  type="button"
+  onClick={handleMyOrdersClick}
+  className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3"
+>
+  <PackageCheck className="w-4 h-4" />
+  My Orders
+</button>
                         {user?.role === "admin" && (
                           <Link
                             to="/admin"
@@ -362,6 +359,7 @@ export default function Layout() {
           <div className="lg:hidden border-t border-slate-100 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-2">
               {navItems.map((item) => (
+                
                 <Link
                   key={item.path}
                   to={item.path}
@@ -374,18 +372,14 @@ export default function Layout() {
                   {item.label}
                 </Link>
               ))}
-
               {isAuthenticated && (
-                <button
-                  type="button"
-                  onClick={handleMyOrdersClick}
-                  className="w-full text-left px-4 py-3 rounded-2xl bg-slate-50 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm font-black flex items-center gap-2"
-                >
-                  <PackageCheck className="w-4 h-4" />
-                  My Orders
-                </button>
-              )}
-
+  <Link
+    to="/settings"
+    className="block px-4 py-3 rounded-2xl bg-slate-50 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm font-black"
+  >
+    Settings
+  </Link>
+)}
               {user?.role === "admin" && (
                 <Link
                   to="/admin"

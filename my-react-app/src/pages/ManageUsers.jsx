@@ -1,89 +1,158 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Helper to fetch users
   const fetchUsers = () => {
-    axios.get('http://localhost:5000/api/users')
-      .then(res => setUsers(res.data))
-      .catch(err => console.error("Error fetching users:", err))
+    axios
+      .get("http://localhost:5000/api/users")
+      .then((res) => setUsers(res.data))
+      .catch((err) => console.error("Error fetching users:", err))
       .finally(() => setLoading(false));
   };
 
-  // Helper function to calculate if user is online
-  const checkStatus = (lastSeen) => {
-    if (!lastSeen) return false;
-    const lastActive = new Date(lastSeen).getTime();
-    const now = new Date().getTime();
-    // 5 minute threshold (5 * 60 * 1000 milliseconds)
-    return (now - lastActive) < (5 * 60 * 1000);
-  };
-
   useEffect(() => {
-    fetchUsers(); // Initial fetch
-    
-    // Refresh user list every 30 seconds so statuses stay live
-    const interval = setInterval(fetchUsers, 30000);
-    return () => clearInterval(interval);
+    fetchUsers();
   }, []);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-        <div className="bg-white px-6 py-2 rounded-lg shadow-sm border border-gray-200">
-          <span className="text-gray-600 font-medium">Total Users: </span>
-          <span className="text-xl font-bold text-blue-600">{users.length}</span>
+    <div className="p-4 sm:p-6 bg-slate-50 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900">
+            User Management
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Registered customer accounts
+          </p>
+        </div>
+
+        <div className="bg-white px-5 py-3 rounded-2xl border border-gray-100 shadow-sm">
+          <p className="text-xs uppercase tracking-wider text-gray-400 font-bold">
+            Total Users
+          </p>
+
+          <p className="text-2xl font-black text-indigo-600">
+            {users.length}
+          </p>
         </div>
       </div>
-      
+
+      {/* Loading */}
       {loading ? (
-        <div className="text-center py-10 text-gray-500">Loading users...</div>
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+
+          <p className="text-gray-500 font-semibold">
+            Loading users...
+          </p>
+        </div>
       ) : (
-        <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {users.length === 0 ? (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm">
+            <table className="min-w-full">
+              <thead className="bg-slate-50 border-b border-gray-100">
                 <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">No users found.</td>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+                    User
+                  </th>
+
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Email Address
+                  </th>
                 </tr>
-              ) : (
-                users.map((user) => {
-                  const isOnline = checkStatus(user.lastSeen);
-                  return (
-                    <tr key={user._id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{user.email}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {/* Indicator Dot */}
-                          <span className={`relative flex h-3 w-3 ${isOnline ? 'bg-green-500' : 'bg-gray-300'} rounded-full`}>
-                            {isOnline && (
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            )}
-                          </span>
-                          <span className={`text-sm font-medium ${isOnline ? 'text-green-600' : 'text-gray-500'}`}>
-                            {isOnline ? 'Online' : 'Offline'}
-                          </span>
-                        </div>
+              </thead>
+
+              <tbody>
+                {users.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="2"
+                      className="px-6 py-10 text-center text-gray-500"
+                    >
+                      No users found.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((user) => (
+                    <tr
+                      key={user._id}
+                      className="border-b border-gray-100 hover:bg-slate-50 transition"
+                    >
+                     <td className="px-6 py-4">
+  <div className="flex items-center gap-3">
+    <div
+      className={`w-11 h-11 rounded-full text-white flex items-center justify-center font-bold text-sm shadow-sm ${
+        [
+          "bg-orange-500",
+          "bg-indigo-500",
+          "bg-green-500",
+          "bg-pink-500",
+          "bg-purple-500",
+          "bg-blue-500",
+          "bg-red-500",
+          "bg-teal-500",
+        ][(user.name?.charCodeAt(0) || 0) % 8]
+      }`}
+    >
+      {user.name?.charAt(0)?.toUpperCase() || "U"}
+    </div>
+
+    <div>
+      <p className="font-semibold text-gray-900 text-base">
+        {user.name}
+      </p>
+    </div>
+  </div>
+</td>
+
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {user.email}
                       </td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden space-y-3">
+            {users.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center text-gray-500">
+                No users found.
+              </div>
+            ) : (
+              users.map((user) => (
+                <div
+                  key={user._id}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">
+                      {user.name?.charAt(0)?.toUpperCase() || "U"}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+  <p className="font-semibold text-gray-900 truncate">
+    {user.name}
+  </p>
+
+  <p className="text-sm text-gray-500 truncate">
+    {user.email}
+  </p>
+</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
       )}
     </div>
   );

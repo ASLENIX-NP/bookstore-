@@ -616,7 +616,7 @@ export default function ManageBooks() {
             {books.map((book) => (
               <div
                 key={book._id}
-                className="flex items-center justify-between border-b border-gray-100 pb-4"
+           className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 gap-4"
               >
 
                 <div className="flex items-center gap-4">
@@ -675,9 +675,16 @@ export default function ManageBooks() {
   SKU: {book.sku}
 </p>
 
-<p className="text-xs text-orange-500">
-<Barcode value={book.barcode} />
-</p>
+<div className="w-full overflow-x-auto">
+  <Barcode
+    value={book.barcode}
+    width={0.8}
+    height={35}
+    fontSize={10}
+    margin={0}
+    displayValue
+  />
+</div>
 
                     {/* DESCRIPTION */}
 

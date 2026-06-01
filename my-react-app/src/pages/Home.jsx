@@ -17,16 +17,6 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-const heroImages = [
-  {
-    url: "https://images.unsplash.com/photo-1566131807516-e3b3cd1a89d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-    alt: "Library interior",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1623771702313-39dc4f71d275?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-    alt: "Book shelves",
-  },
-];
 
 const CART_IMAGE_PLACEHOLDER =
   "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500";
@@ -62,6 +52,11 @@ const LocalImageWithFallback = ({ src, alt, className }) => {
 export default function Home() {
   const navigate = useNavigate();
 
+  const [heroData, setHeroData] = useState({
+    backgroundImage: "",
+    sliderImages: [],
+  });
+
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -75,12 +70,18 @@ export default function Home() {
   );
 
   useEffect(() => {
-    const sliderTimer = setInterval(() => {
-      setCurrentSlide((prev) =>
-        prev === heroImages.length - 1 ? 0 : prev + 1
-      );
-    }, 3500);
-
+    const fetchHero = async () => {
+      try {
+        const res = await axios.get(
+          "http://localhost:5000/api/hero"
+        );
+  
+        setHeroData(res.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+  
     const fetchProducts = async () => {
       try {
         const [featuredRes, flashSaleRes, bestSellerRes, newArrivalRes] =
@@ -90,24 +91,36 @@ export default function Home() {
             axios.get("http://localhost:5000/api/products?bestSeller=true"),
             axios.get("http://localhost:5000/api/products?newArrival=true"),
           ]);
-
+  
         setFeaturedProducts(featuredRes.data);
         setFlashSaleProducts(flashSaleRes.data);
         setBestSellerProducts(bestSellerRes.data);
         setNewArrivalProducts(newArrivalRes.data);
-
+  
         setLoading(false);
       } catch (error) {
         console.error("Error fetching products:", error);
         setLoading(false);
       }
     };
-
+  
+    fetchHero();
     fetchProducts();
-
-    return () => clearInterval(sliderTimer);
   }, []);
-
+  
+  useEffect(() => {
+    if (!heroData.sliderImages?.length) return;
+  
+    const sliderTimer = setInterval(() => {
+      setCurrentSlide((prev) =>
+        prev >= heroData.sliderImages.length - 1
+          ? 0
+          : prev + 1
+      );
+    }, 3500);
+  
+    return () => clearInterval(sliderTimer);
+  }, [heroData.sliderImages]);
   const openProductDetails = (productId) => {
     navigate(`/products/${productId}`);
   };
@@ -235,29 +248,19 @@ export default function Home() {
             </div>
           )}
 
-          <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-            <span
-              className={`px-3 py-1 rounded-full text-[11px] font-black border transition-all group-hover:scale-105 ${
-                isOutOfStock
-                  ? "bg-red-50 text-red-600 border-red-100"
-                  : "bg-emerald-50 text-emerald-600 border-emerald-100"
-              }`}
-            >
-              {getStatus(product)}
-            </span>
-
-            {type && (
-              <span
-                className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
-                  isFlashSale
-                    ? "bg-white/95 text-orange-600 border-orange-100"
-                    : "bg-white/90 text-slate-800 border-white/70"
-                }`}
-              >
-                {type}
-              </span>
-            )}
-          </div>
+{type && (
+  <div className="absolute top-4 left-4">
+    <span
+      className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
+        isFlashSale
+          ? "bg-white/95 text-orange-600 border-orange-100"
+          : "bg-white/90 text-slate-800 border-white/70"
+      }`}
+    >
+      {type}
+    </span>
+  </div>
+)}
 
           <div className="absolute top-4 right-4 flex gap-2">
             <button
@@ -350,15 +353,27 @@ export default function Home() {
             onClick={() => openProductDetails(product._id)}
             className="text-left w-full"
           >
-            <h3
-              className={`font-black text-lg leading-snug transition-colors ${
-                isFlashSale
-                  ? "text-slate-950 group-hover:text-orange-600"
-                  : "text-slate-950 group-hover:text-indigo-700"
-              }`}
-            >
-              {product.name || "Untitled Product"}
-            </h3>
+          <div className="flex items-center justify-between gap-3">
+  <h3
+    className={`font-black text-lg leading-snug transition-colors ${
+      isFlashSale
+        ? "text-slate-950 group-hover:text-orange-600"
+        : "text-slate-950 group-hover:text-indigo-700"
+    }`}
+  >
+    {product.name || "Untitled Product"}
+  </h3>
+
+  <span
+    className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-black ${
+      isOutOfStock
+        ? "bg-red-100 text-red-600"
+        : "bg-green-100 text-green-600"
+    }`}
+  >
+    {isOutOfStock ? "Out of Stock" : "In Stock"}
+  </span>
+</div>
           </button>
 
           <p className="mt-2 text-sm text-slate-500 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] min-h-[44px]">
@@ -560,22 +575,22 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <section className="relative overflow-hidden bg-slate-950">
-        <div className="absolute inset-0">
-          {heroImages.map((image, index) => (
-            <img
-              key={image.url}
-              src={image.url}
-              alt={image.alt}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-                index === currentSlide ? "opacity-45" : "opacity-0"
-              }`}
-            />
-          ))}
+      <div className="absolute inset-0">
+  {heroData.sliderImages.map((image, index) => (
+    <img
+      key={index}
+      src={image}
+      alt={`Hero ${index + 1}`}
+      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+        index === currentSlide ? "opacity-45" : "opacity-0"
+      }`}
+    />
+  ))}
 
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-indigo-950/80" />
-          <div className="absolute -top-32 -right-20 w-96 h-96 bg-indigo-500/20 blur-3xl rounded-full" />
-          <div className="absolute -bottom-32 -left-20 w-96 h-96 bg-amber-400/10 blur-3xl rounded-full" />
-        </div>
+  <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-indigo-950/80" />
+  <div className="absolute -top-32 -right-20 w-96 h-96 bg-indigo-500/20 blur-3xl rounded-full" />
+  <div className="absolute -bottom-32 -left-20 w-96 h-96 bg-amber-400/10 blur-3xl rounded-full" />
+</div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -619,8 +634,8 @@ export default function Home() {
 
                 <div className="relative bg-white/10 border border-white/10 rounded-[3rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                   <img
-                    src={heroImages[currentSlide].url}
-                    alt={heroImages[currentSlide].alt}
+                  src={heroData.sliderImages[currentSlide] || ""}
+                  alt="Hero Image"
                     className="w-full h-[420px] object-cover rounded-[2.4rem] transition-transform duration-700 group-hover:scale-[1.03]"
                   />
 
@@ -644,19 +659,19 @@ export default function Home() {
                 </div>
 
                 <div className="flex justify-center gap-2 mt-5">
-                  {heroImages.map((_, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => setCurrentSlide(index)}
-                      className={`h-2.5 rounded-full transition-all hover:bg-amber-300 hover:scale-125 ${
-                        index === currentSlide
-                          ? "w-10 bg-amber-400"
-                          : "w-2.5 bg-white/30"
-                      }`}
-                      aria-label={`Go to slide ${index + 1}`}
-                    />
-                  ))}
+                {heroData.sliderImages.map((_, index) => (
+  <button
+    key={index}
+    type="button"
+    onClick={() => setCurrentSlide(index)}
+    className={`h-2.5 rounded-full transition-all hover:bg-amber-300 hover:scale-125 ${
+      index === currentSlide
+        ? "w-10 bg-amber-400"
+        : "w-2.5 bg-white/30"
+    }`}
+    aria-label={`Go to slide ${index + 1}`}
+  />
+))}
                 </div>
               </div>
 

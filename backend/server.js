@@ -470,7 +470,24 @@ const cleanInvoiceSettingsPayload = (body = {}) => {
     footerText: String(body.footerText || "").trim(),
   };
 };
+const heroSchema = new mongoose.Schema(
+  {
+    backgroundImage: {
+      type: String,
+      default: "",
+    },
 
+    sliderImages: {
+      type: [String],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
+const Hero =
+  mongoose.models.Hero ||
+  mongoose.model("Hero", heroSchema);
 const defaultPolicies = [
   {
     key: "terms",
@@ -963,6 +980,77 @@ app.put("/api/admin/invoice-settings", async (req, res) => {
     });
   }
 });
+// HERO SETTINGS
+
+app.get("/api/hero", async (req, res) => {
+  try {
+    let hero = await Hero.findOne();
+
+    if (!hero) {
+      hero = await Hero.create({
+        backgroundImage: "",
+        sliderImages: [],
+      });
+    }
+
+    res.json(hero);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/admin/hero", async (req, res) => {
+  try {
+    let backgroundImage = "";
+    let sliderImages = [];
+
+    if (req.files?.backgroundImage) {
+      const file = req.files.backgroundImage;
+
+      const uploaded = await imagekit.upload({
+        file: `data:${file.mimetype};base64,${file.data.toString("base64")}`,
+        fileName: file.name,
+        folder: "/hero",
+      });
+
+      backgroundImage = uploaded.url;
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      const image = req.files?.[`slider${i}`];
+
+      if (image) {
+        const uploaded = await imagekit.upload({
+          file: `data:${image.mimetype};base64,${image.data.toString("base64")}`,
+          fileName: image.name,
+          folder: "/hero",
+        });
+
+        sliderImages.push(uploaded.url);
+      }
+    }
+
+    const hero = await Hero.findOneAndUpdate(
+      {},
+      {
+        backgroundImage,
+        sliderImages,
+      },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+
+    res.json(hero);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
 // PRODUCT ROUTES
 app.get("/api/products", async (req, res) => {
   try {
@@ -1082,24 +1170,29 @@ app.post("/api/products/pos-checkout", async (req, res) => {
       }).session(session);
 
       const productMap = new Map(
-        products.map((product) => [String(product._id), product])
+        productsFromDb.map((product) => [String(product._id), product])
       );
-
+      
+      console.log("================================");
+      console.log("PRODUCT IDS FROM CART:", productIds);
+      console.log(
+        "PRODUCT IDS FOUND IN DB:",
+        productsFromDb.map((p) => String(p._id))
+      );
+      console.log("================================");
+      
       for (const productId of productIds) {
         const product = productMap.get(productId);
-        const requiredQty = Number(quantityMap.get(productId) || 0);
-
+        const requiredQty = Number(stockRequiredMap.get(productId) || 0);
+      
+        console.log("CHECKING PRODUCT:", productId);
+        console.log("FOUND IN DB:", !!product);
+      
         if (!product) {
-          const error = new Error("One or more scanned products were not found");
+          console.log("❌ MISSING PRODUCT:", productId);
+      
+          const error = new Error("One or more products were not found.");
           error.statusCode = 404;
-          throw error;
-        }
-
-        const availableStock = Number(product.stock || 0);
-
-        if (availableStock <= 0) {
-          const error = new Error(`"${product.name}" is out of stock`);
-          error.statusCode = 400;
           throw error;
         }
 

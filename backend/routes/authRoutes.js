@@ -5,7 +5,29 @@ const nodemailer = require("nodemailer");
 
 const User = require("../models/User");
 const Admin = require("../models/Admin");
+const authMiddleware = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
 
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    req.user = decoded;
+
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
+  }
+};
 const router = express.Router();
 
 const otpStore = new Map();
@@ -162,6 +184,11 @@ router.post("/signup", async (req, res) => {
 
 // LOGIN: ADMIN + CUSTOMER
 router.post("/login", async (req, res) => {
+
+  console.log("========== LOGIN REQUEST ==========");
+  console.log(req.body);
+  console.log("ROLE RECEIVED:", req.body.role);
+
   try {
     const { email, password, role } = req.body;
 
@@ -481,5 +508,73 @@ router.post("/reset-password", async (req, res) => {
     message: "This reset method is disabled. Please use email OTP reset.",
   });
 });
+router.put("/change-password", authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All password fields are required",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different",
+      });
+    }
+
+    let account;
+
+    if (req.user.role === "admin") {
+      account = await Admin.findById(req.user.id);
+    } else {
+      account = await User.findById(req.user.id);
+    }
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      currentPassword,
+      account.password
+    );
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    account.password = await bcrypt.hash(newPassword, 10);
+
+    await account.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
 module.exports = router;
