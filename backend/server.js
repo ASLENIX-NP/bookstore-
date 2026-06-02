@@ -1434,7 +1434,130 @@ app.post("/api/products", async (req, res) => {
     });
   }
 });
+app.put("/api/products/:id", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        error: "Invalid product ID",
+      });
+    }
 
+    const existingProduct = await Product.findById(req.params.id);
+
+    if (!existingProduct) {
+      return res.status(404).json({
+        error: "Product not found",
+      });
+    }
+
+    const updateData = {};
+    const unsetData = {};
+
+    const stringFields = [
+      "name",
+      "category",
+      "subcategory",
+      "description",
+    ];
+
+    stringFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = String(req.body[field] || "").trim();
+      }
+    });
+
+    if (req.body.price !== undefined) {
+      updateData.price = Number(req.body.price || 0);
+    }
+
+    if (req.body.stock !== undefined) {
+      const stockValue = Number(req.body.stock || 0);
+
+      updateData.stock = stockValue;
+
+      const requestedStockStatus =
+        req.body.stockStatus ||
+        existingProduct.stockStatus ||
+        "In Stock";
+
+      updateData.stockStatus =
+        stockValue <= 0 ? "Out of Stock" : requestedStockStatus;
+
+      updateData.statusFlag = updateData.stockStatus;
+    } else if (req.body.stockStatus !== undefined) {
+      updateData.stockStatus = req.body.stockStatus;
+      updateData.statusFlag = req.body.stockStatus;
+    }
+
+    if (req.body.salePrice !== undefined) {
+      const rawSalePrice = String(req.body.salePrice).trim();
+
+      if (rawSalePrice === "") {
+        unsetData.salePrice = "";
+      } else {
+        updateData.salePrice = Number(rawSalePrice);
+      }
+    }
+
+    const booleanFields = [
+      "featured",
+      "flashSale",
+      "bestSeller",
+      "newArrival",
+    ];
+
+    booleanFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] =
+          req.body[field] === true ||
+          req.body[field] === "true";
+      }
+    });
+
+    if (req.files && req.files.image) {
+      const file = req.files.image;
+
+      const base64File = `data:${file.mimetype};base64,${file.data.toString(
+        "base64"
+      )}`;
+
+      const uploadResponse = await imagekit.upload({
+        file: base64File,
+        fileName: file.name,
+        folder: "/bookstore-products",
+      });
+
+      updateData.image = uploadResponse.url;
+    }
+
+    const updateQuery = {
+      $set: updateData,
+    };
+
+    if (Object.keys(unsetData).length > 0) {
+      updateQuery.$unset = unsetData;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      updateQuery,
+      {
+        returnDocument: "after",
+        runValidators: true,
+      }
+    );
+
+    res.status(200).json(updatedProduct);
+  } catch (error) {
+    console.error("PRODUCT UPDATE ERROR:");
+    console.error(error);
+
+    res.status(500).json({
+      message: error.message,
+      stack: error.stack,
+    });
+  }
+});
 app.post("/api/products/:id/reviews", async (req, res) => {
   try {
     const { name, email, rating, comment } = req.body;

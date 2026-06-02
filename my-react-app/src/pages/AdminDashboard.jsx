@@ -288,6 +288,7 @@ export default function AdminDashboard() {
       📈 Revenue Trend
     </h2>
 
+
     <ResponsiveContainer width="100%" height={250}>
       <LineChart data={revenueChartData}>
         <XAxis dataKey="date" />

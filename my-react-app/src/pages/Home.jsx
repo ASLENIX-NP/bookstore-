@@ -29,6 +29,93 @@ const getSafeCartImage = (image) => {
   return image;
 };
 
+const getNumberValue = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const getOriginalPrice = (product) => {
+  return Math.max(0, getNumberValue(product?.price));
+};
+
+const getRawSalePriceValue = (product) => {
+  const possibleFields = [
+    product?.salePrice,
+    product?.discountPrice,
+    product?.discountedPrice,
+    product?.offerPrice,
+    product?.specialPrice,
+    product?.flashSalePrice,
+  ];
+
+  return possibleFields.find(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== ""
+  );
+};
+
+const hasSalePriceInput = (product) => {
+  return getRawSalePriceValue(product) !== undefined;
+};
+
+const getSalePriceNumber = (product) => {
+  const rawSalePrice = getRawSalePriceValue(product);
+
+  if (rawSalePrice === undefined) {
+    return null;
+  }
+
+  const salePrice = Number(rawSalePrice);
+
+  return Number.isFinite(salePrice) ? salePrice : null;
+};
+
+const getSalePrice = (product) => {
+  const salePrice = getSalePriceNumber(product);
+
+  if (salePrice === null) {
+    return 0;
+  }
+
+  return Math.max(0, salePrice);
+};
+
+const hasValidSalePrice = (product) => {
+  const originalPrice = getOriginalPrice(product);
+  const salePrice = getSalePriceNumber(product);
+
+  return (
+    hasSalePriceInput(product) &&
+    originalPrice > 0 &&
+    salePrice !== null &&
+    salePrice >= 0 &&
+    salePrice < originalPrice
+  );
+};
+
+const getFinalPrice = (product) => {
+  return hasValidSalePrice(product)
+    ? getSalePrice(product)
+    : getOriginalPrice(product);
+};
+
+const getDiscountPercent = (product) => {
+  if (!hasValidSalePrice(product)) return "0";
+
+  const originalPrice = getOriginalPrice(product);
+  const salePrice = getSalePrice(product);
+
+  const discount = ((originalPrice - salePrice) / originalPrice) * 100;
+
+  if (salePrice === 0) {
+    return "100";
+  }
+
+  return discount.toFixed(2).replace(/\.00$/, "");
+};
+
 const LocalImageWithFallback = ({ src, alt, className }) => {
   const fallbackUrl =
     "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&q=80";
@@ -70,9 +157,7 @@ export default function Home() {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        const res = await axios.get(
-          "http://localhost:5000/api/admin/hero"
-        );
+        const res = await axios.get("http://localhost:5000/api/admin/hero");
 
         setHeroData(res.data);
       } catch (error) {
@@ -151,11 +236,8 @@ export default function Home() {
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
-      const finalPrice =
-        Number(product.salePrice) > 0
-          ? Number(product.salePrice)
-          : Number(product.price || 0);
-    
+      const finalPrice = getFinalPrice(product);
+
       currentCart.push({
         _id: product._id,
         productId: product._id,
@@ -190,23 +272,20 @@ export default function Home() {
       return;
     }
 
-    const finalPrice =
-    Number(product.salePrice) > 0
-      ? Number(product.salePrice)
-      : Number(product.price || 0);
-  
-  const buyNowItem = [
-    {
-      _id: product._id,
-      productId: product._id,
-      title: product.name,
-      name: product.name,
-      price: finalPrice,
-      image: getSafeCartImage(product.image),
-      quantity: 1,
-      subtotal: finalPrice,
-    },
-  ];
+    const finalPrice = getFinalPrice(product);
+
+    const buyNowItem = [
+      {
+        _id: product._id,
+        productId: product._id,
+        title: product.name,
+        name: product.name,
+        price: finalPrice,
+        image: getSafeCartImage(product.image),
+        quantity: 1,
+        subtotal: finalPrice,
+      },
+    ];
 
     localStorage.setItem("checkoutItems", JSON.stringify(buyNowItem));
     localStorage.setItem("checkoutType", "Buy Now");
@@ -217,10 +296,16 @@ export default function Home() {
   const ProductCard = ({ product, type }) => {
     const isOutOfStock = getStatus(product).toLowerCase() === "out of stock";
     const isFlashSale = type === "Flash Sale";
+    const productHasFlashSale = product?.flashSale === true || isFlashSale;
+
+    const originalPrice = getOriginalPrice(product);
+    const finalPrice = getFinalPrice(product);
+    const hasDiscount = productHasFlashSale && hasValidSalePrice(product);
+    const discountPercent = getDiscountPercent(product);
 
     return (
       <div
-        className={`group relative bg-white rounded-[2rem] overflow-hidden border shadow-sm transition-all duration-300 hover:-translate-y-2 ${
+        className={`group relative h-full bg-white rounded-[1.6rem] sm:rounded-[2rem] overflow-hidden border shadow-sm transition-all duration-300 hover:-translate-y-2 flex flex-col ${
           isFlashSale
             ? "border-orange-200 hover:shadow-2xl hover:shadow-orange-200/70"
             : "border-slate-100 hover:shadow-2xl hover:shadow-slate-200/80"
@@ -237,7 +322,7 @@ export default function Home() {
           <LocalImageWithFallback
             src={product.image}
             alt={product.name}
-            className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-700"
+            className="w-full h-40 sm:h-64 object-cover group-hover:scale-110 transition-transform duration-700"
           />
 
           <div
@@ -248,17 +333,17 @@ export default function Home() {
             }`}
           />
 
-          {isFlashSale && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-orange-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-all">
-              <Flame className="w-3.5 h-3.5 fill-white" />
+          {hasDiscount && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-orange-500 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-black shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-all">
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white" />
               HOT DEAL
             </div>
           )}
 
           {type && (
-            <div className="absolute top-4 left-4">
+            <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
               <span
-                className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
+                className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
                   isFlashSale
                     ? "bg-white/95 text-orange-600 border-orange-100"
                     : "bg-white/90 text-slate-800 border-white/70"
@@ -269,7 +354,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className="absolute top-4 right-4 flex gap-2">
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex gap-2">
             <button
               type="button"
               onClick={(e) => {
@@ -314,11 +399,11 @@ export default function Home() {
 
                 window.dispatchEvent(new Event("storage"));
               }}
-              className="w-11 h-11 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center shadow-lg backdrop-blur transition-all"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center shadow-lg backdrop-blur transition-all"
               title="Wishlist"
             >
               <Heart
-                className={`w-5 h-5 transition-all ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 transition-all ${
                   wishlist.find((item) => item._id === product._id)
                     ? "fill-red-500 text-red-500"
                     : "text-slate-700"
@@ -327,30 +412,30 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm transition-all group-hover:scale-105">
-              <Star className="w-3.5 h-3.5 fill-slate-950" />
+          <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-black shadow-sm transition-all group-hover:scale-105">
+              <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-950" />
               {Number(product.rating || 0).toFixed(1)}
             </div>
 
-            {isFlashSale && (
-              <div className="inline-flex items-center gap-1.5 bg-white/95 text-orange-600 px-3 py-1.5 rounded-full text-xs font-black shadow-sm transition-all group-hover:scale-105">
-                <BadgePercent className="w-3.5 h-3.5" />
+            {hasDiscount && (
+              <div className="inline-flex items-center gap-1.5 bg-white/95 text-orange-600 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-black shadow-sm transition-all group-hover:scale-105">
+                <BadgePercent className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 Deal
               </div>
             )}
           </div>
         </div>
 
-        <div className="p-5 relative">
+        <div className="p-4 sm:p-5 relative flex flex-col flex-1">
           <button
             type="button"
             onClick={() => openProductDetails(product._id)}
             className="text-left w-full"
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
               <h3
-                className={`font-black text-lg leading-snug transition-colors ${
+                className={`font-black text-base sm:text-lg leading-snug transition-colors line-clamp-1 ${
                   isFlashSale
                     ? "text-slate-950 group-hover:text-orange-600"
                     : "text-slate-950 group-hover:text-indigo-700"
@@ -360,63 +445,56 @@ export default function Home() {
               </h3>
 
               <span
-                className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-black ${
+                className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
                   isOutOfStock
                     ? "bg-red-100 text-red-600"
                     : "bg-green-100 text-green-600"
                 }`}
               >
-                {isOutOfStock ? "Out of Stock" : "In Stock"}
+                {isOutOfStock ? "Out" : "In Stock"}
               </span>
             </div>
           </button>
 
-          <p className="mt-2 text-sm text-slate-500 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] min-h-[44px]">
+          <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:1] sm:[-webkit-line-clamp:2] [-webkit-box-orient:vertical] min-h-[20px] sm:min-h-[44px]">
             {product.description ||
               product.details ||
               "Explore this product and view complete information before ordering."}
           </p>
 
-          <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="mt-3 sm:mt-4 flex items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                {isFlashSale ? "Flash Sale Price" : "Price"}
+              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] text-slate-400">
+                {hasDiscount ? "Flash Sale Price" : "Price"}
               </p>
 
               <p
-                className={`text-2xl font-black transition-all group-hover:scale-[1.03] origin-left ${
-                  isFlashSale ? "text-[#f57224]" : "text-slate-950"
+                className={`text-xl sm:text-2xl font-black transition-all group-hover:scale-[1.03] origin-left ${
+                  hasDiscount ? "text-[#f57224]" : "text-slate-950"
                 }`}
               >
-                NPR{" "}
-                {Number(
-                  isFlashSale
-                    ? product.salePrice || product.price || 0
-                    : product.price || 0
-                ).toLocaleString()}
+                {hasDiscount && finalPrice === 0
+                  ? "FREE"
+                  : `NPR ${finalPrice.toLocaleString()}`}
               </p>
 
-              {isFlashSale && (
+              {hasDiscount ? (
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-sm text-slate-400 line-through font-bold">
-                    NPR {Number(product.price || 0).toLocaleString()}
+                  <p className="text-xs sm:text-sm text-slate-400 line-through font-bold">
+                    NPR {originalPrice.toLocaleString()}
                   </p>
 
-                  <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-600">
-                    -
-                    {Math.round(
-                      (((product.price || 0) - (product.salePrice || 0)) /
-                        (product.price || 1)) *
-                        100
-                    )}
-                    %
+                  <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-black text-emerald-600">
+                    -{discountPercent}%
                   </span>
                 </div>
+              ) : (
+                <div className="h-5 mt-1" />
               )}
             </div>
 
             <div className="text-right">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] text-slate-400">
                 Reviews
               </p>
 
@@ -426,12 +504,12 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-auto pt-4 sm:pt-5 grid grid-cols-2 gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => addToCart(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
+              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                   : isFlashSale
@@ -439,25 +517,22 @@ export default function Home() {
                   : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
               }`}
             >
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Cart
             </button>
 
             <button
-              type="button"
-              onClick={() => handleBuyNow(product)}
-              disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
-                isOutOfStock
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  : isFlashSale
-                  ? "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
-                  : "bg-slate-950 hover:bg-indigo-700 text-white shadow-md"
-              }`}
-            >
-              {isFlashSale && <Flame className="w-4 h-4 fill-white" />}
-              Buy Now
-            </button>
+  type="button"
+  onClick={() => handleBuyNow(product)}
+  disabled={isOutOfStock}
+  className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
+    isOutOfStock
+      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+      : "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
+  }`}
+>
+  Buy Now
+</button>
           </div>
         </div>
       </div>
@@ -477,11 +552,11 @@ export default function Home() {
     const isFlashSale = type === "Flash Sale";
 
     return (
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div
           className={`transition-all duration-300 ${
             isFlashSale
-              ? "relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-orange-50 via-white to-red-50 border border-orange-100 p-5 sm:p-7 shadow-lg shadow-orange-100/70 hover:shadow-2xl hover:shadow-orange-200/70"
+              ? "relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-br from-orange-50 via-white to-red-50 border border-orange-100 p-4 sm:p-7 shadow-lg shadow-orange-100/70 hover:shadow-2xl hover:shadow-orange-200/70"
               : ""
           }`}
         >
@@ -492,10 +567,10 @@ export default function Home() {
             </>
           )}
 
-          <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-7">
+          <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-5 mb-4 sm:mb-7">
             <div>
               <div
-                className={`inline-flex items-center gap-2 border px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-4 transition-all hover:-translate-y-1 hover:scale-105 ${
+                className={`inline-flex items-center gap-2 border px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-3 sm:mb-4 transition-all hover:-translate-y-1 hover:scale-105 ${
                   isFlashSale
                     ? "bg-orange-500 text-white border-orange-400 shadow-md shadow-orange-500/20"
                     : "bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100"
@@ -505,22 +580,28 @@ export default function Home() {
                 {badge}
               </div>
 
-              <h2 className="text-3xl sm:text-4xl font-black text-slate-950">
+              <h2 className="text-2xl sm:text-4xl font-black text-slate-950">
                 {title}
               </h2>
 
               <p
-                className={`mt-2 max-w-2xl ${
+                className={`mt-2 max-w-2xl text-sm sm:text-base ${
                   isFlashSale ? "text-slate-600" : "text-slate-500"
                 }`}
               >
                 {subtitle}
               </p>
+
+              {visibleProducts.length > 1 && (
+                <p className="sm:hidden text-[11px] font-bold text-slate-400 mt-2">
+                  Swipe left or right to see more products.
+                </p>
+              )}
             </div>
 
             <Link
               to={viewAllLink}
-              className={`inline-flex items-center justify-center gap-2 border px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-sm hover:-translate-y-1 hover:scale-[1.02] ${
+              className={`hidden sm:inline-flex items-center justify-center gap-2 border px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-sm hover:-translate-y-1 hover:scale-[1.02] ${
                 isFlashSale
                   ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500 shadow-orange-500/20"
                   : "bg-white hover:bg-slate-950 text-slate-800 hover:text-white border-slate-200"
@@ -556,10 +637,63 @@ export default function Home() {
               </p>
             </div>
           ) : (
-            <div className="relative grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-              {visibleProducts.map((product) => (
-                <ProductCard key={product._id} product={product} type={type} />
-              ))}
+            <div className="relative -mx-4 sm:mx-0">
+              <div className="flex sm:grid sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory scroll-smooth px-4 sm:px-0 pb-3 sm:pb-0">
+                {visibleProducts.map((product) => (
+                  <div
+                    key={product._id}
+                    className="min-w-[74%] max-w-[74%] snap-start sm:min-w-0 sm:max-w-none"
+                  >
+                    <ProductCard product={product} type={type} />
+                  </div>
+                ))}
+
+                <Link
+                  to={viewAllLink}
+                  className={`sm:hidden min-w-[74%] max-w-[74%] snap-start rounded-[1.6rem] border p-5 flex flex-col items-center justify-center text-center shadow-sm ${
+                    isFlashSale
+                      ? "bg-orange-500 text-white border-orange-500 shadow-orange-500/20"
+                      : "bg-white text-slate-900 border-slate-200"
+                  }`}
+                >
+                  <div
+                    className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${
+                      isFlashSale
+                        ? "bg-white/15 text-white"
+                        : "bg-indigo-50 text-indigo-700"
+                    }`}
+                  >
+                    {isFlashSale ? (
+                      <Flame className="w-7 h-7 fill-white" />
+                    ) : (
+                      <ArrowRight className="w-7 h-7" />
+                    )}
+                  </div>
+
+                  <p className="text-lg font-black">
+                    {isFlashSale ? "View All Deals" : "View All"}
+                  </p>
+
+                  <p
+                    className={`text-xs mt-2 ${
+                      isFlashSale ? "text-orange-50" : "text-slate-500"
+                    }`}
+                  >
+                    Open full collection after these products.
+                  </p>
+
+                  <span
+                    className={`mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-black ${
+                      isFlashSale
+                        ? "bg-white text-orange-600"
+                        : "bg-slate-950 text-white"
+                    }`}
+                  >
+                    Open
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -589,7 +723,8 @@ export default function Home() {
 
         <div className="relative max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-10 items-center">
-<div className="order-1 lg:order-1 lg:col-span-6 lg:-translate-y-8 xl:-translate-y-25 transition-transform">              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur transition-all hover:bg-white/15 hover:-translate-y-1">
+            <div className="order-1 lg:order-1 lg:col-span-6 lg:-translate-y-8 xl:-translate-y-25 transition-transform">
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-amber-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] mb-6 backdrop-blur transition-all hover:bg-white/15 hover:-translate-y-1">
                 <Sparkles className="w-4 h-4" />
                 Premium Bookstore Experience
               </div>
@@ -627,17 +762,17 @@ export default function Home() {
                 <div className="absolute -inset-5 bg-gradient-to-br from-amber-400/30 to-indigo-500/30 blur-2xl rounded-[3.4rem] transition-all duration-500 group-hover:from-amber-400/45 group-hover:to-indigo-500/45" />
 
                 <div className="relative bg-white/10 border border-white/10 rounded-[3.4rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
-                <img
-  src={
-    heroData?.sliderImages?.length > 0
-      ? heroData.sliderImages[
-          currentSlide % heroData.sliderImages.length
-        ]
-      : ""
-  }
-  alt="Hero Image"
-  className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
-/>
+                  <img
+                    src={
+                      heroData?.sliderImages?.length > 0
+                        ? heroData.sliderImages[
+                            currentSlide % heroData.sliderImages.length
+                          ]
+                        : ""
+                    }
+                    alt="Hero Image"
+                    className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
 
                   <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
                     <div className="flex items-start gap-4">
@@ -760,45 +895,46 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <ProductSection
-            title="Flash Sale"
-            subtitle="Special products and limited-time selections for quick buyers."
-            badge="Limited Deals"
-            icon={<Flame className="w-4 h-4 fill-white" />}
-            products={flashSaleProducts}
-            type="Flash Sale"
-            viewAllLink="/products?collection=flashSale"
-          />
+          {ProductSection({
+            title: "Flash Sale",
+            subtitle:
+              "Special products and limited-time selections for quick buyers.",
+            badge: "Limited Deals",
+            icon: <Flame className="w-4 h-4 fill-white" />,
+            products: flashSaleProducts,
+            type: "Flash Sale",
+            viewAllLink: "/products?collection=flashSale",
+          })}
 
-          <ProductSection
-            title="Best Sellers"
-            subtitle="Popular choices customers are buying and reviewing."
-            badge="Popular"
-            icon={<ShoppingCart className="w-4 h-4" />}
-            products={bestSellerProducts}
-            type="Best Seller"
-            viewAllLink="/products?collection=bestSeller"
-          />
+          {ProductSection({
+            title: "Best Sellers",
+            subtitle: "Popular choices customers are buying and reviewing.",
+            badge: "Popular",
+            icon: <ShoppingCart className="w-4 h-4" />,
+            products: bestSellerProducts,
+            type: "Best Seller",
+            viewAllLink: "/products?collection=bestSeller",
+          })}
 
-          <ProductSection
-            title="Featured Collection"
-            subtitle="Handpicked products selected for readers and learners."
-            badge="Featured"
-            icon={<Sparkles className="w-4 h-4" />}
-            products={featuredProducts}
-            type="Featured"
-            viewAllLink="/products?collection=featured"
-          />
+          {ProductSection({
+            title: "Featured Collection",
+            subtitle: "Handpicked products selected for readers and learners.",
+            badge: "Featured",
+            icon: <Sparkles className="w-4 h-4" />,
+            products: featuredProducts,
+            type: "Featured",
+            viewAllLink: "/products?collection=featured",
+          })}
 
-          <ProductSection
-            title="New Arrivals"
-            subtitle="Freshly added products from the latest collection."
-            badge="New"
-            icon={<Layers className="w-4 h-4" />}
-            products={newArrivalProducts}
-            type="New Arrival"
-            viewAllLink="/products?collection=newArrival"
-          />
+          {ProductSection({
+            title: "New Arrivals",
+            subtitle: "Freshly added products from the latest collection.",
+            badge: "New",
+            icon: <Layers className="w-4 h-4" />,
+            products: newArrivalProducts,
+            type: "New Arrival",
+            viewAllLink: "/products?collection=newArrival",
+          })}
         </>
       )}
 

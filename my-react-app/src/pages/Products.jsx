@@ -16,6 +16,7 @@ import {
   Sparkles,
   Flame,
   BadgePercent,
+  ChevronDown,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -116,6 +117,14 @@ const collectionOptions = [
   },
 ];
 
+const sortOptions = [
+  { value: "name", label: "Name" },
+  { value: "newest", label: "Newest" },
+  { value: "price-low", label: "Price Low" },
+  { value: "price-high", label: "Price High" },
+  { value: "rating", label: "Rating" },
+];
+
 const CART_IMAGE_PLACEHOLDER =
   "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500";
 
@@ -127,6 +136,91 @@ const getSafeCartImage = (image) => {
   }
 
   return image;
+};
+
+const getNumberValue = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const getOriginalPrice = (product) => {
+  return Math.max(0, getNumberValue(product?.price));
+};
+
+const getRawSalePriceValue = (product) => {
+  const possibleFields = [
+    product?.salePrice,
+    product?.discountPrice,
+    product?.discountedPrice,
+    product?.offerPrice,
+    product?.specialPrice,
+    product?.flashSalePrice,
+  ];
+
+  return possibleFields.find(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== ""
+  );
+};
+
+const getSalePriceNumber = (product) => {
+  const rawSalePrice = getRawSalePriceValue(product);
+
+  if (rawSalePrice === undefined) {
+    return null;
+  }
+
+  const salePrice = Number(rawSalePrice);
+
+  return Number.isFinite(salePrice) ? salePrice : null;
+};
+
+const hasValidSalePrice = (product, allowSalePrice = true) => {
+  const originalPrice = getOriginalPrice(product);
+  const salePrice = getSalePriceNumber(product);
+
+  return (
+    allowSalePrice &&
+    originalPrice > 0 &&
+    salePrice !== null &&
+    salePrice >= 0 &&
+    salePrice < originalPrice
+  );
+};
+
+const getFinalPrice = (product, allowSalePrice = true) => {
+  if (hasValidSalePrice(product, allowSalePrice)) {
+    return Math.max(0, getSalePriceNumber(product));
+  }
+
+  return getOriginalPrice(product);
+};
+
+const getDiscountPercent = (product, allowSalePrice = true) => {
+  if (!hasValidSalePrice(product, allowSalePrice)) return "0";
+
+  const originalPrice = getOriginalPrice(product);
+  const salePrice = getFinalPrice(product, allowSalePrice);
+
+  const discount = ((originalPrice - salePrice) / originalPrice) * 100;
+
+  if (salePrice === 0) {
+    return "100";
+  }
+
+  return discount.toFixed(2).replace(/\.00$/, "");
+};
+
+const getDisplayPriceText = (product, allowSalePrice = true) => {
+  const finalPrice = getFinalPrice(product, allowSalePrice);
+
+  if (hasValidSalePrice(product, allowSalePrice) && finalPrice === 0) {
+    return "FREE";
+  }
+
+  return `NPR ${finalPrice.toLocaleString()}`;
 };
 
 const getCollectionApiUrl = (collection) => {
@@ -183,10 +277,12 @@ export default function Products() {
   const [sortBy, setSortBy] = useState("name");
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [openMobileDropdown, setOpenMobileDropdown] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const searchBoxRef = useRef(null);
+  const filterPanelRef = useRef(null);
 
   const [wishlist, setWishlist] = useState(() => {
     try {
@@ -202,6 +298,10 @@ export default function Products() {
     selectedCategory === "all" ? [] : categoryOptions[selectedCategory] || [];
 
   const isFlashCollection = selectedCollection === "flashSale";
+
+  const isSaleEligibleProduct = (product) => {
+    return isFlashCollection || product?.flashSale === true;
+  };
 
   useEffect(() => {
     const currentCollection = searchParams.get("collection") || "all";
@@ -236,6 +336,13 @@ export default function Products() {
         !searchBoxRef.current.contains(event.target)
       ) {
         setShowSearchSuggestions(false);
+      }
+
+      if (
+        filterPanelRef.current &&
+        !filterPanelRef.current.contains(event.target)
+      ) {
+        setOpenMobileDropdown("");
       }
     };
 
@@ -293,7 +400,16 @@ export default function Products() {
     const productText = getProductSearchText(product);
     const shortcutWords = getShortcutWords(query);
 
-    const shortcutOnlyQueries = ["e", "en", "eng", "n", "ne", "nep", "h", "hi"];
+    const shortcutOnlyQueries = [
+      "e",
+      "en",
+      "eng",
+      "n",
+      "ne",
+      "nep",
+      "h",
+      "hi",
+    ];
 
     if (shortcutOnlyQueries.includes(query)) {
       return shortcutWords.some((word) => productText.includes(word));
@@ -357,6 +473,7 @@ export default function Products() {
     setSearchTerm("");
     setShowSearchSuggestions(false);
     setSortBy("name");
+    setOpenMobileDropdown("");
 
     if (collection === "all") {
       setSearchParams({});
@@ -368,6 +485,7 @@ export default function Products() {
   const handleCategorySelect = (category) => {
     setSelectedCategory(category);
     setSelectedSubcategory("all");
+    setOpenMobileDropdown("");
   };
 
   const resetFilters = () => {
@@ -377,6 +495,7 @@ export default function Products() {
     setSortBy("name");
     setSearchTerm("");
     setShowSearchSuggestions(false);
+    setOpenMobileDropdown("");
     setSearchParams({});
   };
 
@@ -406,16 +525,14 @@ export default function Products() {
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
+      const finalPrice = getFinalPrice(product, isSaleEligibleProduct(product));
+
       currentCart.push({
         _id: product._id,
         productId: product._id,
         title: product.name,
         name: product.name,
-        price:
-  product.flashSale &&
-  Number(product.salePrice || 0) > 0
-    ? Number(product.salePrice)
-    : Number(product.price),
+        price: finalPrice,
         image: getSafeCartImage(product.image),
         quantity: 1,
       });
@@ -444,24 +561,20 @@ export default function Products() {
       return;
     }
 
-    const finalPrice =
-    product.flashSale &&
-    Number(product.salePrice || 0) > 0
-      ? Number(product.salePrice)
-      : Number(product.price);
-  
-  const buyNowProduct = [
-    {
-      _id: product._id,
-      productId: product._id,
-      title: product.name,
-      name: product.name,
-      price: finalPrice,
-      image: getSafeCartImage(product.image),
-      quantity: 1,
-      subtotal: finalPrice,
-    },
-  ];
+    const finalPrice = getFinalPrice(product, isSaleEligibleProduct(product));
+
+    const buyNowProduct = [
+      {
+        _id: product._id,
+        productId: product._id,
+        title: product.name,
+        name: product.name,
+        price: finalPrice,
+        image: getSafeCartImage(product.image),
+        quantity: 1,
+        subtotal: finalPrice,
+      },
+    ];
 
     localStorage.setItem("checkoutItems", JSON.stringify(buyNowProduct));
     localStorage.setItem("checkoutType", "Buy Now");
@@ -552,112 +665,167 @@ export default function Products() {
     return categoryMatch && subcategoryMatch && searchMatch;
   });
 
-  const getDisplayPrice = (product) =>
-    product.flashSale &&
-    Number(product.salePrice || 0) > 0
-      ? Number(product.salePrice)
-      : Number(product.price || 0);
-  
+  const getDisplayPrice = (product) => {
+    return getFinalPrice(product, isSaleEligibleProduct(product));
+  };
+
   filteredProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === "price-low") {
       return getDisplayPrice(a) - getDisplayPrice(b);
     }
-  
+
     if (sortBy === "price-high") {
       return getDisplayPrice(b) - getDisplayPrice(a);
     }
-  
+
     if (sortBy === "rating") {
       return Number(b.rating || 0) - Number(a.rating || 0);
     }
-  
+
     if (sortBy === "newest") {
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     }
-  
+
     return String(a.name || "").localeCompare(String(b.name || ""));
   });
 
   const currentCollectionInfo = getCurrentCollectionInfo();
 
+  const currentSortLabel =
+    sortOptions.find((item) => item.value === sortBy)?.label || "Name";
+
+  const mobileDropdownActiveClass = (isActive, orange = false) => {
+    if (!isActive) {
+      return "text-slate-700 hover:bg-slate-50";
+    }
+
+    return orange
+      ? "bg-orange-50 text-orange-700"
+      : "bg-indigo-50 text-indigo-700";
+  };
+
+  const MobileDropdown = ({
+    dropdownKey,
+    valueLabel,
+    options,
+    selectedValue,
+    onSelect,
+    disabled = false,
+    disabledText = "Select first",
+    orange = false,
+  }) => {
+    const isOpen = openMobileDropdown === dropdownKey;
+
+    return (
+      <div className="relative lg:hidden">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() =>
+            setOpenMobileDropdown(isOpen ? "" : dropdownKey)
+          }
+          className={`w-full flex items-center justify-between gap-3 bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold focus:outline-none ${
+            disabled
+              ? "text-slate-400 border-slate-200 cursor-not-allowed"
+              : orange
+              ? "text-slate-700 border-orange-100 focus:ring-4 focus:ring-orange-100 focus:border-orange-400"
+              : "text-slate-700 border-slate-200 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400"
+          }`}
+        >
+          <span className="truncate">
+            {disabled ? disabledText : valueLabel}
+          </span>
+
+          <ChevronDown
+            className={`w-4 h-4 shrink-0 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {isOpen && !disabled && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
+            {options.map((option) => {
+              const isActive = selectedValue === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onSelect(option.value);
+                    setOpenMobileDropdown("");
+                  }}
+                  className={`w-full px-4 py-3 text-left text-sm font-black border-b border-slate-50 last:border-b-0 transition-all ${mobileDropdownActiveClass(
+                    isActive,
+                    orange || option.value === "flashSale"
+                  )}`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const ProductCard = ({ product }) => {
     const status = getStatus(product);
     const isOutOfStock = status.toLowerCase() === "out of stock";
-
-    const hasSalePrice =
-      Number(product.salePrice || 0) > 0 &&
-      Number(product.salePrice || 0) < Number(product.price || 0);
+    const allowSalePrice = isSaleEligibleProduct(product);
+    const originalPrice = getOriginalPrice(product);
+    const finalPrice = getFinalPrice(product, allowSalePrice);
+    const hasDiscount = hasValidSalePrice(product, allowSalePrice);
+    const discountPercent = getDiscountPercent(product, allowSalePrice);
 
     return (
       <div
-        className={`group relative rounded-[1.6rem] border overflow-hidden shadow-sm transition-all duration-300 hover:-translate-y-2 ${
+        className={`group relative h-full bg-white rounded-[1.6rem] sm:rounded-[2rem] overflow-hidden border shadow-sm transition-all duration-300 hover:-translate-y-2 flex flex-col ${
           isFlashCollection
-            ? "bg-white border-orange-200 hover:shadow-2xl hover:shadow-orange-200/70"
-            : "bg-white border-slate-100 hover:shadow-xl hover:shadow-slate-200/70"
+            ? "border-orange-200 hover:shadow-2xl hover:shadow-orange-200/70"
+            : "border-slate-100 hover:shadow-2xl hover:shadow-slate-200/80"
         }`}
       >
         {isFlashCollection && (
-          <div className="absolute -top-16 -right-16 w-40 h-40 bg-orange-400/20 blur-3xl rounded-full pointer-events-none group-hover:bg-orange-400/35 transition-all duration-500" />
+          <div className="absolute -top-14 -right-14 w-36 h-36 bg-orange-400/20 blur-3xl rounded-full pointer-events-none group-hover:bg-orange-400/35 transition-all duration-500" />
         )}
 
         <div
-          className="relative bg-slate-100 cursor-pointer overflow-hidden"
+          className="relative cursor-pointer bg-slate-100 overflow-hidden"
           onClick={() => openProductDetails(product._id)}
         >
           <ProductImage
             src={product.image}
             alt={product.name}
-            className="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-700"
+            className="w-full h-40 sm:h-64 object-cover group-hover:scale-110 transition-transform duration-700"
           />
 
           <div
             className={`absolute inset-0 ${
               isFlashCollection
                 ? "bg-gradient-to-t from-orange-950/65 via-slate-950/15 to-transparent"
-                : "bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-75"
+                : "bg-gradient-to-t from-slate-950/55 via-transparent to-transparent opacity-70"
             }`}
           />
 
-          {isFlashCollection && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-orange-500 text-white px-3 py-1.5 rounded-full text-[11px] font-black shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-all">
-              <Flame className="w-3.5 h-3.5 fill-white" />
+          {hasDiscount && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 bg-orange-500 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-[11px] font-black shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-all">
+              <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-white" />
               HOT DEAL
             </div>
           )}
 
-          <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur ${
-                  isOutOfStock
-                    ? "bg-red-50/95 text-red-600 border-red-100"
-                    : "bg-emerald-50/95 text-emerald-600 border-emerald-100"
-                }`}
-              >
-                {status}
-              </span>
-
-              {selectedCollection !== "all" && (
-                <span
-                  className={`px-3 py-1 rounded-full text-[11px] font-black border backdrop-blur ${
-                    isFlashCollection
-                      ? "bg-white/95 text-orange-600 border-orange-100"
-                      : "bg-white/90 text-slate-800 border-white/70"
-                  }`}
-                >
-                  {currentCollectionInfo.label}
-                </span>
-              )}
-            </div>
-
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 flex gap-2">
             <button
               type="button"
               onClick={(e) => handleWishlistClick(e, product)}
-              className="w-10 h-10 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center shadow-lg transition-all"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-white/90 hover:bg-white hover:scale-110 flex items-center justify-center shadow-lg backdrop-blur transition-all"
               title="Wishlist"
             >
               <Heart
-                className={`w-5 h-5 transition-all ${
+                className={`w-4 h-4 sm:w-5 sm:h-5 transition-all ${
                   wishlist.find((item) => item._id === product._id)
                     ? "fill-red-500 text-red-500"
                     : "text-slate-700"
@@ -666,99 +834,89 @@ export default function Products() {
             </button>
           </div>
 
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-3 py-1.5 rounded-full text-xs font-black shadow-sm transition-all group-hover:scale-105">
-              <Star className="w-3.5 h-3.5 fill-slate-950" />
+          <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 flex items-center justify-between">
+            <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-black shadow-sm transition-all group-hover:scale-105">
+              <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-slate-950" />
               {Number(product.rating || 0).toFixed(1)}
             </div>
 
-            {isFlashCollection ? (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-black bg-white/95 text-orange-600 px-3 py-1.5 rounded-full border border-orange-100 backdrop-blur">
-                <BadgePercent className="w-3.5 h-3.5" />
+            {hasDiscount && (
+              <div className="inline-flex items-center gap-1.5 bg-white/95 text-orange-600 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-black shadow-sm transition-all group-hover:scale-105">
+                <BadgePercent className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 Deal
-              </span>
-            ) : (
-              product.category && (
-                <span className="text-[11px] font-black bg-slate-950/80 text-white px-3 py-1.5 rounded-full border border-white/10 backdrop-blur">
-                  {product.category}
-                </span>
-              )
+              </div>
             )}
           </div>
         </div>
 
-        <div className="p-5 relative">
+        <div className="p-4 sm:p-5 relative flex flex-col flex-1">
           <button
             type="button"
             onClick={() => openProductDetails(product._id)}
             className="text-left w-full"
           >
-            <h3
-              className={`font-black text-lg leading-snug transition-colors ${
-                isFlashCollection
-                  ? "text-slate-950 group-hover:text-orange-600"
-                  : "text-slate-950 group-hover:text-indigo-700"
-              }`}
-            >
-              {product.name || "Untitled Product"}
-            </h3>
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <h3
+                className={`font-black text-base sm:text-lg leading-snug transition-colors line-clamp-1 ${
+                  isFlashCollection
+                    ? "text-slate-950 group-hover:text-orange-600"
+                    : "text-slate-950 group-hover:text-indigo-700"
+                }`}
+              >
+                {product.name || "Untitled Product"}
+              </h3>
+
+              <span
+                className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
+                  isOutOfStock
+                    ? "bg-red-100 text-red-600"
+                    : "bg-green-100 text-green-600"
+                }`}
+              >
+                {isOutOfStock ? "Out" : "In Stock"}
+              </span>
+            </div>
           </button>
 
-          <p className="mt-2 text-sm text-slate-500 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] min-h-[44px]">
+          <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed overflow-hidden [display:-webkit-box] [-webkit-line-clamp:1] sm:[-webkit-line-clamp:2] [-webkit-box-orient:vertical] min-h-[20px] sm:min-h-[44px]">
             {product.description ||
               product.details ||
               "Open this product to view complete information before ordering."}
           </p>
 
-          <div className="mt-4 flex items-end justify-between gap-4">
+          <div className="mt-3 sm:mt-4 flex items-end justify-between gap-3">
             <div>
-              {hasSalePrice || isFlashCollection ? (
-                <>
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                    Flash Sale Price
+              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] text-slate-400">
+                {hasDiscount ? "Flash Sale Price" : "Price"}
+              </p>
+
+              <p
+                className={`text-xl sm:text-2xl font-black transition-all group-hover:scale-[1.03] origin-left ${
+                  hasDiscount ? "text-[#f57224]" : "text-slate-950"
+                }`}
+              >
+                {hasDiscount && finalPrice === 0
+                  ? "FREE"
+                  : `NPR ${finalPrice.toLocaleString()}`}
+              </p>
+
+              {hasDiscount ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-xs sm:text-sm text-slate-400 line-through font-bold">
+                    NPR {originalPrice.toLocaleString()}
                   </p>
 
-                  <p className="text-2xl font-black text-[#f57224] transition-all group-hover:scale-[1.03] origin-left">
-                    NPR{" "}
-                    {Number(
-                      product.salePrice || product.price || 0
-                    ).toLocaleString()}
-                  </p>
-
-                  {hasSalePrice && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-sm text-slate-400 line-through font-bold">
-                        NPR {Number(product.price || 0).toLocaleString()}
-                      </p>
-
-                      <span className="text-xs font-black text-emerald-600">
-                        -
-                        {Math.round(
-                          ((Number(product.price || 0) -
-                            Number(product.salePrice || 0)) /
-                            Number(product.price || 1)) *
-                            100
-                        )}
-                        %
-                      </span>
-                    </div>
-                  )}
-                </>
+                  <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-black text-emerald-600">
+                    -{discountPercent}%
+                  </span>
+                </div>
               ) : (
-                <>
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                    Product Price
-                  </p>
-
-                  <p className="text-2xl font-black text-slate-900">
-                    NPR {Number(product.price || 0).toLocaleString()}
-                  </p>
-                </>
+                <div className="h-5 mt-1" />
               )}
             </div>
 
             <div className="text-right">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] text-slate-400">
                 Reviews
               </p>
 
@@ -768,12 +926,12 @@ export default function Products() {
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-auto pt-4 sm:pt-5 grid grid-cols-2 gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => addToCart(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
+              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                   : isFlashCollection
@@ -781,7 +939,7 @@ export default function Products() {
                   : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
               }`}
             >
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Cart
             </button>
 
@@ -789,15 +947,12 @@ export default function Products() {
               type="button"
               onClick={() => handleBuyNow(product)}
               disabled={isOutOfStock}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black shadow-md transition-all hover:-translate-y-1 hover:scale-[1.02] ${
+              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
                 isOutOfStock
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                  : isFlashCollection
-                  ? "bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20"
-                  : "bg-slate-950 hover:bg-indigo-700 text-white"
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
               }`}
             >
-              {isFlashCollection && <Flame className="w-4 h-4 fill-white" />}
               Buy Now
             </button>
           </div>
@@ -943,6 +1098,7 @@ export default function Products() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div
+            ref={filterPanelRef}
             className={`border rounded-[1.6rem] p-4 shadow-sm ${
               isFlashCollection
                 ? "bg-white/90 border-orange-100 shadow-orange-100/60"
@@ -989,51 +1145,57 @@ export default function Products() {
                           </div>
 
                           <div className="max-h-80 overflow-y-auto">
-                            {searchSuggestions.map((product) => (
-                              <button
-                                key={product._id}
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setSearchTerm(product.name || "");
-                                  setShowSearchSuggestions(false);
-                                }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-slate-50 last:border-b-0 ${
-                                  isFlashCollection
-                                    ? "hover:bg-orange-50"
-                                    : "hover:bg-indigo-50"
-                                }`}
-                              >
-                                <ProductImage
-                                  src={product.image}
-                                  alt={product.name}
-                                  className="w-12 h-14 rounded-xl object-cover bg-slate-100 shrink-0"
-                                />
+                            {searchSuggestions.map((product) => {
+                              const allowSalePrice =
+                                isFlashCollection ||
+                                product?.flashSale === true;
 
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-black text-slate-900 truncate">
-                                    {product.name || "Untitled Product"}
-                                  </p>
+                              return (
+                                <button
+                                  key={product._id}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setSearchTerm(product.name || "");
+                                    setShowSearchSuggestions(false);
+                                  }}
+                                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all border-b border-slate-50 last:border-b-0 ${
+                                    isFlashCollection
+                                      ? "hover:bg-orange-50"
+                                      : "hover:bg-indigo-50"
+                                  }`}
+                                >
+                                  <ProductImage
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-12 h-14 rounded-xl object-cover bg-slate-100 shrink-0"
+                                  />
 
-                                  <p className="text-xs font-bold text-slate-500 truncate">
-                                    {getSuggestionLabel(product)}
-                                  </p>
-                                </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-black text-slate-900 truncate">
+                                      {product.name || "Untitled Product"}
+                                    </p>
 
-                                <div className="text-right shrink-0">
-                                  <p className="text-xs font-black text-[#f57224]">
-                                    NPR{" "}
-                                    {Number(
-                                      product.salePrice || product.price || 0
-                                    ).toLocaleString()}
-                                  </p>
+                                    <p className="text-xs font-bold text-slate-500 truncate">
+                                      {getSuggestionLabel(product)}
+                                    </p>
+                                  </div>
 
-                                  <p className="text-[10px] font-black text-slate-400 uppercase">
-                                    Select
-                                  </p>
-                                </div>
-                              </button>
-                            ))}
+                                  <div className="text-right shrink-0">
+                                    <p className="text-xs font-black text-[#f57224]">
+                                      {getDisplayPriceText(
+                                        product,
+                                        allowSalePrice
+                                      )}
+                                    </p>
+
+                                    <p className="text-[10px] font-black text-slate-400 uppercase">
+                                      Select
+                                    </p>
+                                  </div>
+                                </button>
+                              );
+                            })}
                           </div>
                         </>
                       ) : (
@@ -1058,10 +1220,19 @@ export default function Products() {
                   Collections
                 </label>
 
+                <MobileDropdown
+                  dropdownKey="collection"
+                  valueLabel={currentCollectionInfo.label}
+                  options={collectionOptions}
+                  selectedValue={selectedCollection}
+                  onSelect={handleCollectionSelect}
+                  orange={isFlashCollection}
+                />
+
                 <select
                   value={selectedCollection}
                   onChange={(e) => handleCollectionSelect(e.target.value)}
-                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
+                  className={`hidden lg:block w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
                     isFlashCollection
                       ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
                       : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
@@ -1080,10 +1251,32 @@ export default function Products() {
                   Category
                 </label>
 
+                <MobileDropdown
+                  dropdownKey="category"
+                  valueLabel={
+                    selectedCategory === "all"
+                      ? "All Categories"
+                      : selectedCategory
+                  }
+                  options={[
+                    {
+                      value: "all",
+                      label: "All Categories",
+                    },
+                    ...categories.map((category) => ({
+                      value: category,
+                      label: category,
+                    })),
+                  ]}
+                  selectedValue={selectedCategory}
+                  onSelect={handleCategorySelect}
+                  orange={isFlashCollection}
+                />
+
                 <select
                   value={selectedCategory}
                   onChange={(e) => handleCategorySelect(e.target.value)}
-                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
+                  className={`hidden lg:block w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
                     isFlashCollection
                       ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
                       : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
@@ -1104,11 +1297,38 @@ export default function Products() {
                   Subcategory
                 </label>
 
+                <MobileDropdown
+                  dropdownKey="subcategory"
+                  valueLabel={
+                    selectedSubcategory === "all"
+                      ? "All Subcategories"
+                      : selectedSubcategory
+                  }
+                  options={[
+                    {
+                      value: "all",
+                      label: "All Subcategories",
+                    },
+                    ...subcategories.map((subcategory) => ({
+                      value: subcategory,
+                      label: subcategory,
+                    })),
+                  ]}
+                  selectedValue={selectedSubcategory}
+                  onSelect={(value) => {
+                    setSelectedSubcategory(value);
+                    setOpenMobileDropdown("");
+                  }}
+                  disabled={selectedCategory === "all"}
+                  disabledText="Choose category first"
+                  orange={isFlashCollection}
+                />
+
                 <select
                   value={selectedSubcategory}
                   onChange={(e) => setSelectedSubcategory(e.target.value)}
                   disabled={selectedCategory === "all"}
-                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-4 ${
+                  className={`hidden lg:block w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 disabled:text-slate-400 disabled:cursor-not-allowed focus:outline-none focus:ring-4 ${
                     isFlashCollection
                       ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
                       : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
@@ -1129,20 +1349,32 @@ export default function Products() {
                   Sort
                 </label>
 
+                <MobileDropdown
+                  dropdownKey="sort"
+                  valueLabel={currentSortLabel}
+                  options={sortOptions}
+                  selectedValue={sortBy}
+                  onSelect={(value) => {
+                    setSortBy(value);
+                    setOpenMobileDropdown("");
+                  }}
+                  orange={isFlashCollection}
+                />
+
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className={`w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
+                  className={`hidden lg:block w-full bg-slate-50 border rounded-2xl px-4 py-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-4 ${
                     isFlashCollection
                       ? "border-orange-100 focus:ring-orange-100 focus:border-orange-400"
                       : "border-slate-200 focus:ring-indigo-100 focus:border-indigo-400"
                   }`}
                 >
-                  <option value="name">Name</option>
-                  <option value="newest">Newest</option>
-                  <option value="price-low">Price Low</option>
-                  <option value="price-high">Price High</option>
-                  <option value="rating">Rating</option>
+                  {sortOptions.map((sortOption) => (
+                    <option key={sortOption.value} value={sortOption.value}>
+                      {sortOption.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1154,6 +1386,7 @@ export default function Products() {
                     isFlashCollection ? "text-orange-500" : "text-indigo-600"
                   }`}
                 />
+
                 <span>
                   Showing{" "}
                   <span className="font-black text-slate-950">
@@ -1193,6 +1426,7 @@ export default function Products() {
                   isFlashCollection ? "text-orange-500" : "text-indigo-600"
                 }`}
               />
+
               <p className="font-black text-slate-600">Loading products...</p>
             </div>
           </div>
@@ -1201,8 +1435,10 @@ export default function Products() {
         {!loading && error && (
           <div className="bg-red-50 border border-red-100 text-red-700 rounded-[2rem] p-6 flex items-start gap-3">
             <AlertCircle className="w-6 h-6 shrink-0 mt-0.5" />
+
             <div>
               <h3 className="font-black">Unable to load products</h3>
+
               <p className="text-sm mt-1">{error}</p>
             </div>
           </div>
@@ -1256,6 +1492,7 @@ export default function Products() {
                   ) : (
                     <Grid3X3 className="w-4 h-4" />
                   )}
+
                   {currentCollectionInfo.label}
                 </div>
 
@@ -1266,6 +1503,7 @@ export default function Products() {
 
               <div className="inline-flex items-center gap-2 bg-white border border-slate-100 rounded-2xl px-5 py-3 shadow-sm">
                 <PackageCheck className="w-5 h-5 text-emerald-600" />
+
                 <span className="text-sm font-black text-slate-700">
                   {totalInStock} in stock
                 </span>

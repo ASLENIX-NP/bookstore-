@@ -864,6 +864,7 @@ export default function ManageOrders() {
                                       NPR {productTotal.toLocaleString()}
                                     </span>
                                   </div>
+                                  
 
                                   <div className="flex justify-between">
                                     <span className="text-gray-500">

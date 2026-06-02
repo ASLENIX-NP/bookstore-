@@ -19,9 +19,24 @@ const Location = () => {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/hero");
+        let response = await fetch("http://localhost:5000/api/admin/hero");
+
+        if (!response.ok) {
+          response = await fetch("http://localhost:5000/api/hero");
+        }
+
+        if (!response.ok) {
+          throw new Error("Hero background not found");
+        }
+
         const data = await response.json();
-        setHeroData(data);
+
+        setHeroData({
+          backgroundImage: data?.backgroundImage || "",
+          sliderImages: Array.isArray(data?.sliderImages)
+            ? data.sliderImages
+            : [],
+        });
       } catch (error) {
         console.error("Hero background fetch error:", error);
       }
@@ -35,9 +50,10 @@ const Location = () => {
 
   const heroBackgroundStyle = heroBackgroundImage
     ? {
-        backgroundImage: `linear-gradient(135deg, rgba(2, 6, 23, 0.94), rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.82)), url("${heroBackgroundImage}")`,
+        backgroundImage: `linear-gradient(135deg, rgba(2, 6, 23, 0.90), rgba(15, 23, 42, 0.82), rgba(30, 41, 59, 0.72)), url("${heroBackgroundImage}")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       }
     : {};
 

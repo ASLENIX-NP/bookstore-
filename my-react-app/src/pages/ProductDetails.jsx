@@ -46,6 +46,93 @@ const getSafeCartImage = (image) => {
   return image;
 };
 
+const getNumberValue = (value) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+};
+
+const getOriginalPrice = (product) => {
+  return Math.max(0, getNumberValue(product?.price));
+};
+
+const getRawSalePriceValue = (product) => {
+  const possibleFields = [
+    product?.salePrice,
+    product?.discountPrice,
+    product?.discountedPrice,
+    product?.offerPrice,
+    product?.specialPrice,
+    product?.flashSalePrice,
+  ];
+
+  return possibleFields.find(
+    (value) =>
+      value !== undefined &&
+      value !== null &&
+      String(value).trim() !== ''
+  );
+};
+
+const hasSalePriceInput = (product) => {
+  return getRawSalePriceValue(product) !== undefined;
+};
+
+const getSalePriceNumber = (product) => {
+  const rawSalePrice = getRawSalePriceValue(product);
+
+  if (rawSalePrice === undefined) {
+    return null;
+  }
+
+  const salePrice = Number(rawSalePrice);
+
+  return Number.isFinite(salePrice) ? salePrice : null;
+};
+
+const getSalePrice = (product) => {
+  const salePrice = getSalePriceNumber(product);
+
+  if (salePrice === null) {
+    return 0;
+  }
+
+  return Math.max(0, salePrice);
+};
+
+const hasValidSalePrice = (product) => {
+  const originalPrice = getOriginalPrice(product);
+  const salePrice = getSalePriceNumber(product);
+
+  return (
+    hasSalePriceInput(product) &&
+    originalPrice > 0 &&
+    salePrice !== null &&
+    salePrice >= 0 &&
+    salePrice < originalPrice
+  );
+};
+
+const getFinalPrice = (product) => {
+  return hasValidSalePrice(product)
+    ? getSalePrice(product)
+    : getOriginalPrice(product);
+};
+
+const getDiscountPercent = (product) => {
+  if (!hasValidSalePrice(product)) return '0';
+
+  const originalPrice = getOriginalPrice(product);
+  const salePrice = getSalePrice(product);
+
+  const discount = ((originalPrice - salePrice) / originalPrice) * 100;
+
+  if (salePrice === 0) {
+    return '100';
+  }
+
+  return discount.toFixed(2).replace(/\.00$/, '');
+};
+
 export default function ProductDetails() {
   const { id } = useParams();
 
@@ -162,12 +249,14 @@ export default function ProductDetails() {
     if (existingItem) {
       existingItem.quantity += 1;
     } else {
+      const finalPrice = getFinalPrice(product);
+
       currentCart.push({
         _id: product._id,
         productId: product._id,
         title: product.name,
         name: product.name,
-        price: Number(product.price || 0),
+        price: finalPrice,
         image: getSafeCartImage(product.image),
         quantity: 1,
       });
@@ -208,16 +297,18 @@ export default function ProductDetails() {
       return;
     }
 
+    const finalPrice = getFinalPrice(product);
+
     const buyNowItem = [
       {
         _id: product._id,
         productId: product._id,
         title: product.name,
         name: product.name,
-        price: Number(product.price || 0),
+        price: finalPrice,
         image: getSafeCartImage(product.image),
         quantity: 1,
-        subtotal: Number(product.price || 0),
+        subtotal: finalPrice,
       },
     ];
 
@@ -444,6 +535,11 @@ export default function ProductDetails() {
   const isOutOfStock =
     status === 'Out of Stock';
 
+  const originalPrice = getOriginalPrice(product);
+  const finalPrice = getFinalPrice(product);
+  const hasDiscount = hasValidSalePrice(product);
+  const discountPercent = getDiscountPercent(product);
+
   return (
     <div className="min-h-screen bg-slate-50">
 
@@ -646,15 +742,26 @@ export default function ProductDetails() {
                 <div>
 
                   <p className="text-xs uppercase tracking-widest font-black text-slate-400">
-                    Price
+                    {hasDiscount ? 'Sale Price' : 'Price'}
                   </p>
 
                   <p className="text-4xl font-black">
-                    NPR{' '}
-                    {Number(
-                      product.price || 0
-                    ).toLocaleString()}
+                    {hasDiscount && finalPrice === 0
+                      ? 'FREE'
+                      : `NPR ${finalPrice.toLocaleString()}`}
                   </p>
+
+                  {hasDiscount && (
+                    <div className="flex items-center gap-3 mt-2">
+                      <p className="text-sm text-slate-400 line-through font-bold">
+                        NPR {originalPrice.toLocaleString()}
+                      </p>
+
+                      <span className="text-xs font-black text-emerald-400">
+                        -{discountPercent}%
+                      </span>
+                    </div>
+                  )}
 
                 </div>
 
