@@ -867,14 +867,18 @@ export default function Products() {
               </h3>
 
               <span
-                className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
-                  isOutOfStock
-                    ? "bg-red-100 text-red-600"
-                    : "bg-green-100 text-green-600"
-                }`}
-              >
-                {isOutOfStock ? "Out" : "In Stock"}
-              </span>
+  className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
+    isOutOfStock
+      ? "bg-red-100 text-red-600"
+      : "bg-green-100 text-green-600"
+  }`}
+>
+  {isOutOfStock
+    ? "Out"
+    : Number(product.stock) > 0
+    ? `${product.stock} left`
+    : "In Stock"}
+</span>
             </div>
           </button>
 
