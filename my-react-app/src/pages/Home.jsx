@@ -976,32 +976,34 @@ export default function Home() {
               </div>
 
               <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-                  <p className="text-3xl font-black text-white">100%</p>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Trusted checkout flow
-                  </p>
-                </div>
+  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+    <p className="text-3xl font-black text-white">7000+</p>
 
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-                  <p className="text-3xl font-black text-white">
-                    {feedbackStats.totalFeedback > 0
-                      ? `${feedbackStats.emoji} ${feedbackStats.averageRatingText}/5`
-                      : "😊"}
-                  </p>
+    <p className="text-sm text-slate-300 mt-1">
+      Books Available
+    </p>
+  </div>
 
-                  <p className="text-sm text-slate-300 mt-1">
-  Happy Customers
-</p>
-                </div>
+  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+    <p className="text-3xl font-black text-white">
+      {feedbackStats.totalFeedback > 0
+        ? `${feedbackStats.emoji} ${feedbackStats.averageRatingText}/5`
+        : "😊"}
+    </p>
 
-                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-                  <p className="text-3xl font-black text-white">Fast</p>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Delivery processing
-                  </p>
-                </div>
-              </div>
+    <p className="text-sm text-slate-300 mt-1">
+      Happy Customers
+    </p>
+  </div>
+
+  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+    <p className="text-3xl font-black text-white">Rating</p>
+
+    <p className="text-sm text-slate-300 mt-1">
+      Coming after purchase
+    </p>
+  </div>
+</div>
             </div>
           </div>
         </div>
