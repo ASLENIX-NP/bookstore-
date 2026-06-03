@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Flame,
   BadgePercent,
+  Clock,
 } from "lucide-react";
 import axios from "axios";
 
@@ -116,6 +117,54 @@ const getDiscountPercent = (product) => {
   return discount.toFixed(2).replace(/\.00$/, "");
 };
 
+const getCountdownText = (targetTime, currentTime) => {
+  const diff = Math.max(0, targetTime - currentTime);
+  const totalSeconds = Math.floor(diff / 1000);
+
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (value) => String(value).padStart(2, "0");
+
+  if (days > 0) {
+    return `${days}d ${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+  }
+
+  return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+};
+
+const getFlashSaleTimerInfo = (settings, currentTime) => {
+  if (!settings?.isEnabled) return null;
+  if (!settings.startsAt || !settings.endsAt) return null;
+
+  const startsAt = new Date(settings.startsAt).getTime();
+  const endsAt = new Date(settings.endsAt).getTime();
+
+  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
+    return null;
+  }
+
+  if (currentTime < startsAt) {
+    return {
+      label: "Starts in",
+      text: getCountdownText(startsAt, currentTime),
+      status: "scheduled",
+    };
+  }
+
+  if (currentTime >= startsAt && currentTime < endsAt) {
+    return {
+      label: "Ends in",
+      text: getCountdownText(endsAt, currentTime),
+      status: "active",
+    };
+  }
+
+  return null;
+};
+
 const LocalImageWithFallback = ({ src, alt, className }) => {
   const fallbackUrl =
     "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&q=80";
@@ -149,10 +198,66 @@ export default function Home() {
   const [bestSellerProducts, setBestSellerProducts] = useState([]);
   const [newArrivalProducts, setNewArrivalProducts] = useState([]);
 
+  const [flashSaleSettings, setFlashSaleSettings] = useState({
+    isEnabled: false,
+    isActive: false,
+    startsAt: null,
+    endsAt: null,
+  });
+
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
   const [loading, setLoading] = useState(true);
   const [wishlist, setWishlist] = useState(
     JSON.parse(localStorage.getItem("wishlist")) || []
   );
+
+  const flashSaleTimerInfo = getFlashSaleTimerInfo(
+    flashSaleSettings,
+    currentTime
+  );
+
+  const fetchProductsAndFlashSaleSettings = async (showLoader = false) => {
+    try {
+      if (showLoader) {
+        setLoading(true);
+      }
+
+      const [
+        flashSaleSettingsRes,
+        featuredRes,
+        flashSaleRes,
+        bestSellerRes,
+        newArrivalRes,
+      ] = await Promise.all([
+        axios.get("http://localhost:5000/api/flash-sale-settings"),
+        axios.get("http://localhost:5000/api/products?featured=true"),
+        axios.get("http://localhost:5000/api/products?flashSale=true"),
+        axios.get("http://localhost:5000/api/products?bestSeller=true"),
+        axios.get("http://localhost:5000/api/products?newArrival=true"),
+      ]);
+
+      setFlashSaleSettings(
+        flashSaleSettingsRes.data?.settings || {
+          isEnabled: false,
+          isActive: false,
+          startsAt: null,
+          endsAt: null,
+        }
+      );
+
+      setFeaturedProducts(featuredRes.data);
+      setFlashSaleProducts(flashSaleRes.data);
+      setBestSellerProducts(bestSellerRes.data);
+      setNewArrivalProducts(newArrivalRes.data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      if (showLoader) {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchHero = async () => {
@@ -165,31 +270,44 @@ export default function Home() {
       }
     };
 
-    const fetchProducts = async () => {
-      try {
-        const [featuredRes, flashSaleRes, bestSellerRes, newArrivalRes] =
-          await Promise.all([
-            axios.get("http://localhost:5000/api/products?featured=true"),
-            axios.get("http://localhost:5000/api/products?flashSale=true"),
-            axios.get("http://localhost:5000/api/products?bestSeller=true"),
-            axios.get("http://localhost:5000/api/products?newArrival=true"),
-          ]);
-
-        setFeaturedProducts(featuredRes.data);
-        setFlashSaleProducts(flashSaleRes.data);
-        setBestSellerProducts(bestSellerRes.data);
-        setNewArrivalProducts(newArrivalRes.data);
-
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setLoading(false);
-      }
-    };
-
     fetchHero();
-    fetchProducts();
+    fetchProductsAndFlashSaleSettings(true);
   }, []);
+
+  useEffect(() => {
+    const clockTimer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!flashSaleSettings?.isEnabled) return;
+    if (!flashSaleSettings.startsAt || !flashSaleSettings.endsAt) return;
+
+    const startsAt = new Date(flashSaleSettings.startsAt).getTime();
+    const endsAt = new Date(flashSaleSettings.endsAt).getTime();
+    const now = Date.now();
+
+    if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) return;
+
+    let nextRefreshTime = null;
+
+    if (now < startsAt) {
+      nextRefreshTime = startsAt;
+    } else if (now >= startsAt && now < endsAt) {
+      nextRefreshTime = endsAt;
+    }
+
+    if (!nextRefreshTime) return;
+
+    const timeout = setTimeout(() => {
+      fetchProductsAndFlashSaleSettings(false);
+    }, Math.max(0, nextRefreshTime - now + 1200));
+
+    return () => clearTimeout(timeout);
+  }, [flashSaleSettings]);
 
   useEffect(() => {
     if (!heroData.sliderImages?.length) return;
@@ -340,7 +458,7 @@ export default function Home() {
             </div>
           )}
 
-          {type && (
+          {type && !isFlashSale && (
             <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
               <span
                 className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black border backdrop-blur transition-all group-hover:scale-105 ${
@@ -445,14 +563,18 @@ export default function Home() {
               </h3>
 
               <span
-                className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
-                  isOutOfStock
-                    ? "bg-red-100 text-red-600"
-                    : "bg-green-100 text-green-600"
-                }`}
-              >
-                {isOutOfStock ? "Out" : "In Stock"}
-              </span>
+  className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
+    isOutOfStock
+      ? "bg-red-100 text-red-600"
+      : "bg-green-100 text-green-600"
+  }`}
+>
+  {isOutOfStock
+    ? "Out"
+    : Number(product.stock) > 0
+    ? `${product.stock} left`
+    : "In Stock"}
+</span>
             </div>
           </button>
 
@@ -522,17 +644,17 @@ export default function Home() {
             </button>
 
             <button
-  type="button"
-  onClick={() => handleBuyNow(product)}
-  disabled={isOutOfStock}
-  className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
-    isOutOfStock
-      ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-      : "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
-  }`}
->
-  Buy Now
-</button>
+              type="button"
+              onClick={() => handleBuyNow(product)}
+              disabled={isOutOfStock}
+              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-black transition-all hover:-translate-y-1 hover:scale-[1.02] ${
+                isOutOfStock
+                  ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : "bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20"
+              }`}
+            >
+              Buy Now
+            </button>
           </div>
         </div>
       </div>
@@ -548,26 +670,31 @@ export default function Home() {
     type,
     viewAllLink = "/products",
   }) => {
-    const visibleProducts = Array.isArray(products) ? products.slice(0, 4) : [];
+    const visibleProducts = Array.isArray(products) ? products.slice(0, 5) : [];
     const isFlashSale = type === "Flash Sale";
 
     return (
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <section className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div
-          className={`transition-all duration-300 ${
+          className={`relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] border p-4 sm:p-7 shadow-lg transition-all duration-300 hover:shadow-2xl ${
             isFlashSale
-              ? "relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-br from-orange-50 via-white to-red-50 border border-orange-100 p-4 sm:p-7 shadow-lg shadow-orange-100/70 hover:shadow-2xl hover:shadow-orange-200/70"
-              : ""
+              ? "bg-gradient-to-br from-orange-50 via-white to-red-50 border-orange-100 shadow-orange-100/70 hover:shadow-orange-200/70"
+              : "bg-gradient-to-br from-indigo-50 via-white to-sky-50 border-indigo-100 shadow-indigo-100/60 hover:shadow-indigo-200/60"
           }`}
         >
-          {isFlashSale && (
+          {isFlashSale ? (
             <>
               <div className="absolute -top-20 -right-16 w-64 h-64 bg-orange-300/25 blur-3xl rounded-full" />
               <div className="absolute -bottom-24 -left-20 w-64 h-64 bg-red-300/20 blur-3xl rounded-full" />
             </>
+          ) : (
+            <>
+              <div className="absolute -top-20 -right-16 w-64 h-64 bg-indigo-300/20 blur-3xl rounded-full" />
+              <div className="absolute -bottom-24 -left-20 w-64 h-64 bg-sky-300/20 blur-3xl rounded-full" />
+            </>
           )}
 
-          <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-5 mb-4 sm:mb-7">
+          <div className="relative flex flex-col md:flex-row md:items-start md:justify-between gap-4 sm:gap-5 mb-4 sm:mb-7">
             <div>
               <div
                 className={`inline-flex items-center gap-2 border px-4 py-2 rounded-full text-xs font-black uppercase tracking-[0.18em] mb-3 sm:mb-4 transition-all hover:-translate-y-1 hover:scale-105 ${
@@ -599,6 +726,24 @@ export default function Home() {
               )}
             </div>
 
+            {isFlashSale && flashSaleTimerInfo && (
+              <div className="md:absolute md:left-1/2 md:top-2 md:-translate-x-1/2 inline-flex items-center gap-3 rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-sm shadow-orange-100/80 backdrop-blur">
+                <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5" />
+                </div>
+
+                <div>
+                  <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-orange-600">
+                    {flashSaleTimerInfo.label}
+                  </p>
+
+                  <p className="text-lg sm:text-xl font-black text-slate-950 leading-none mt-1">
+                    {flashSaleTimerInfo.text}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <Link
               to={viewAllLink}
               className={`hidden sm:inline-flex items-center justify-center gap-2 border px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-sm hover:-translate-y-1 hover:scale-[1.02] ${
@@ -617,13 +762,13 @@ export default function Home() {
               className={`relative border border-dashed rounded-[2rem] p-10 text-center transition-all hover:-translate-y-1 hover:shadow-lg ${
                 isFlashSale
                   ? "bg-white/70 border-orange-200"
-                  : "bg-white border-slate-200"
+                  : "bg-white/70 border-indigo-200"
               }`}
             >
               {isFlashSale ? (
                 <Flame className="w-10 h-10 text-orange-400 fill-orange-400 mx-auto mb-3" />
               ) : (
-                <Sparkles className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <Sparkles className="w-10 h-10 text-indigo-300 mx-auto mb-3" />
               )}
 
               <p className="font-black text-slate-800">
@@ -638,7 +783,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="relative -mx-4 sm:mx-0">
-              <div className="flex sm:grid sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory scroll-smooth px-4 sm:px-0 pb-3 sm:pb-0">
+              <div className="flex sm:grid sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 overflow-x-auto sm:overflow-visible snap-x snap-mandatory scroll-smooth px-4 sm:px-0 pb-3 sm:pb-0">
                 {visibleProducts.map((product) => (
                   <div
                     key={product._id}

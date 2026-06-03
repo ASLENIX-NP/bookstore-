@@ -488,6 +488,129 @@ const heroSchema = new mongoose.Schema(
 const Hero =
   mongoose.models.Hero ||
   mongoose.model("Hero", heroSchema);
+  const flashSaleSettingsSchema = new mongoose.Schema(
+  {
+    key: {
+      type: String,
+      required: true,
+      unique: true,
+      default: "default",
+    },
+
+    isEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    startsAt: {
+      type: Date,
+      default: null,
+    },
+
+    endsAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  { timestamps: true }
+);
+
+const FlashSaleSettings =
+  mongoose.models.FlashSaleSettings ||
+  mongoose.model("FlashSaleSettings", flashSaleSettingsSchema);
+
+const getFlashSaleSettingsDocument = async () => {
+  let settings = await FlashSaleSettings.findOne({ key: "default" });
+
+  if (!settings) {
+    settings = await FlashSaleSettings.create({
+      key: "default",
+      isEnabled: false,
+      startsAt: null,
+      endsAt: null,
+    });
+  }
+
+  return settings;
+};
+
+const isGlobalFlashSaleActive = (settings, now = new Date()) => {
+  if (!settings?.isEnabled) return false;
+  if (!settings.startsAt || !settings.endsAt) return false;
+
+  const startsAt = new Date(settings.startsAt);
+  const endsAt = new Date(settings.endsAt);
+
+  if (
+    Number.isNaN(startsAt.getTime()) ||
+    Number.isNaN(endsAt.getTime())
+  ) {
+    return false;
+  }
+
+  return startsAt <= now && now < endsAt;
+};
+
+const cleanupExpiredGlobalFlashSale = async () => {
+  const settings = await getFlashSaleSettingsDocument();
+  const now = new Date();
+
+  if (
+    settings.isEnabled &&
+    settings.endsAt &&
+    new Date(settings.endsAt) <= now
+  ) {
+    await Product.updateMany(
+      {
+        flashSale: true,
+      },
+      {
+        $set: {
+          flashSale: false,
+          salePrice: null,
+          flashSaleStartsAt: null,
+          flashSaleExpiresAt: null,
+        },
+      }
+    );
+
+    settings.isEnabled = false;
+
+    await settings.save();
+  }
+
+  return settings;
+};
+
+const hideInactiveSaleFieldsForCustomer = (product, flashSaleSettings) => {
+  const item =
+    typeof product.toObject === "function" ? product.toObject() : product;
+
+  const activeFlashSale = isGlobalFlashSaleActive(flashSaleSettings);
+
+  item.globalFlashSale = {
+    isEnabled: Boolean(flashSaleSettings?.isEnabled),
+    isActive: activeFlashSale,
+    startsAt: flashSaleSettings?.startsAt || null,
+    endsAt: flashSaleSettings?.endsAt || null,
+  };
+
+  if (!activeFlashSale) {
+    item.flashSale = false;
+    item.salePrice = null;
+    item.flashSaleStartsAt = flashSaleSettings?.startsAt || null;
+    item.flashSaleExpiresAt = flashSaleSettings?.endsAt || null;
+
+    return item;
+  }
+
+  if (item.flashSale) {
+    item.flashSaleStartsAt = flashSaleSettings?.startsAt || null;
+    item.flashSaleExpiresAt = flashSaleSettings?.endsAt || null;
+  }
+
+  return item;
+};
 const defaultPolicies = [
   {
     key: "terms",
@@ -1052,16 +1175,217 @@ app.put("/api/admin/hero", async (req, res) => {
     });
   }
 });
+const isTruthy = (value) => {
+  return (
+    value === true ||
+    value === "true" ||
+    value === "1" ||
+    value === 1 ||
+    value === "on"
+  );
+};
+
+const createBadRequestError = (message) => {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+};
+
+const getNullableNumber = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const trimmedValue = String(value).trim();
+
+  if (trimmedValue === "") {
+    return null;
+  }
+
+  const numberValue = Number(trimmedValue);
+
+  return Number.isFinite(numberValue) ? numberValue : null;
+};
+
+const buildFlashSalePayload = ({
+  body = {},
+  price = 0,
+  existingProduct = null,
+}) => {
+  const flashSale =
+    body.flashSale !== undefined
+      ? isTruthy(body.flashSale)
+      : Boolean(existingProduct?.flashSale);
+
+  if (!flashSale) {
+    return {
+      flashSale: false,
+      salePrice: null,
+      flashSaleStartsAt: null,
+      flashSaleExpiresAt: null,
+    };
+  }
+
+  const salePrice =
+    body.salePrice !== undefined
+      ? getNullableNumber(body.salePrice)
+      : getNullableNumber(existingProduct?.salePrice);
+
+  if (salePrice === null || salePrice < 0) {
+    throw createBadRequestError(
+      "Sale price is required when Flash Sale is enabled."
+    );
+  }
+
+  if (!(salePrice < price)) {
+    throw createBadRequestError(
+      "Sale price must be less than the actual price."
+    );
+  }
+
+  return {
+    flashSale: true,
+    salePrice,
+    flashSaleStartsAt: null,
+    flashSaleExpiresAt: null,
+  };
+};
+const deactivateExpiredFlashSales = async () => {
+  return await cleanupExpiredGlobalFlashSale();
+};
+
+app.get("/api/flash-sale-settings", async (req, res) => {
+  try {
+    const settings = await cleanupExpiredGlobalFlashSale();
+
+    res.status(200).json({
+      success: true,
+      settings: {
+        isEnabled: Boolean(settings.isEnabled),
+        isActive: isGlobalFlashSaleActive(settings),
+        startsAt: settings.startsAt,
+        endsAt: settings.endsAt,
+      },
+    });
+  } catch (error) {
+    console.error("Fetch flash sale settings error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.get("/api/admin/flash-sale-settings", async (req, res) => {
+  try {
+    const settings = await getFlashSaleSettingsDocument();
+
+    res.status(200).json({
+      success: true,
+      settings,
+    });
+  } catch (error) {
+    console.error("Admin fetch flash sale settings error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/admin/flash-sale-settings", async (req, res) => {
+  try {
+    const isEnabled = isTruthy(req.body.isEnabled);
+    const startsAtInput = req.body.startsAt;
+    const endsAtInput = req.body.endsAt;
+
+    const settings = await getFlashSaleSettingsDocument();
+
+    if (!isEnabled) {
+      settings.isEnabled = false;
+      await settings.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Flash sale schedule disabled",
+        settings,
+      });
+    }
+
+    if (!startsAtInput || !endsAtInput) {
+      return res.status(400).json({
+        success: false,
+        message: "Start date/time and end date/time are required.",
+      });
+    }
+
+    const startsAt = new Date(startsAtInput);
+    const endsAt = new Date(endsAtInput);
+
+    if (
+      Number.isNaN(startsAt.getTime()) ||
+      Number.isNaN(endsAt.getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid flash sale start or end date/time.",
+      });
+    }
+
+    if (endsAt <= startsAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Flash sale end time must be after start time.",
+      });
+    }
+
+    if (endsAt <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Flash sale end time must be in the future.",
+      });
+    }
+
+    settings.isEnabled = true;
+    settings.startsAt = startsAt;
+    settings.endsAt = endsAt;
+
+    await settings.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Flash sale schedule saved successfully",
+      settings,
+    });
+  } catch (error) {
+    console.error("Update flash sale settings error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 // PRODUCT ROUTES
 app.get("/api/products", async (req, res) => {
   try {
+    const flashSaleSettings = await deactivateExpiredFlashSales();
+
     const query = {};
+    const isAdminView = req.query.admin === "true";
+    const activeFlashSale = isGlobalFlashSaleActive(flashSaleSettings);
 
     if (req.query.featured === "true") {
       query.featured = true;
     }
 
     if (req.query.flashSale === "true") {
+      if (!activeFlashSale && !isAdminView) {
+        return res.status(200).json([]);
+      }
+
       query.flashSale = true;
     }
 
@@ -1077,7 +1401,15 @@ app.get("/api/products", async (req, res) => {
       createdAt: -1,
     });
 
-    res.status(200).json(products);
+    if (isAdminView) {
+      return res.status(200).json(products);
+    }
+
+    const customerProducts = products.map((product) =>
+      hideInactiveSaleFieldsForCustomer(product, flashSaleSettings)
+    );
+
+    res.status(200).json(customerProducts);
   } catch (error) {
     console.error("Fetch products error:", error);
 
@@ -1088,6 +1420,8 @@ app.get("/api/products", async (req, res) => {
 });
 app.get("/api/products/:id", async (req, res) => {
   try {
+    const flashSaleSettings = await deactivateExpiredFlashSales();
+
     const product = await Product.findById(req.params.id);
 
     if (!product) {
@@ -1096,7 +1430,12 @@ app.get("/api/products/:id", async (req, res) => {
       });
     }
 
-    res.status(200).json(product);
+    const customerProduct = hideInactiveSaleFieldsForCustomer(
+      product,
+      flashSaleSettings
+    );
+
+    res.status(200).json(customerProduct);
   } catch (error) {
     res.status(400).json({
       error: error.message,
@@ -1395,30 +1734,67 @@ app.post("/api/products", async (req, res) => {
       imageUrl = uploadResponse.url;
     }
 
-    const barcode = crypto.randomBytes(6).toString("hex");
+    const name = String(req.body.name || "").trim();
+    const category = String(req.body.category || "").trim();
+    const subcategory = String(req.body.subcategory || "General").trim();
+    const description = String(req.body.description || "").trim();
 
-    const sku = uuidv4().slice(0, 8).toUpperCase();
-    
+    const price = Number(req.body.price || 0);
+
+    if (!name) {
+      return res.status(400).json({
+        message: "Product name is required",
+      });
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      return res.status(400).json({
+        message: "Valid product price is required",
+      });
+    }
+
     const stockValue = Number(req.body.stock || 0);
-    
+
+    const flashSalePayload = buildFlashSalePayload({
+      body: req.body,
+      price,
+    });
+
+    const barcode = crypto.randomBytes(6).toString("hex");
+    const sku = uuidv4().slice(0, 8).toUpperCase();
+
+    const requestedStockStatus = req.body.stockStatus || "In Stock";
+
     const product = new Product({
-      ...req.body,
-    
-      image: imageUrl,
-    
+      name,
+      category,
+      subcategory,
+      description,
+
+      image: imageUrl || undefined,
+
+      price,
+      salePrice: flashSalePayload.salePrice,
+
       barcode,
-    
       sku,
-    
+
       stock: stockValue,
-    
       sold: 0,
-    
+
       stockStatus:
-        stockValue <= 0 ? "Out of Stock" : "In Stock",
-    
+        stockValue <= 0 ? "Out of Stock" : requestedStockStatus,
+
       statusFlag:
-        stockValue <= 0 ? "Out of Stock" : "In Stock",
+        stockValue <= 0 ? "Out of Stock" : requestedStockStatus,
+
+      featured: isTruthy(req.body.featured),
+      flashSale: flashSalePayload.flashSale,
+      bestSeller: isTruthy(req.body.bestSeller),
+      newArrival: isTruthy(req.body.newArrival),
+
+      flashSaleStartsAt: flashSalePayload.flashSaleStartsAt,
+      flashSaleExpiresAt: flashSalePayload.flashSaleExpiresAt,
     });
 
     await product.save();
@@ -1427,8 +1803,8 @@ app.post("/api/products", async (req, res) => {
   } catch (error) {
     console.error("PRODUCT CREATE ERROR:");
     console.error(error);
-  
-    res.status(500).json({
+
+    res.status(error.statusCode || 500).json({
       message: error.message,
       stack: error.stack,
     });
@@ -1436,6 +1812,8 @@ app.post("/api/products", async (req, res) => {
 });
 app.put("/api/products/:id", async (req, res) => {
   try {
+    await deactivateExpiredFlashSales();
+
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
         error: "Invalid product ID",
@@ -1451,7 +1829,6 @@ app.put("/api/products/:id", async (req, res) => {
     }
 
     const updateData = {};
-    const unsetData = {};
 
     const stringFields = [
       "name",
@@ -1466,8 +1843,19 @@ app.put("/api/products/:id", async (req, res) => {
       }
     });
 
+    const finalPrice =
+      req.body.price !== undefined
+        ? Number(req.body.price || 0)
+        : Number(existingProduct.price || 0);
+
+    if (!Number.isFinite(finalPrice) || finalPrice < 0) {
+      return res.status(400).json({
+        message: "Valid product price is required",
+      });
+    }
+
     if (req.body.price !== undefined) {
-      updateData.price = Number(req.body.price || 0);
+      updateData.price = finalPrice;
     }
 
     if (req.body.stock !== undefined) {
@@ -1489,28 +1877,26 @@ app.put("/api/products/:id", async (req, res) => {
       updateData.statusFlag = req.body.stockStatus;
     }
 
-    if (req.body.salePrice !== undefined) {
-      const rawSalePrice = String(req.body.salePrice).trim();
+    const flashSalePayload = buildFlashSalePayload({
+      body: req.body,
+      price: finalPrice,
+      existingProduct,
+    });
 
-      if (rawSalePrice === "") {
-        unsetData.salePrice = "";
-      } else {
-        updateData.salePrice = Number(rawSalePrice);
-      }
-    }
+    updateData.salePrice = flashSalePayload.salePrice;
+    updateData.flashSale = flashSalePayload.flashSale;
+    updateData.flashSaleStartsAt = flashSalePayload.flashSaleStartsAt;
+    updateData.flashSaleExpiresAt = flashSalePayload.flashSaleExpiresAt;
 
     const booleanFields = [
       "featured",
-      "flashSale",
       "bestSeller",
       "newArrival",
     ];
 
     booleanFields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        updateData[field] =
-          req.body[field] === true ||
-          req.body[field] === "true";
+        updateData[field] = isTruthy(req.body[field]);
       }
     });
 
@@ -1530,17 +1916,11 @@ app.put("/api/products/:id", async (req, res) => {
       updateData.image = uploadResponse.url;
     }
 
-    const updateQuery = {
-      $set: updateData,
-    };
-
-    if (Object.keys(unsetData).length > 0) {
-      updateQuery.$unset = unsetData;
-    }
-
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      updateQuery,
+      {
+        $set: updateData,
+      },
       {
         returnDocument: "after",
         runValidators: true,
@@ -1552,7 +1932,7 @@ app.put("/api/products/:id", async (req, res) => {
     console.error("PRODUCT UPDATE ERROR:");
     console.error(error);
 
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       message: error.message,
       stack: error.stack,
     });

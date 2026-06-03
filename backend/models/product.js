@@ -61,7 +61,7 @@ const productSchema = new mongoose.Schema(
 
     salePrice: {
       type: Number,
-      default: 0,
+      default: null,
     },
 
     costPrice: {
@@ -120,6 +120,17 @@ const productSchema = new mongoose.Schema(
     flashSale: { type: Boolean, default: false },
     bestSeller: { type: Boolean, default: false },
     newArrival: { type: Boolean, default: false },
+
+    // ================= FLASH SALE TIMER =================
+    flashSaleStartsAt: {
+      type: Date,
+      default: null,
+    },
+
+    flashSaleExpiresAt: {
+      type: Date,
+      default: null,
+    },
 
     // ================= REVIEWS =================
     rating: {

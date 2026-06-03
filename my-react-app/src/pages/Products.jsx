@@ -984,7 +984,7 @@ export default function Products() {
           </>
         )}
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="relative max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
             <div>
               <div
@@ -1096,7 +1096,7 @@ export default function Products() {
             : "bg-[#F8FAFC] border-slate-100"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div
             ref={filterPanelRef}
             className={`border rounded-[1.6rem] p-4 shadow-sm ${
@@ -1417,7 +1417,7 @@ export default function Products() {
         </div>
       </section>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading && (
           <div className="min-h-[420px] flex items-center justify-center">
             <div className="bg-white border border-slate-100 rounded-[2rem] shadow-sm p-8 flex items-center gap-3">
@@ -1510,7 +1510,7 @@ export default function Products() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
               {filteredProducts.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}

@@ -9,6 +9,7 @@ import {
   BookOpen,
   Pencil,
   XCircle,
+  Clock,
 } from "lucide-react";
 
 const categoryOptions = {
@@ -101,11 +102,157 @@ const getProductImage = (image) => {
   return placeholderImage;
 };
 
-const getSaleInfo = (book) => {
+const formatDateTime = (value) => {
+  if (!value) return "";
+
+  const dateValue = new Date(value);
+
+  if (Number.isNaN(dateValue.getTime())) {
+    return "";
+  }
+
+  return dateValue.toLocaleString();
+};
+
+const toDateTimeLocalValue = (value) => {
+  if (!value) return "";
+
+  const dateValue = new Date(value);
+
+  if (Number.isNaN(dateValue.getTime())) {
+    return "";
+  }
+
+  const timezoneOffset = dateValue.getTimezoneOffset() * 60000;
+  const localDate = new Date(dateValue.getTime() - timezoneOffset);
+
+  return localDate.toISOString().slice(0, 16);
+};
+
+const fromDateTimeLocalValue = (value) => {
+  if (!value) return "";
+
+  const dateValue = new Date(value);
+
+  if (Number.isNaN(dateValue.getTime())) {
+    return "";
+  }
+
+  return dateValue.toISOString();
+};
+
+const isFlashSaleScheduleActive = (settings) => {
+  if (!settings?.isEnabled) return false;
+  if (!settings.startsAt || !settings.endsAt) return false;
+
+  const now = new Date();
+  const startsAt = new Date(settings.startsAt);
+  const endsAt = new Date(settings.endsAt);
+
+  if (
+    Number.isNaN(startsAt.getTime()) ||
+    Number.isNaN(endsAt.getTime())
+  ) {
+    return false;
+  }
+
+  return startsAt <= now && now < endsAt;
+};
+
+const getFlashSaleScheduleStatus = (settings) => {
+  if (!settings?.isEnabled) {
+    return {
+      label: "Disabled",
+      description: "Flash sale schedule is currently turned off.",
+      className: "bg-gray-100 text-gray-600",
+    };
+  }
+
+  if (!settings.startsAt || !settings.endsAt) {
+    return {
+      label: "Incomplete",
+      description: "Start and end date/time are required.",
+      className: "bg-yellow-100 text-yellow-700",
+    };
+  }
+
+  const now = new Date();
+  const startsAt = new Date(settings.startsAt);
+  const endsAt = new Date(settings.endsAt);
+
+  if (
+    Number.isNaN(startsAt.getTime()) ||
+    Number.isNaN(endsAt.getTime())
+  ) {
+    return {
+      label: "Invalid",
+      description: "Saved flash sale date/time is invalid.",
+      className: "bg-red-100 text-red-700",
+    };
+  }
+
+  if (now < startsAt) {
+    return {
+      label: "Scheduled",
+      description: `Sale starts on ${formatDateTime(settings.startsAt)}.`,
+      className: "bg-indigo-100 text-indigo-700",
+    };
+  }
+
+  if (now >= startsAt && now < endsAt) {
+    return {
+      label: "Active",
+      description: `Sale is running until ${formatDateTime(settings.endsAt)}.`,
+      className: "bg-orange-100 text-orange-700",
+    };
+  }
+
+  return {
+    label: "Ended",
+    description: "Flash sale time has ended.",
+    className: "bg-gray-100 text-gray-600",
+  };
+};
+
+const getFlashSaleRemainingText = (endsAt) => {
+  if (!endsAt) return "No end time";
+
+  const endDate = new Date(endsAt);
+  const now = new Date();
+
+  if (Number.isNaN(endDate.getTime())) {
+    return "Invalid end time";
+  }
+
+  const diff = endDate.getTime() - now.getTime();
+
+  if (diff <= 0) {
+    return "Ended";
+  }
+
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h left`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m left`;
+  }
+
+  return `${minutes}m left`;
+};
+
+const getSaleInfo = (book, flashSaleIsActive) => {
   const actualPrice = Number(book?.price || 0);
   const salePrice = Number(book?.salePrice);
 
   const hasValidSale =
+    flashSaleIsActive &&
+    book?.flashSale &&
     book?.salePrice !== undefined &&
     book?.salePrice !== null &&
     String(book?.salePrice).trim() !== "" &&
@@ -140,16 +287,32 @@ export default function ManageBooks() {
   const [imagePreview, setImagePreview] = useState("");
   const [fileInputKey, setFileInputKey] = useState(Date.now());
 
+  const [flashSaleSettings, setFlashSaleSettings] = useState({
+    isEnabled: false,
+    isActive: false,
+    startsAt: "",
+    endsAt: "",
+  });
+
+  const [scheduleForm, setScheduleForm] = useState({
+    isEnabled: false,
+    startsAt: "",
+    endsAt: "",
+  });
+
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
   const categories = Object.keys(categoryOptions);
-
   const subcategories = categoryOptions[formData.category] || [];
-
   const isEditing = Boolean(editingProductId);
+
+  const flashSaleIsActive = isFlashSaleScheduleActive(flashSaleSettings);
+  const scheduleStatus = getFlashSaleScheduleStatus(flashSaleSettings);
 
   const fetchBooks = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/products"
+        "http://localhost:5000/api/products?admin=true"
       );
 
       setBooks(response.data);
@@ -159,8 +322,34 @@ export default function ManageBooks() {
     }
   };
 
+  const fetchFlashSaleSettings = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:5000/api/admin/flash-sale-settings"
+      );
+
+      const settings = response.data?.settings || {
+        isEnabled: false,
+        startsAt: "",
+        endsAt: "",
+      };
+
+      setFlashSaleSettings(settings);
+
+      setScheduleForm({
+        isEnabled: Boolean(settings.isEnabled),
+        startsAt: toDateTimeLocalValue(settings.startsAt),
+        endsAt: toDateTimeLocalValue(settings.endsAt),
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load flash sale schedule");
+    }
+  };
+
   useEffect(() => {
     fetchBooks();
+    fetchFlashSaleSettings();
   }, []);
 
   const resetForm = () => {
@@ -178,6 +367,83 @@ export default function ManageBooks() {
     });
   };
 
+  const handleSaveFlashSaleSchedule = async () => {
+    try {
+      setSavingSchedule(true);
+
+      if (scheduleForm.isEnabled) {
+        if (!scheduleForm.startsAt || !scheduleForm.endsAt) {
+          toast.error("Start and end date/time are required");
+          return;
+        }
+
+        const startsAt = new Date(scheduleForm.startsAt);
+        const endsAt = new Date(scheduleForm.endsAt);
+
+        if (
+          Number.isNaN(startsAt.getTime()) ||
+          Number.isNaN(endsAt.getTime())
+        ) {
+          toast.error("Invalid start or end date/time");
+          return;
+        }
+
+        if (endsAt <= startsAt) {
+          toast.error("End time must be after start time");
+          return;
+        }
+
+        if (endsAt <= new Date()) {
+          toast.error("End time must be in the future");
+          return;
+        }
+      }
+
+      const payload = {
+        isEnabled: scheduleForm.isEnabled,
+        startsAt: scheduleForm.isEnabled
+          ? fromDateTimeLocalValue(scheduleForm.startsAt)
+          : "",
+        endsAt: scheduleForm.isEnabled
+          ? fromDateTimeLocalValue(scheduleForm.endsAt)
+          : "",
+      };
+
+      const response = await axios.put(
+        "http://localhost:5000/api/admin/flash-sale-settings",
+        payload
+      );
+
+      const updatedSettings = response.data?.settings || {
+        isEnabled: false,
+        startsAt: "",
+        endsAt: "",
+      };
+
+      setFlashSaleSettings(updatedSettings);
+
+      setScheduleForm({
+        isEnabled: Boolean(updatedSettings.isEnabled),
+        startsAt: toDateTimeLocalValue(updatedSettings.startsAt),
+        endsAt: toDateTimeLocalValue(updatedSettings.endsAt),
+      });
+
+      await fetchBooks();
+
+      toast.success(response.data?.message || "Flash sale schedule saved");
+    } catch (error) {
+      console.error(error);
+
+      toast.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to save flash sale schedule"
+      );
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
   const buildProductFormData = () => {
     const data = new FormData();
 
@@ -185,7 +451,7 @@ export default function ManageBooks() {
     data.append("category", formData.category);
     data.append("subcategory", formData.subcategory);
     data.append("price", formData.price);
-    data.append("salePrice", formData.salePrice);
+    data.append("salePrice", formData.flashSale ? formData.salePrice : "");
     data.append("stockStatus", formData.stockStatus);
     data.append("stock", formData.stock);
     data.append("description", formData.description);
@@ -215,6 +481,25 @@ export default function ManageBooks() {
       return;
     }
 
+    if (formData.flashSale) {
+      const actualPrice = Number(formData.price);
+      const salePrice = Number(formData.salePrice);
+
+      if (
+        formData.salePrice === "" ||
+        !Number.isFinite(salePrice) ||
+        salePrice < 0
+      ) {
+        toast.error("Sale price is required for Flash Sale");
+        return;
+      }
+
+      if (salePrice >= actualPrice) {
+        toast.error("Sale price must be less than actual price");
+        return;
+      }
+    }
+
     try {
       const data = buildProductFormData();
 
@@ -231,9 +516,7 @@ export default function ManageBooks() {
 
         setBooks(
           books.map((book) =>
-            book._id === editingProductId
-              ? response.data
-              : book
+            book._id === editingProductId ? response.data : book
           )
         );
 
@@ -255,13 +538,13 @@ export default function ManageBooks() {
       }
 
       resetForm();
+      await fetchBooks();
     } catch (error) {
       console.error(error);
 
       toast.error(
-        isEditing
-          ? "Failed to update product"
-          : "Failed to add product"
+        error?.response?.data?.message ||
+          (isEditing ? "Failed to update product" : "Failed to add product")
       );
     }
   };
@@ -281,8 +564,7 @@ export default function ManageBooks() {
           ? String(book.price)
           : "",
       salePrice:
-        book.salePrice !== undefined &&
-        book.salePrice !== null
+        book.salePrice !== undefined && book.salePrice !== null
           ? String(book.salePrice)
           : "",
       image: "",
@@ -309,13 +591,9 @@ export default function ManageBooks() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(
-        `http://localhost:5000/api/products/${id}`
-      );
+      await axios.delete(`http://localhost:5000/api/products/${id}`);
 
-      setBooks(
-        books.filter((book) => book._id !== id)
-      );
+      setBooks(books.filter((book) => book._id !== id));
 
       if (editingProductId === id) {
         resetForm();
@@ -331,9 +609,7 @@ export default function ManageBooks() {
   const handleToggleStock = async (product) => {
     try {
       const updatedStatus =
-        product.stockStatus === "In Stock"
-          ? "Out of Stock"
-          : "In Stock";
+        product.stockStatus === "In Stock" ? "Out of Stock" : "In Stock";
 
       const response = await axios.patch(
         `http://localhost:5000/api/products/${product._id}`,
@@ -344,9 +620,7 @@ export default function ManageBooks() {
 
       setBooks(
         books.map((book) =>
-          book._id === product._id
-            ? response.data
-            : book
+          book._id === product._id ? response.data : book
         )
       );
     } catch (error) {
@@ -357,8 +631,6 @@ export default function ManageBooks() {
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6">
-      {/* HEADER */}
-
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Layers className="text-orange-500 w-6 h-6 shrink-0" />
@@ -366,20 +638,130 @@ export default function ManageBooks() {
         </h2>
 
         <p className="text-sm text-gray-500 mt-1">
-          Manage products, categories, stock flags, and custom covers.
+          Manage products, categories, stock flags, flash sale schedule, and
+          custom covers.
         </p>
       </div>
 
-      {/* MAIN GRID */}
+      <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-orange-100 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-orange-50 pb-4">
+          <div>
+            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-orange-500" />
+              Global Flash Sale Schedule
+            </h3>
+
+            <p className="text-xs text-gray-500 mt-1">
+              Set one start and end date/time. All products marked Flash Sale
+              will follow this same schedule.
+            </p>
+          </div>
+
+          <span
+            className={`inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-bold ${scheduleStatus.className}`}
+          >
+            {scheduleStatus.label}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+          <div className="lg:col-span-2">
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              Schedule
+            </label>
+
+            <label className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3.5 py-2 text-sm font-semibold text-orange-700">
+              <input
+                type="checkbox"
+                checked={scheduleForm.isEnabled}
+                onChange={(e) =>
+                  setScheduleForm({
+                    ...scheduleForm,
+                    isEnabled: e.target.checked,
+                  })
+                }
+              />
+              Enable
+            </label>
+          </div>
+
+          <div className="lg:col-span-4">
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              Start Date & Time
+            </label>
+
+            <input
+              type="datetime-local"
+              value={scheduleForm.startsAt}
+              disabled={!scheduleForm.isEnabled}
+              onChange={(e) =>
+                setScheduleForm({
+                  ...scheduleForm,
+                  startsAt: e.target.value,
+                })
+              }
+              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          <div className="lg:col-span-4">
+            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+              End Date & Time
+            </label>
+
+            <input
+              type="datetime-local"
+              value={scheduleForm.endsAt}
+              disabled={!scheduleForm.isEnabled}
+              onChange={(e) =>
+                setScheduleForm({
+                  ...scheduleForm,
+                  endsAt: e.target.value,
+                })
+              }
+              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
+            <button
+              type="button"
+              onClick={handleSaveFlashSaleSchedule}
+              disabled={savingSchedule}
+              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-xl px-4 py-2 text-sm font-semibold transition"
+            >
+              {savingSchedule ? "Saving..." : "Save Schedule"}
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-orange-50/70 border border-orange-100 rounded-2xl p-4">
+          <p className="text-xs text-orange-700 font-semibold">
+            {scheduleStatus.description}
+          </p>
+
+          {flashSaleSettings?.isEnabled && flashSaleSettings?.startsAt && (
+            <p className="text-[11px] text-orange-600 mt-1">
+              Start: {formatDateTime(flashSaleSettings.startsAt)}
+            </p>
+          )}
+
+          {flashSaleSettings?.isEnabled && flashSaleSettings?.endsAt && (
+            <p className="text-[11px] text-orange-600 mt-1">
+              End: {formatDateTime(flashSaleSettings.endsAt)}
+              {flashSaleIsActive
+                ? ` • ${getFlashSaleRemainingText(flashSaleSettings.endsAt)}`
+                : ""}
+            </p>
+          )}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
-        {/* LEFT FORM */}
-
         <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 h-fit space-y-5">
           <div className="flex items-center justify-between border-b border-gray-50 pb-3">
             <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
               <PlusCircle className="w-4 h-4 text-orange-500" />
-
               {isEditing ? "Edit Product" : "Add New Product"}
             </h3>
 
@@ -395,12 +777,7 @@ export default function ManageBooks() {
             )}
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4"
-          >
-            {/* PRODUCT NAME */}
-
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Product Name *
@@ -420,8 +797,6 @@ export default function ManageBooks() {
               />
             </div>
 
-            {/* CATEGORY + STOCK */}
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -430,16 +805,11 @@ export default function ManageBooks() {
 
                 <select
                   value={formData.category}
-                  onChange={(e) =>
-                    handleCategoryChange(e.target.value)
-                  }
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
                 >
                   {categories.map((category) => (
-                    <option
-                      key={category}
-                      value={category}
-                    >
+                    <option key={category} value={category}>
                       {category}
                     </option>
                   ))}
@@ -461,18 +831,11 @@ export default function ManageBooks() {
                   }
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
                 >
-                  <option value="In Stock">
-                    In Stock
-                  </option>
-
-                  <option value="Out of Stock">
-                    Out of Stock
-                  </option>
+                  <option value="In Stock">In Stock</option>
+                  <option value="Out of Stock">Out of Stock</option>
                 </select>
               </div>
             </div>
-
-            {/* SUBCATEGORY */}
 
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -490,17 +853,12 @@ export default function ManageBooks() {
                 className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
               >
                 {subcategories.map((subcategory) => (
-                  <option
-                    key={subcategory}
-                    value={subcategory}
-                  >
+                  <option key={subcategory} value={subcategory}>
                     {subcategory}
                   </option>
                 ))}
               </select>
             </div>
-
-            {/* PRICE */}
 
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -521,8 +879,6 @@ export default function ManageBooks() {
               />
             </div>
 
-            {/* STOCK QUANTITY */}
-
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
                 Stock Quantity
@@ -542,34 +898,93 @@ export default function ManageBooks() {
               />
             </div>
 
-            {/* SALE PRICE */}
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.featured}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      featured: e.target.checked,
+                    })
+                  }
+                />
+                Featured Product
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.flashSale}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      flashSale: e.target.checked,
+                      salePrice: e.target.checked ? formData.salePrice : "",
+                    })
+                  }
+                />
+                Flash Sale
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.bestSeller}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      bestSeller: e.target.checked,
+                    })
+                  }
+                />
+                Best Seller
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.newArrival}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      newArrival: e.target.checked,
+                    })
+                  }
+                />
+                New Arrival
+              </label>
+            </div>
 
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Sale Price (Optional)
+                Sale Price
               </label>
 
               <input
                 type="number"
-                placeholder="499"
+                placeholder={
+                  formData.flashSale
+                    ? "Example: 499"
+                    : "Tick Flash Sale first"
+                }
                 value={formData.salePrice}
+                disabled={!formData.flashSale}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
                     salePrice: e.target.value,
                   })
                 }
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               />
 
-              {isEditing && (
-                <p className="text-[11px] text-gray-400 mt-1">
-                  To remove sale, clear this field and uncheck Flash Sale.
-                </p>
-              )}
+              <p className="text-[11px] text-gray-400 mt-1">
+                Sale price applies only when this product is marked Flash Sale
+                and the global schedule is active.
+              </p>
             </div>
-
-            {/* PRODUCT IMAGE */}
 
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
@@ -613,16 +1028,12 @@ export default function ManageBooks() {
                         image: file,
                       });
 
-                      setImagePreview(
-                        URL.createObjectURL(file)
-                      );
+                      setImagePreview(URL.createObjectURL(file));
                     }
                   }}
                 />
               </label>
             </div>
-
-            {/* DESCRIPTION */}
 
             <div>
               <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -643,72 +1054,6 @@ export default function ManageBooks() {
               />
             </div>
 
-            {/* FLAGS */}
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.featured}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      featured: e.target.checked,
-                    })
-                  }
-                />
-
-                Featured Product
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.flashSale}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      flashSale: e.target.checked,
-                    })
-                  }
-                />
-
-                Flash Sale
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.bestSeller}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      bestSeller: e.target.checked,
-                    })
-                  }
-                />
-
-                Best Seller
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.newArrival}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      newArrival: e.target.checked,
-                    })
-                  }
-                />
-
-                New Arrival
-              </label>
-            </div>
-
-            {/* BUTTON */}
-
             <button
               type="submit"
               className={`w-full flex items-center justify-center gap-2 ${
@@ -723,25 +1068,25 @@ export default function ManageBooks() {
                 <PlusCircle className="w-4 h-4" />
               )}
 
-              {isEditing
-                ? "UPDATE PRODUCT"
-                : "SAVE INTO CATALOG"}
+              {isEditing ? "UPDATE PRODUCT" : "SAVE INTO CATALOG"}
             </button>
           </form>
         </section>
 
-        {/* RIGHT SIDE */}
-
         <section className="xl:col-span-2 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2 border-b border-gray-50 pb-3 mb-5">
             <BookOpen className="w-4 h-4 text-indigo-500" />
-
             Currently Active Items ({books.length})
           </h3>
 
           <div className="space-y-4">
             {books.map((book) => {
-              const saleInfo = getSaleInfo(book);
+              const saleInfo = getSaleInfo(book, flashSaleIsActive);
+              const markedForFlashSale = Boolean(book.flashSale);
+              const savedSalePrice =
+                book.salePrice !== undefined &&
+                book.salePrice !== null &&
+                String(book.salePrice).trim() !== "";
 
               return (
                 <div
@@ -771,9 +1116,18 @@ export default function ManageBooks() {
                           </span>
                         )}
 
-                        {book.flashSale && (
+                        {markedForFlashSale && flashSaleIsActive && (
                           <span className="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full">
-                            Flash Sale
+                            Flash Sale Active •{" "}
+                            {getFlashSaleRemainingText(
+                              flashSaleSettings.endsAt
+                            )}
+                          </span>
+                        )}
+
+                        {markedForFlashSale && !flashSaleIsActive && (
+                          <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-full">
+                            Flash Sale Ready
                           </span>
                         )}
 
@@ -815,6 +1169,16 @@ export default function ManageBooks() {
                         </div>
                       )}
 
+                      {markedForFlashSale &&
+                        flashSaleSettings?.isEnabled &&
+                        flashSaleSettings?.startsAt && (
+                          <p className="text-xs text-orange-500 mt-1">
+                            Flash sale window:{" "}
+                            {formatDateTime(flashSaleSettings.startsAt)} →{" "}
+                            {formatDateTime(flashSaleSettings.endsAt)}
+                          </p>
+                        )}
+
                       <p className="text-xs text-gray-500 mt-2 max-w-md">
                         {book.description}
                       </p>
@@ -836,15 +1200,21 @@ export default function ManageBooks() {
                           </p>
 
                           <p className="text-[11px] text-red-500 font-semibold">
-                            -
-                            {saleInfo.discountPercent.toFixed(2)}
-                            %
+                            -{saleInfo.discountPercent.toFixed(2)}%
                           </p>
                         </div>
                       ) : (
-                        <p className="font-bold text-gray-800">
-                          NPR {book.price}
-                        </p>
+                        <div>
+                          <p className="font-bold text-gray-800">
+                            NPR {book.price}
+                          </p>
+
+                          {markedForFlashSale && savedSalePrice && (
+                            <p className="text-[11px] text-orange-500 font-semibold mt-1">
+                              Saved sale price: NPR {book.salePrice}
+                            </p>
+                          )}
+                        </div>
                       )}
 
                       <p className="text-xs text-gray-500 mt-1">
@@ -856,9 +1226,7 @@ export default function ManageBooks() {
                       </p>
 
                       <button
-                        onClick={() =>
-                          handleToggleStock(book)
-                        }
+                        onClick={() => handleToggleStock(book)}
                         className={`text-xs px-3 py-1 rounded-full mt-2 ${
                           book.stockStatus === "In Stock"
                             ? "bg-green-100 text-green-700"
@@ -879,9 +1247,7 @@ export default function ManageBooks() {
                       </button>
 
                       <button
-                        onClick={() =>
-                          handleDelete(book._id)
-                        }
+                        onClick={() => handleDelete(book._id)}
                         className="text-red-500 hover:text-red-700"
                         title="Delete product"
                       >
