@@ -24,6 +24,7 @@ Our goal is to make reading materials and learning essentials easily available t
 const About = () => {
   const [aboutContent, setAboutContent] = useState(defaultAboutContent);
   const [contentLoading, setContentLoading] = useState(true);
+  const [activeCard, setActiveCard] = useState("readers");
 
   const [heroData, setHeroData] = useState({
     backgroundImage: "",
@@ -66,11 +67,13 @@ const About = () => {
 
         const data = await response.json();
 
+        console.log("HERO DATA =", data);
+        
+        const hero = data.hero || data;
+        
         setHeroData({
-          backgroundImage: data?.backgroundImage || "",
-          sliderImages: Array.isArray(data?.sliderImages)
-            ? data.sliderImages
-            : [],
+          backgroundImage: hero.backgroundImage || "",
+          sliderImages: hero.sliderImages || [],
         });
       } catch (error) {
         console.error("Hero background fetch error:", error);
@@ -115,7 +118,7 @@ const About = () => {
       icon: <Heart className="w-7 h-7 text-indigo-600" />,
     },
   ];
-
+  console.log("ABOUT IMAGE =", heroData.backgroundImage);
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 animate-in fade-in duration-700">
       {/* Hero Header */}
@@ -145,85 +148,81 @@ const About = () => {
         </div>
       </section>
 
-      {/* Story Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-10 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-20 items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
-              <Library className="w-4 h-4" />
-              Our Story
-            </div>
+{/* Story Section */}
+<section className="relative py-20 px-4 sm:px-6 lg:px-10 max-w-7xl mx-auto">
 
-            <h1 className="text-4xl md:text-5xl font-black text-gray-950 leading-tight">
-              Bringing the Joy of Reading to Our Community Since 2011
-            </h1>
+  <div className="bg-slate-100 border border-slate-200 rounded-[32px] p-8 md:p-12 shadow-lg">
 
-            <div className="space-y-5 text-gray-600 leading-relaxed text-base">
-              {contentLoading ? (
-                <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Loading about content...
-                </div>
-              ) : (
-                <div className="whitespace-pre-line">
-                  {aboutContent.content}
-                </div>
-              )}
-            </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-20 items-center">
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-              <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-black text-gray-900 text-sm">
-                    Carefully Selected Items
-                  </h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Books and stationery chosen for quality and usefulness.
-                  </p>
-                </div>
-              </div>
+      {/* LEFT SIDE */}
+      <div className="space-y-6">
 
-              <div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-black text-gray-900 text-sm">
-                    Reader-Focused Service
-                  </h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Helping every customer find the right book or item.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="absolute -inset-5 bg-gradient-to-br from-indigo-200/70 to-orange-200/60 rounded-[2.5rem] blur-2xl" />
-
-            <div className="relative bg-white p-4 rounded-[2rem] shadow-2xl border border-gray-100">
-              <ImageWithFallback
-                src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800"
-                className="rounded-[1.5rem] shadow-sm object-cover h-[440px] w-full"
-              />
-            </div>
-
-            <div className="absolute -bottom-7 -left-4 sm:-left-7 bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 hidden sm:block">
-              <p className="text-indigo-600 font-black text-3xl">15+</p>
-              <p className="text-gray-500 text-sm font-bold">
-                Years of Passion
-              </p>
-            </div>
-
-            <div className="absolute -top-6 -right-4 sm:-right-6 bg-slate-950 text-white p-5 rounded-2xl shadow-2xl hidden sm:block">
-              <BookOpen className="w-7 h-7 text-orange-300 mb-2" />
-              <p className="text-sm font-black">Books & Stationery</p>
-              <p className="text-xs text-slate-300">All in one place</p>
-            </div>
-          </div>
+        <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
+          <Library className="w-4 h-4" />
+          Our Story
         </div>
-      </section>
 
+        <h1 className="text-4xl md:text-5xl font-black text-gray-950 leading-tight">
+          Bringing the Joy of Reading to Our Community Since 2011
+        </h1>
+
+        <div className="space-y-5 text-gray-600 leading-relaxed text-base">
+          {contentLoading ? (
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading about content...
+            </div>
+          ) : (
+            <div className="whitespace-pre-line">
+              {aboutContent.content}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+
+<div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+  <div>
+    <h4 className="font-black text-gray-900 text-sm">
+      Carefully Selected Items
+    </h4>
+
+    <p className="text-xs text-gray-500 mt-1">
+      Books and stationery chosen for quality and usefulness.
+    </p>
+  </div>
+</div>
+
+<div className="flex items-start gap-3 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+  <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+  <div>
+    <h4 className="font-black text-gray-900 text-sm">
+      Reader-Focused Service
+    </h4>
+
+    <p className="text-xs text-gray-500 mt-1">
+      Helping every customer find the right book or item.
+    </p>
+  </div>
+</div>
+
+</div>
+</div>
+
+{/* RIGHT SIDE IMAGE */}
+<div className="relative">
+<img
+  src={heroData.backgroundImage}
+  alt="About PatraPatrika"
+  className="w-full h-[500px] object-cover rounded-[2rem] shadow-xl"
+/>
+</div>
+
+</div>
+</div>
+</section>
       {/* Stats Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-10">
         <div className="max-w-7xl mx-auto">
@@ -254,63 +253,74 @@ const About = () => {
         </div>
       </section>
 
-      {/* Values Section */}
-      <section className="py-12 px-4 sm:px-6 lg:px-10 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-[2rem] p-8 shadow-xl">
-            <BookOpen className="w-9 h-9 text-indigo-100 mb-5" />
-            <h3 className="text-xl font-black mb-3">For Readers</h3>
-            <p className="text-indigo-100 leading-relaxed">
-              We support curious minds with books that inspire learning,
-              imagination, and personal growth.
-            </p>
-          </div>
+     {/* Values Section */}
+<section className="py-12 px-4 sm:px-6 lg:px-10 max-w-7xl mx-auto">
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-          <div className="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm hover:shadow-xl transition-all">
-            <PenIcon />
-            <h3 className="text-xl font-black text-gray-950 mb-3">
-              For Students
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Academic materials, notebooks, guides, and stationery essentials
-              for everyday study.
-            </p>
-          </div>
+    <div
+      onClick={() => setActiveCard("readers")}
+    className="rounded-[2rem] p-8 bg-gradient-to-r from-indigo-600 to-violet-700 text-white shadow-xl"
+    >
+      <BookOpen className="w-9 h-9 mb-5" />
+      <h3 className="text-xl font-black mb-3">
+        For Readers
+      </h3>
+      <p>
+        We support curious minds with books that inspire learning,
+        imagination, and personal growth.
+      </p>
+    </div>
 
-          <div className="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm hover:shadow-xl transition-all">
-            <Heart className="w-9 h-9 text-orange-500 mb-5" />
-            <h3 className="text-xl font-black text-gray-950 mb-3">
-              For Community
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              A friendly local space where stories, learning, and creativity
-              come together.
-            </p>
-          </div>
-        </div>
-      </section>
+    <div
+      onClick={() => setActiveCard("students")}
+     className="rounded-[2rem] p-8 bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-xl"
+    >
+      <PenIcon />
+      <h3 className="text-xl font-black mb-3">
+        For Students
+      </h3>
+      <p>
+        Academic materials, notebooks, guides, and stationery essentials.
+      </p>
+    </div>
+
+    <div
+      onClick={() => setActiveCard("community")}
+     className="rounded-[2rem] p-8 bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-xl"
+    >
+      <Heart className="w-9 h-9 mb-5" />
+      <h3 className="text-xl font-black mb-3">
+        For Community
+      </h3>
+      <p>
+        A friendly local space where stories, learning, and creativity come together.
+      </p>
+    </div>
+
+  </div>
+</section>
 
       {/* Mission Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-10">
-        <div className="max-w-4xl mx-auto text-center bg-white rounded-[2rem] border border-gray-100 shadow-xl p-8 sm:p-12 relative overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-indigo-50 rounded-full blur-3xl -translate-y-1/2" />
+      <div className="max-w-4xl mx-auto text-center bg-gradient-to-br from-slate-50 to-slate-100 rounded-[2rem] border border-slate-200 shadow-xl p-8 sm:p-12 relative overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:border-indigo-300 group">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-60 -translate-y-1/2" />
 
           <div className="relative">
-            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-100">
+          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-100 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6">
               <Quote className="w-8 h-8 text-white" />
             </div>
 
-            <h2 className="text-3xl md:text-4xl font-black text-gray-950">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 transition-colors duration-300 group-hover:text-indigo-600">
               Our Core Mission
             </h2>
 
-            <p className="text-gray-600 text-lg md:text-xl italic leading-relaxed mt-6">
+            <p className="text-slate-700 text-lg md:text-xl italic leading-relaxed mt-6">
               "To provide a sanctuary for the curious mind and a home for every
               story written, ensuring that quality literature and fine
               stationery are accessible to everyone in our community."
             </p>
 
-            <div className="w-24 h-1.5 bg-gradient-to-r from-indigo-600 to-orange-500 mx-auto rounded-full mt-8" />
+            <div className="w-24 h-1.5 bg-gradient-to-r from-indigo-600 to-orange-500 mx-auto rounded-full mt-8 transition-all duration-500 group-hover:w-40" />
           </div>
         </div>
       </section>

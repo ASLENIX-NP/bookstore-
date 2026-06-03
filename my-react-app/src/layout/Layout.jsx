@@ -58,8 +58,6 @@ export default function Layout() {
     { path: "/location", label: "Location" },
     { path: "/about", label: "About Us" },
     { path: "/contact", label: "Contact" },
-
-    ...(isAuthenticated ? [{ path: "/settings", label: "Settings" }] : []),
   ];
 
   const isActive = (path) => {
@@ -160,12 +158,6 @@ export default function Layout() {
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                to="/wishlist"
-                className="relative w-11 h-11 rounded-2xl bg-white border border-slate-200 hover:bg-red-50 text-slate-700 hover:text-red-500 flex items-center justify-center shadow-md transition-all"
-              >
-                <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-              </Link>
 
               <button
                 type="button"
@@ -230,12 +222,21 @@ export default function Layout() {
                           My Orders
                         </button>
 
+<Link
+  to="/wishlist"
+  onClick={() => setUserMenuOpen(false)}
+  className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3 block"
+>
+  <Heart className="w-4 h-4" />
+  Wishlist
+</Link>
                         {user?.role === "admin" && (
                           <Link
                             to="/admin"
                             onClick={() => setUserMenuOpen(false)}
                             className="w-full px-5 py-3 text-left text-sm text-amber-600 hover:bg-amber-50 font-black flex items-center gap-3"
                           >
+                            
                             <LayoutDashboard className="w-4 h-4" />
                             Admin Dashboard
                           </Link>
@@ -294,15 +295,6 @@ export default function Layout() {
                   {item.label}
                 </Link>
               ))}
-
-              {isAuthenticated && (
-                <Link
-                  to="/settings"
-                  className="block px-4 py-3 rounded-2xl bg-slate-50 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 text-sm font-black"
-                >
-                  Settings
-                </Link>
-              )}
 
               {user?.role === "admin" && (
                 <Link
