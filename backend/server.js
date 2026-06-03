@@ -3839,31 +3839,177 @@ app.post("/api/contact", async (req, res) => {
   try {
     const { firstName, lastName, email, message } = req.body;
 
-    if (!firstName || !lastName || !email || !message) {
+    const cleanFirstName = String(firstName || "").trim();
+    const cleanLastName = String(lastName || "").trim();
+    const cleanEmail = String(email || "").toLowerCase().trim();
+    const cleanMessage = String(message || "").trim();
+
+    if (!cleanFirstName || !cleanLastName || !cleanEmail || !cleanMessage) {
       return res.status(400).json({
         success: false,
         error: "All fields are required",
       });
     }
 
+    const isFeedbackMessage =
+      cleanLastName.toLowerCase() === "feedback" &&
+      /RATING:/i.test(cleanMessage);
+
+    if (isFeedbackMessage) {
+      const existingFeedback = await Message.findOne({
+        email: cleanEmail,
+        lastName: {
+          $regex: "^Feedback$",
+          $options: "i",
+        },
+        message: {
+          $regex: "RATING:",
+          $options: "i",
+        },
+      });
+
+      if (existingFeedback) {
+        return res.status(409).json({
+          success: false,
+          error: "You have already submitted feedback.",
+        });
+      }
+    }
+
     const newMessage = await new Message({
-      firstName,
-      lastName,
-      email,
-      message,
+      firstName: cleanFirstName,
+      lastName: cleanLastName,
+      email: cleanEmail,
+      message: cleanMessage,
       isRead: false,
     }).save();
 
     res.status(201).json({
       success: true,
-      message: "Message sent successfully",
+      message: isFeedbackMessage
+        ? "Feedback sent successfully"
+        : "Message sent successfully",
       data: newMessage,
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 });
+app.get("/api/feedback-stats", async (req, res) => {
+  try {
+    const ratingMap = {
+      Terrible: {
+        score: 1,
+        emoji: "😡",
+      },
+      Poor: {
+        score: 2,
+        emoji: "😕",
+      },
+      Average: {
+        score: 3,
+        emoji: "😐",
+      },
+      Good: {
+        score: 4,
+        emoji: "😊",
+      },
+      Excellent: {
+        score: 5,
+        emoji: "🤩",
+      },
+    };
 
+    const messages = await Message.find({
+      lastName: "Feedback",
+      message: {
+        $regex: "RATING:",
+        $options: "i",
+      },
+    });
+
+    const ratings = messages
+      .map((item) => {
+        const text = String(item.message || "");
+
+        const match = text.match(/RATING:\s*([A-Za-z]+)/i);
+
+        if (!match || !match[1]) {
+          return null;
+        }
+
+        const ratingLabel = match[1].trim();
+
+        if (!ratingMap[ratingLabel]) {
+          return null;
+        }
+
+        return {
+          label: ratingLabel,
+          score: ratingMap[ratingLabel].score,
+          emoji: ratingMap[ratingLabel].emoji,
+        };
+      })
+      .filter(Boolean);
+
+    if (ratings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        averageRating: 0,
+        averageRatingText: "0.0",
+        totalFeedback: 0,
+        emoji: "😊",
+        label: "No feedback yet",
+      });
+    }
+
+    const totalScore = ratings.reduce(
+      (sum, item) => sum + Number(item.score || 0),
+      0
+    );
+
+    const averageRating = totalScore / ratings.length;
+
+    let finalLabel = "Average";
+    let finalEmoji = "😐";
+
+    if (averageRating >= 4.5) {
+      finalLabel = "Excellent";
+      finalEmoji = "🤩";
+    } else if (averageRating >= 3.5) {
+      finalLabel = "Good";
+      finalEmoji = "😊";
+    } else if (averageRating >= 2.5) {
+      finalLabel = "Average";
+      finalEmoji = "😐";
+    } else if (averageRating >= 1.5) {
+      finalLabel = "Poor";
+      finalEmoji = "😕";
+    } else {
+      finalLabel = "Terrible";
+      finalEmoji = "😡";
+    }
+
+    res.status(200).json({
+      success: true,
+      averageRating,
+      averageRatingText: averageRating.toFixed(1),
+      totalFeedback: ratings.length,
+      emoji: finalEmoji,
+      label: finalLabel,
+    });
+  } catch (error) {
+    console.error("Feedback stats error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 app.get("/api/admin/messages", async (req, res) => {
   try {
     res.status(200).json(await Message.find().sort({ createdAt: -1 }));

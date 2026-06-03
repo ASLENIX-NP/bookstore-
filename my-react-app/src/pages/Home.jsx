@@ -205,6 +205,14 @@ export default function Home() {
     endsAt: null,
   });
 
+  const [feedbackStats, setFeedbackStats] = useState({
+    averageRating: 0,
+    averageRatingText: "0.0",
+    totalFeedback: 0,
+    emoji: "😊",
+    label: "No feedback yet",
+  });
+
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [loading, setLoading] = useState(true);
@@ -225,12 +233,14 @@ export default function Home() {
 
       const [
         flashSaleSettingsRes,
+        feedbackStatsRes,
         featuredRes,
         flashSaleRes,
         bestSellerRes,
         newArrivalRes,
       ] = await Promise.all([
         axios.get("http://localhost:5000/api/flash-sale-settings"),
+        axios.get("http://localhost:5000/api/feedback-stats"),
         axios.get("http://localhost:5000/api/products?featured=true"),
         axios.get("http://localhost:5000/api/products?flashSale=true"),
         axios.get("http://localhost:5000/api/products?bestSeller=true"),
@@ -243,6 +253,16 @@ export default function Home() {
           isActive: false,
           startsAt: null,
           endsAt: null,
+        }
+      );
+
+      setFeedbackStats(
+        feedbackStatsRes.data || {
+          averageRating: 0,
+          averageRatingText: "0.0",
+          totalFeedback: 0,
+          emoji: "😊",
+          label: "No feedback yet",
         }
       );
 
@@ -563,18 +583,18 @@ export default function Home() {
               </h3>
 
               <span
-  className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
-    isOutOfStock
-      ? "bg-red-100 text-red-600"
-      : "bg-green-100 text-green-600"
-  }`}
->
-  {isOutOfStock
-    ? "Out"
-    : Number(product.stock) > 0
-    ? `${product.stock} left`
-    : "In Stock"}
-</span>
+                className={`shrink-0 px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black ${
+                  isOutOfStock
+                    ? "bg-red-100 text-red-600"
+                    : "bg-green-100 text-green-600"
+                }`}
+              >
+                {isOutOfStock
+                  ? "Out"
+                  : Number(product.stock) > 0
+                  ? `${product.stock} left`
+                  : "In Stock"}
+              </span>
             </div>
           </button>
 
@@ -964,10 +984,15 @@ export default function Home() {
                 </div>
 
                 <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-                  <p className="text-3xl font-black text-white">VAT</p>
-                  <p className="text-sm text-slate-300 mt-1">
-                    Invoice-ready orders
+                  <p className="text-3xl font-black text-white">
+                    {feedbackStats.totalFeedback > 0
+                      ? `${feedbackStats.emoji} ${feedbackStats.averageRatingText}/5`
+                      : "😊"}
                   </p>
+
+                  <p className="text-sm text-slate-300 mt-1">
+  Happy Customers
+</p>
                 </div>
 
                 <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
