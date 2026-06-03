@@ -171,8 +171,22 @@ export default function Cart() {
                 Your Shopping Cart
               </h1>
               <p className="text-gray-500 text-sm mt-1">
-                Select products you want to checkout.
-              </p>
+  Select products you want to checkout.
+</p>
+<div className="mt-4">
+  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+    <div
+      className="h-full bg-gradient-to-r from-orange-500 to-red-500"
+      style={{
+        width: `${
+          cartItems.length
+            ? (selectedCartItems.length / cartItems.length) * 100
+            : 0
+        }%`,
+      }}
+    />
+  </div>
+</div>
             </div>
           </div>
         </div>
@@ -233,9 +247,17 @@ export default function Cart() {
 
                 return (
                   <div
-                    key={item._id}
-                    className="p-5 flex flex-col sm:flex-row items-center justify-between gap-4"
-                  >
+                  key={item._id}
+                  className="
+                  p-5
+                  bg-white
+                  hover:bg-slate-50
+                  transition-all
+                  duration-300
+                  border-b
+                  border-slate-100
+                  "
+                >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
                       <button
                         type="button"
@@ -252,26 +274,57 @@ export default function Cart() {
                       <img
                         src={item.image}
                         alt={item.title}
-                        className="w-16 h-20 object-cover rounded-xl bg-gray-50 border border-gray-100 shrink-0 shadow-sm"
+                        className="
+                        w-24
+                        h-28
+                        object-cover
+                        rounded-2xl
+                        shadow-md
+                        border
+                        border-slate-100
+                        "
                       />
 
-                      <div>
-                        <h4 className="font-black text-gray-900 line-clamp-1">
-                          {item.title}
-                        </h4>
+<div className="flex-1 min-w-0">
 
-                        <p className="text-sm text-slate-400 font-bold mt-1">
-                          NPR {Number(item.price || 0).toLocaleString()}
-                        </p>
-                      </div>
+<p className="text-xs text-indigo-600 font-bold uppercase">
+  PatraPatrika
+</p>
+
+<h4 className="font-black text-lg text-slate-900 mt-1">
+  {item.title}
+</h4>
+
+<p className="text-sm text-slate-400 mt-1">
+  Books & Stationery
+</p>
+
+<div className="mt-3">
+  <span className="text-orange-500 text-xl font-black">
+    NPR {Number(item.price || 0).toLocaleString()}
+  </span>
+
+  <span className="ml-3 text-slate-400 line-through text-sm">
+    NPR {Math.round(item.price * 1.2).toLocaleString()}
+  </span>
+</div>
+
+</div>
                     </div>
 
                     <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
-                      <div className="flex items-center gap-2 border border-gray-200 bg-slate-50 p-1 rounded-xl">
+                    <div className="
+flex
+items-center
+bg-slate-100
+rounded-2xl
+p-1
+shadow-inner
+">
                         <button
                           type="button"
                           onClick={() => updateQty(item._id, -1)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white shadow-sm border border-gray-100 hover:bg-gray-50"
+                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
@@ -283,7 +336,7 @@ export default function Cart() {
                         <button
                           type="button"
                           onClick={() => updateQty(item._id, 1)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-white shadow-sm border border-gray-100 hover:bg-gray-50"
+                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -313,19 +366,39 @@ export default function Cart() {
             </div>
 
             {/* Checkout Summary */}
-            <div className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-5">
-              <div className="space-y-1">
-                <p className="text-xs font-black text-gray-400 uppercase tracking-wider">
+<div
+className="
+bg-gradient-to-br
+from-indigo-50
+via-white
+to-purple-50
+p-8
+rounded-[2rem]
+shadow-xl
+border
+border-indigo-100
+mt-6
+"
+>
+<div className="space-y-1">
+
+<div className="flex items-center gap-2 mb-3">
+  <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
+    🚚 Free Delivery Available
+  </div>
+</div>
+
+<p className="text-xs font-black text-indigo-500 uppercase tracking-wider">
                   Total Cart Estimate
                 </p>
 
-                <h3 className="text-2xl font-black text-slate-900">
+                <h3 className="text-4xl font-black text-slate-900">
                   NPR {cartSubtotal.toLocaleString()}
                 </h3>
 
-                <p className="text-sm text-gray-500">
+                <p className="text-base text-slate-600">
                   Selected subtotal:{" "}
-                  <span className="font-black text-gray-800">
+                  <span className="font-black text-indigo-600">
                     NPR {selectedSubtotal.toLocaleString()}
                   </span>
                 </p>
@@ -338,7 +411,7 @@ export default function Cart() {
                 className={`w-full sm:w-auto text-white text-sm font-black py-4 px-7 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 ${
                   selectedCartItems.length === 0
                     ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-slate-950 hover:bg-slate-800"
+                    : "bg-gradient-to-r from-orange-500 to-red-500 hover:scale-105 hover:shadow-xl transition-all duration-300"
                 }`}
               >
                 Checkout Selected
