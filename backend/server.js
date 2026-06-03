@@ -284,6 +284,42 @@ const orderSchema = new mongoose.Schema(
 );
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+const notificationSchema = new mongoose.Schema(
+  {
+    userEmail: String,
+
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+    },
+
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+    },
+
+    title: String,
+
+    message: String,
+
+    type: {
+      type: String,
+      default: "review",
+    },
+
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Notification =
+  mongoose.models.Notification ||
+  mongoose.model("Notification", notificationSchema);
 const getNextInvoiceNumber = async () => {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -301,6 +337,24 @@ const getNextInvoiceNumber = async () => {
 
   return `INV-${String(nextNum).padStart(5, "0")}`;
 };
+
+app.get("/api/notifications/:email", async (req, res) => {
+  try {
+    const notifications = await Notification.find({
+      userEmail: req.params.email,
+      isRead: false,
+    }).sort({
+      createdAt: -1,
+    });
+
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
+
 // POLICY SCHEMA & MODEL
 const policySchema = new mongoose.Schema(
   {
@@ -1942,9 +1996,9 @@ app.post("/api/products/:id/reviews", async (req, res) => {
   try {
     const { name, email, rating, comment } = req.body;
 
-    if (!name || !rating || !comment) {
+    if (!name || !email || !rating || !comment) {
       return res.status(400).json({
-        error: "Name, rating, and comment are required",
+        error: "Name, email, rating and comment are required",
       });
     }
 
@@ -1964,9 +2018,37 @@ app.post("/api/products/:id/reviews", async (req, res) => {
       });
     }
 
+    const completedOrder = await Order.findOne({
+      email: email.toLowerCase().trim(),
+      orderStatus: "Completed",
+      orderItems: {
+        $elemMatch: {
+          productId: product._id,
+        },
+      },
+    });
+
+    if (!completedOrder) {
+      return res.status(403).json({
+        error:
+          "You can review this product only after purchasing and receiving it.",
+      });
+    }
+
+    const alreadyReviewed = product.reviews.find(
+      (review) =>
+        review.email?.toLowerCase() === email.toLowerCase()
+    );
+
+    if (alreadyReviewed) {
+      return res.status(400).json({
+        error: "You have already reviewed this product.",
+      });
+    }
+
     product.reviews.push({
       name,
-      email,
+      email: email.toLowerCase().trim(),
       rating: numericRating,
       comment,
     });
@@ -1975,15 +2057,19 @@ app.post("/api/products/:id/reviews", async (req, res) => {
 
     product.rating =
       product.reviews.reduce(
-        (total, item) => total + Number(item.rating || 0),
+        (total, review) => total + Number(review.rating || 0),
         0
       ) / product.reviews.length;
 
-    const updatedProduct = await product.save();
+    await product.save();
 
-    res.status(201).json(updatedProduct);
+    res.status(201).json({
+      success: true,
+      message: "Review submitted successfully",
+      product,
+    });
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       error: error.message,
     });
   }
@@ -2579,6 +2665,8 @@ const updateOrderStatusHandler = async (req, res) => {
       });
     }
 
+    const oldOrder = await Order.findById(req.params.id);
+
     const updatedOrder = await Order.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -2586,12 +2674,34 @@ const updateOrderStatusHandler = async (req, res) => {
         returnDocument: "after",
       }
     );
-
+    
     if (!updatedOrder) {
       return res.status(404).json({
         success: false,
         error: "Order not found",
       });
+    }
+    
+    if (
+      oldOrder?.orderStatus !== "Completed" &&
+updatedOrder?.orderStatus === "Completed"
+    ) {
+      for (const item of updatedOrder.orderItems) {
+        await Notification.create({
+          userEmail: updatedOrder.email,
+    
+          orderId: updatedOrder._id,
+    
+          productId: item.productId,
+    
+          title: "Delivery Completed",
+    
+          message:
+            "Your order has been delivered successfully. Please review your product.",
+    
+          type: "review",
+        });
+      }
     }
 
     res.status(200).json({
