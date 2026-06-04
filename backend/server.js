@@ -23,7 +23,7 @@ require("dotenv").config({
 });
 
 // IMPORT MODELS
-const Product = require("./models/Product");
+const Product = require("./models/product");
 const { v4: uuidv4 } = require("uuid");
 const AdminModel = require("./models/Admin");
 const User = require("./models/User");
@@ -1296,7 +1296,6 @@ const buildFlashSalePayload = ({
       "Sale price must be less than the actual price."
     );
   }
-
   return {
     flashSale: true,
     salePrice,
@@ -2539,7 +2538,6 @@ app.get("/api/orders/customer/:email", async (req, res) => {
     }).sort({
       createdAt: -1,
     });
-
     res.status(200).json({
       success: true,
       orders,
@@ -4359,36 +4357,81 @@ app.get("/api/admin/dashboard", getDashboardStats);
 // REPORT ROUTES
 app.get("/api/admin/daily-report", async (req, res) => {
   try {
-    const { timeframe } = req.query;
+    const { timeframe = "daily" } = req.query;
 
     const startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
 
-    if (timeframe === "monthly") {
-      startDate.setDate(1);
+    if (timeframe === "daily") {
+      startDate.setHours(0, 0, 0, 0);
     } else if (timeframe === "weekly") {
-      startDate.setDate(startDate.getDate() - startDate.getDay());
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (timeframe === "monthly") {
+      startDate.setMonth(startDate.getMonth() - 1);
     }
 
-    const soldItems = await Product.find({
-      stockStatus: "Out of Stock",
-      updatedAt: { $gte: startDate },
+    const orders = await Order.find({
+      createdAt: { $gte: startDate },
     });
 
     let revenue = 0;
+    let itemsSold = 0;
 
-    soldItems.forEach((product) => {
-      revenue += Number(product.price || 0);
+    orders.forEach((order) => {
+      revenue += Number(
+        order.grandTotal ||
+        order.totalPrice ||
+        0
+      );
+
+      itemsSold += order.orderItems.reduce(
+        (sum, item) => sum + Number(item.qty || 0),
+        0
+      );
     });
 
+    const itemsAdded = await Product.countDocuments({
+      createdAt: { $gte: startDate },
+    });
+    
+    const breakdown = [];
+    
+    orders.forEach((order) => {
+      order.orderItems.forEach((item) => {
+        const existing = breakdown.find(
+          (p) => p.name === item.title
+        );
+    
+        if (existing) {
+          existing.unitsSold += Number(item.qty || 0);
+          existing.revenue += Number(item.subtotal || 0);
+        } else {
+          breakdown.push({
+            name: item.title,
+            price: Number(item.price || 0),
+            unitsSold: Number(item.qty || 0),
+            revenue: Number(item.subtotal || 0),
+          });
+        }
+      });
+    });
+    
     res.status(200).json({
+      success: true,
       metrics: {
         revenue,
-        itemsSold: soldItems.length,
+        itemsSold,
+        itemsAdded,
+        breakdown,
       },
     });
+    
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 

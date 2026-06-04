@@ -16,7 +16,12 @@ import {
 
 export default function Reports() {
   const [reportTimeframe, setReportTimeframe] = useState('daily'); // Can be 'daily', 'weekly', or 'monthly'
-  const [liveReport, setLiveReport] = useState({ revenue: 0, itemsSold: 0, itemsAdded: 0, breakdown: [] });
+  const [liveReport, setLiveReport] = useState({
+    revenue: 0,
+    itemsSold: 0,
+    itemsAdded: 0,
+    breakdown: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -165,7 +170,7 @@ export default function Reports() {
             <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 font-bold rounded-md">Live Count</span>
           </div>
 
-          {liveReport.breakdown.length === 0 ? (
+          {!liveReport?.breakdown || liveReport.breakdown.length === 0 ? (
             <div className="p-8 bg-gray-50 rounded-xl text-center border border-dashed border-gray-200">
               <Tags className="w-8 h-8 text-gray-300 mx-auto mb-2" />
               <p className="text-xs font-semibold text-gray-400">No units sold or catalog changes logged within this timeframe window.</p>
@@ -182,7 +187,7 @@ export default function Reports() {
                   </tr>
                 </thead>
                 <tbody>
-                  {liveReport.breakdown.map((item, index) => (
+                {(liveReport?.breakdown || []).map((item, index) => (
                     <tr key={index} className="border-b border-gray-50 text-gray-700 font-medium hover:bg-gray-50/40">
                       <td className="py-3 px-3 text-gray-900 font-bold">{item.name}</td>
                       <td className="py-3 px-3 text-center text-gray-500">NPR {item.price.toLocaleString()}</td>
