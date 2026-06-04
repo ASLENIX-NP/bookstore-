@@ -642,6 +642,104 @@ app.get("/api/notifications/:email", async (req, res) => {
     });
   }
 });
+app.get("/api/notifications/:email", async (req, res) => {
+  try {
+    const notifications = await Notification.find({
+      userEmail: req.params.email,
+      isRead: false,
+    }).sort({
+      createdAt: -1,
+    });
+
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
+
+app.patch("/api/notifications/:id/read", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid notification ID",
+      });
+    }
+
+    const notification = await Notification.findByIdAndUpdate(
+      req.params.id,
+      {
+        isRead: true,
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        error: "Notification not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      notification,
+    });
+  } catch (error) {
+    console.error("Mark notification read error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+app.patch("/api/notifications/user/:email/review/read", async (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email || "")
+      .toLowerCase()
+      .trim();
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: "User email is required",
+      });
+    }
+
+    const result = await Notification.updateMany(
+      {
+        userEmail: {
+          $regex: `^${escapeRegex(email)}$`,
+          $options: "i",
+        },
+        type: "review",
+        isRead: false,
+      },
+      {
+        $set: {
+          isRead: true,
+        },
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Mark all review notifications read error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 
 // POLICY SCHEMA & MODEL
 const policySchema = new mongoose.Schema(
@@ -1242,6 +1340,15 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+  })
+);
+
+app.use(express.json({ limit: "50mb" }));
+
+app.use(
+  express.urlencoded({
+    limit: "50mb",
+    extended: true,
   })
 );
 

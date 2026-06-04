@@ -24,7 +24,7 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("token"));
-  
+
   const [user, setUser] = useState(() => {
     try {
       const storedUser = localStorage.getItem("user");
@@ -33,12 +33,9 @@ export default function Layout() {
       return null;
     }
   });
-  
-  const [reviewNotification, setReviewNotification] =
-    useState(null);
-  
-  const [showReviewPopup, setShowReviewPopup] =
-    useState(false);
+
+  const [reviewNotification, setReviewNotification] = useState(null);
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -57,38 +54,36 @@ export default function Layout() {
     setMobileMenuOpen(false);
     setUserMenuOpen(false);
   }, [location.pathname]);
+
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
         if (!user?.email) return;
-  
+
         const res = await axios.get(
-          `http://localhost:5000/api/notifications/${user.email}`
+          `http://localhost:5000/api/notifications/${encodeURIComponent(
+            user.email
+          )}`
         );
-  
-        const notifications = res.data || [];
-  
-        const unreadReview =
-          notifications.find(
-            (n) =>
-              n.type === "review" &&
-              !n.isRead
-          );
-  
+
+        const notifications = Array.isArray(res.data) ? res.data : [];
+
+        const unreadReview = notifications.find(
+          (notification) =>
+            notification.type === "review" && !notification.isRead
+        );
+
         if (unreadReview) {
-          setReviewNotification(
-            unreadReview
-          );
-  
+          setReviewNotification(unreadReview);
           setShowReviewPopup(true);
         }
       } catch (error) {
         console.error(error);
       }
     };
-  
+
     fetchNotifications();
-  }, [user]);
+  }, [user?.email]);
 
   const isAuthenticated = Boolean(token);
 
@@ -105,6 +100,54 @@ export default function Layout() {
     return location.pathname.startsWith(path);
   };
 
+  const closeReviewPopup = () => {
+    setShowReviewPopup(false);
+    setReviewNotification(null);
+  };
+
+  const markReviewNotificationRead = async (notification) => {
+    if (!notification?._id) return;
+
+    await axios.patch(
+      `http://localhost:5000/api/notifications/${notification._id}/read`
+    );
+  };
+
+  const handleReviewLater = async () => {
+    const notification = reviewNotification;
+
+    closeReviewPopup();
+
+    try {
+      await markReviewNotificationRead(notification);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleReviewNow = async () => {
+    const notification = reviewNotification;
+
+    closeReviewPopup();
+
+    try {
+      await markReviewNotificationRead(notification);
+    } catch (error) {
+      console.error(error);
+    }
+
+    if (notification?.productId) {
+      const reviewOrderQuery = notification?.orderId
+        ? `?reviewOrder=${notification.orderId}`
+        : "";
+
+      navigate(`/products/${notification.productId}${reviewOrderQuery}`);
+      return;
+    }
+
+    navigate("/my-orders");
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -115,6 +158,7 @@ export default function Layout() {
     setUser(null);
     setUserMenuOpen(false);
     setMobileMenuOpen(false);
+    closeReviewPopup();
 
     window.dispatchEvent(new Event("storage"));
 
@@ -150,6 +194,7 @@ export default function Layout() {
   const getCartCount = () => {
     try {
       const cart = JSON.parse(localStorage.getItem("cart")) || [];
+
       return cart.reduce(
         (total, item) => total + Number(item.quantity || item.qty || 1),
         0
@@ -175,6 +220,7 @@ export default function Layout() {
                 <p className="text-lg sm:text-xl font-black text-slate-950">
                   PatraPatrika
                 </p>
+
                 <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-500">
                   Center
                 </p>
@@ -198,7 +244,6 @@ export default function Layout() {
             </nav>
 
             <div className="flex items-center gap-2 sm:gap-3">
-
               <button
                 type="button"
                 onClick={handleCartClick}
@@ -239,6 +284,7 @@ export default function Layout() {
                           <p className="text-sm font-black text-slate-950 truncate">
                             {user?.name || "User"}
                           </p>
+
                           <p className="text-xs text-slate-500 mt-1 truncate">
                             {user?.email || "Customer account"}
                           </p>
@@ -262,21 +308,21 @@ export default function Layout() {
                           My Orders
                         </button>
 
-<Link
-  to="/wishlist"
-  onClick={() => setUserMenuOpen(false)}
-  className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3 block"
->
-  <Heart className="w-4 h-4" />
-  Wishlist
-</Link>
+                        <Link
+                          to="/wishlist"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="w-full px-5 py-3 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 font-black flex items-center gap-3 block"
+                        >
+                          <Heart className="w-4 h-4" />
+                          Wishlist
+                        </Link>
+
                         {user?.role === "admin" && (
                           <Link
                             to="/admin"
                             onClick={() => setUserMenuOpen(false)}
                             className="w-full px-5 py-3 text-left text-sm text-amber-600 hover:bg-amber-50 font-black flex items-center gap-3"
                           >
-                            
                             <LayoutDashboard className="w-4 h-4" />
                             Admin Dashboard
                           </Link>
@@ -370,157 +416,133 @@ export default function Layout() {
         )}
       </header>
 
-      <>
-  {showReviewPopup &&
-    reviewNotification && (
+      {showReviewPopup && reviewNotification && (
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
+            <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-5">
+              <PackageCheck className="w-8 h-8 text-green-600" />
+            </div>
 
-      <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <h2 className="text-2xl font-black text-gray-900 mb-3">
+              Delivery Completed
+            </h2>
 
-        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
+            <p className="text-gray-600 mb-6">
+              Your order has been delivered successfully. Please review your
+              purchased product.
+            </p>
 
-          <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-5">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleReviewLater}
+                className="flex-1 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold"
+              >
+                Later
+              </button>
 
-            <PackageCheck className="w-8 h-8 text-green-600" />
-
+              <button
+                type="button"
+                onClick={handleReviewNow}
+                className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              >
+                Review Now
+              </button>
+            </div>
           </div>
-
-          <h2 className="text-2xl font-black text-gray-900 mb-3">
-            Delivery Completed
-          </h2>
-
-          <p className="text-gray-600 mb-6">
-            Your order has been delivered successfully.
-            Please review your purchased product.
-          </p>
-
-          <div className="flex gap-3">
-
-            <button
-              onClick={() =>
-                setShowReviewPopup(
-                  false
-                )
-              }
-              className="flex-1 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold"
-            >
-              Later
-            </button>
-
-            <button
-              onClick={async () => {
-                try {
-                  await axios.patch(
-                    `http://localhost:5000/api/notifications/${reviewNotification._id}/read`
-                  );
-
-                  setShowReviewPopup(
-                    false
-                  );
-
-                  navigate(
-                    `/products/${reviewNotification.productId}`
-                  );
-                } catch (error) {
-                  console.error(error);
-                }
-              }}
-              className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-            >
-              Review Now
-            </button>
-
-          </div>
-
         </div>
+      )}
 
-      </div>
-    )}
-
-  <main className="flex-1">
-    <Outlet />
-  </main>
-</>
+      <main className="flex-1">
+        <Outlet />
+      </main>
 
       <footer className="bg-slate-950 text-white mt-10">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 items-start">
-      <div className="md:justify-self-start max-w-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-amber-300" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 items-start">
+            <div className="md:justify-self-start max-w-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-amber-300" />
+                </div>
+
+                <div>
+                  <p className="font-black text-xl sm:text-2xl">
+                    PatraPatrika Center
+                  </p>
+
+                  <p className="text-sm text-slate-400 font-bold">
+                    Books • Stationery • Reading Culture
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-base text-slate-400 mt-4 leading-relaxed">
+                A clean and trusted destination for books, stationery, and
+                learning essentials.
+              </p>
+            </div>
+
+            <div className="md:justify-self-center md:min-w-[180px] md:translate-x-10 lg:translate-x-14">
+              <p className="font-black mb-4 text-lg sm:text-xl">
+                Quick Links
+              </p>
+
+              <div className="space-y-2 text-base text-slate-400">
+                <Link to="/products" className="block hover:text-amber-300">
+                  Products
+                </Link>
+
+                <Link to="/location" className="block hover:text-amber-300">
+                  Location
+                </Link>
+
+                <Link to="/about" className="block hover:text-amber-300">
+                  About Us
+                </Link>
+
+                <Link to="/contact" className="block hover:text-amber-300">
+                  Contact
+                </Link>
+              </div>
+            </div>
+
+            <div className="md:justify-self-end md:min-w-[260px]">
+              <p className="font-black mb-4 text-lg sm:text-xl">
+                Store Promise
+              </p>
+
+              <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-4 py-2 text-base font-black text-amber-300">
+                <Sparkles className="w-5 h-5" />
+                Quality books. Reliable service.
+              </div>
+            </div>
           </div>
 
-          <div>
-            <p className="font-black text-xl sm:text-2xl">
-              PatraPatrika Center
+          <div className="border-t border-white/10 mt-10 pt-6 relative">
+            <p className="text-sm text-slate-500 text-center">
+              © {new Date().getFullYear()} PatraPatrika Center. All rights
+              reserved.
             </p>
-            <p className="text-sm text-slate-400 font-bold">
-              Books • Stationery • Reading Culture
-            </p>
+
+            <div className="mt-4 sm:mt-0 flex items-center justify-center sm:justify-end gap-5 text-sm text-slate-400 sm:absolute sm:right-0 sm:top-6">
+              <Link
+                to="/policies/terms"
+                className="hover:text-amber-300 transition"
+              >
+                Terms
+              </Link>
+
+              <Link
+                to="/policies/privacy"
+                className="hover:text-amber-300 transition"
+              >
+                Privacy
+              </Link>
+            </div>
           </div>
         </div>
-
-        <p className="text-base text-slate-400 mt-4 leading-relaxed">
-          A clean and trusted destination for books, stationery, and learning
-          essentials.
-        </p>
-      </div>
-
-      <div className="md:justify-self-center md:min-w-[180px] md:translate-x-10 lg:translate-x-14">
-        <p className="font-black mb-4 text-lg sm:text-xl">Quick Links</p>
-
-        <div className="space-y-2 text-base text-slate-400">
-          <Link to="/products" className="block hover:text-amber-300">
-            Products
-          </Link>
-
-          <Link to="/location" className="block hover:text-amber-300">
-            Location
-          </Link>
-
-          <Link to="/about" className="block hover:text-amber-300">
-            About Us
-          </Link>
-
-          <Link to="/contact" className="block hover:text-amber-300">
-            Contact
-          </Link>
-        </div>
-      </div>
-
-      <div className="md:justify-self-end md:min-w-[260px]">
-        <p className="font-black mb-4 text-lg sm:text-xl">Store Promise</p>
-
-        <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-4 py-2 text-base font-black text-amber-300">
-          <Sparkles className="w-5 h-5" />
-          Quality books. Reliable service.
-        </div>
-      </div>
-    </div>
-
-    <div className="border-t border-white/10 mt-10 pt-6 relative">
-      <p className="text-sm text-slate-500 text-center">
-        © {new Date().getFullYear()} PatraPatrika Center. All rights reserved.
-      </p>
-
-      <div className="mt-4 sm:mt-0 flex items-center justify-center sm:justify-end gap-5 text-sm text-slate-400 sm:absolute sm:right-0 sm:top-6">
-        <Link
-          to="/policies/terms"
-          className="hover:text-amber-300 transition"
-        >
-          Terms
-        </Link>
-
-        <Link
-          to="/policies/privacy"
-          className="hover:text-amber-300 transition"
-        >
-          Privacy
-        </Link>
-      </div>
-    </div>
-  </div>
-</footer>
+      </footer>
     </div>
   );
 }
