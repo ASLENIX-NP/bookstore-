@@ -213,6 +213,12 @@ export default function Home() {
     label: "No feedback yet",
   });
 
+  const [productReviewStats, setProductReviewStats] = useState({
+    averageRating: 0,
+    averageRatingText: "0.0",
+    totalReviews: 0,
+  });
+
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [loading, setLoading] = useState(true);
@@ -225,6 +231,48 @@ export default function Home() {
     currentTime
   );
 
+  const getProductsArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.products)) return data.products;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  };
+
+  const calculateProductReviewStats = (products = []) => {
+    const safeProducts = Array.isArray(products) ? products : [];
+
+    const totalReviews = safeProducts.reduce((sum, product) => {
+      const reviewCount = Number(
+        product?.numReviews ||
+          (Array.isArray(product?.reviews) ? product.reviews.length : 0) ||
+          0
+      );
+
+      return sum + reviewCount;
+    }, 0);
+
+    const totalRatingPoints = safeProducts.reduce((sum, product) => {
+      const reviewCount = Number(
+        product?.numReviews ||
+          (Array.isArray(product?.reviews) ? product.reviews.length : 0) ||
+          0
+      );
+
+      const rating = Number(product?.rating || 0);
+
+      return sum + rating * reviewCount;
+    }, 0);
+
+    const averageRating =
+      totalReviews > 0 ? totalRatingPoints / totalReviews : 0;
+
+    return {
+      averageRating,
+      averageRatingText: averageRating.toFixed(1),
+      totalReviews,
+    };
+  };
+
   const fetchProductsAndFlashSaleSettings = async (showLoader = false) => {
     try {
       if (showLoader) {
@@ -234,6 +282,7 @@ export default function Home() {
       const [
         flashSaleSettingsRes,
         feedbackStatsRes,
+        allProductsRes,
         featuredRes,
         flashSaleRes,
         bestSellerRes,
@@ -241,6 +290,7 @@ export default function Home() {
       ] = await Promise.all([
         axios.get("http://localhost:5000/api/flash-sale-settings"),
         axios.get("http://localhost:5000/api/feedback-stats"),
+        axios.get("http://localhost:5000/api/products"),
         axios.get("http://localhost:5000/api/products?featured=true"),
         axios.get("http://localhost:5000/api/products?flashSale=true"),
         axios.get("http://localhost:5000/api/products?bestSeller=true"),
@@ -266,10 +316,18 @@ export default function Home() {
         }
       );
 
-      setFeaturedProducts(featuredRes.data);
-      setFlashSaleProducts(flashSaleRes.data);
-      setBestSellerProducts(bestSellerRes.data);
-      setNewArrivalProducts(newArrivalRes.data);
+      const allProducts = getProductsArray(allProductsRes.data);
+      const featuredProductsData = getProductsArray(featuredRes.data);
+      const flashSaleProductsData = getProductsArray(flashSaleRes.data);
+      const bestSellerProductsData = getProductsArray(bestSellerRes.data);
+      const newArrivalProductsData = getProductsArray(newArrivalRes.data);
+
+      setProductReviewStats(calculateProductReviewStats(allProducts));
+
+      setFeaturedProducts(featuredProductsData);
+      setFlashSaleProducts(flashSaleProductsData);
+      setBestSellerProducts(bestSellerProductsData);
+      setNewArrivalProducts(newArrivalProductsData);
     } catch (error) {
       console.error("Error fetching products:", error);
     } finally {
@@ -976,34 +1034,64 @@ export default function Home() {
               </div>
 
               <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
-  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-    <p className="text-3xl font-black text-white">7000+</p>
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+                  <p className="text-3xl font-black text-white">7000+</p>
 
-    <p className="text-sm text-slate-300 mt-1">
-      Books Available
-    </p>
-  </div>
+                  <p className="text-sm text-slate-300 mt-1">
+                    Books Available
+                  </p>
+                </div>
 
-  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-    <p className="text-3xl font-black text-white">
-      {feedbackStats.totalFeedback > 0
-        ? `${feedbackStats.emoji} ${feedbackStats.averageRatingText}/5`
-        : "😊"}
-    </p>
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+                  <p className="text-3xl font-black text-white">
+                    {feedbackStats.totalFeedback > 0
+                      ? `${feedbackStats.emoji} ${feedbackStats.averageRatingText}/5`
+                      : "😊"}
+                  </p>
 
-    <p className="text-sm text-slate-300 mt-1">
-      Happy Customers
-    </p>
-  </div>
+                  <p className="text-sm text-slate-300 mt-1">
+                    Happy Customers
+                  </p>
+                </div>
 
-  <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
-    <p className="text-3xl font-black text-white">Rating</p>
+                <div className="bg-white/10 border border-white/10 rounded-3xl p-5 backdrop-blur transition-all hover:-translate-y-1 hover:bg-white/15 hover:border-white/20">
+                  {productReviewStats.totalReviews > 0 ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <p className="text-3xl font-black text-white">
+                          {productReviewStats.averageRatingText}/5
+                        </p>
 
-    <p className="text-sm text-slate-300 mt-1">
-      Coming after purchase
-    </p>
-  </div>
-</div>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <=
+                                Math.round(productReviewStats.averageRating)
+                                  ? "text-amber-400 fill-current"
+                                  : "text-white/30"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-slate-300 mt-1">
+  Based on verified purchase reviews
+</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-3xl font-black text-white">Rating</p>
+
+                      <p className="text-sm text-slate-300 mt-1">
+                        Coming after purchase
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
