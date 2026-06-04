@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -34,9 +33,6 @@ export default function Layout() {
     }
   });
 
-  const [reviewNotification, setReviewNotification] = useState(null);
-  const [showReviewPopup, setShowReviewPopup] = useState(false);
-
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
 
@@ -54,36 +50,6 @@ export default function Layout() {
     setMobileMenuOpen(false);
     setUserMenuOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        if (!user?.email) return;
-
-        const res = await axios.get(
-          `http://localhost:5000/api/notifications/${encodeURIComponent(
-            user.email
-          )}`
-        );
-
-        const notifications = Array.isArray(res.data) ? res.data : [];
-
-        const unreadReview = notifications.find(
-          (notification) =>
-            notification.type === "review" && !notification.isRead
-        );
-
-        if (unreadReview) {
-          setReviewNotification(unreadReview);
-          setShowReviewPopup(true);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchNotifications();
-  }, [user?.email]);
 
   const isAuthenticated = Boolean(token);
 
@@ -415,48 +381,9 @@ export default function Layout() {
           </div>
         )}
       </header>
-
-      {showReviewPopup && reviewNotification && (
-        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
-            <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-5">
-              <PackageCheck className="w-8 h-8 text-green-600" />
-            </div>
-
-            <h2 className="text-2xl font-black text-gray-900 mb-3">
-              Delivery Completed
-            </h2>
-
-            <p className="text-gray-600 mb-6">
-              Your order has been delivered successfully. Please review your
-              purchased product.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handleReviewLater}
-                className="flex-1 py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 font-bold"
-              >
-                Later
-              </button>
-
-              <button
-                type="button"
-                onClick={handleReviewNow}
-                className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-              >
-                Review Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main className="flex-1">
-        <Outlet />
-      </main>
-
+<main className="flex-1">
+  <Outlet />
+</main>
       <footer className="bg-slate-950 text-white mt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 items-start">
