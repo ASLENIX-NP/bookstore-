@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   ShoppingCart,
-  Trash2,
   Minus,
   Plus,
   CheckSquare,
@@ -69,6 +70,8 @@ export default function Cart() {
     setSelectedItems((prevSelected) =>
       prevSelected.filter((id) => updatedCart.some((item) => item._id === id))
     );
+
+    window.dispatchEvent(new Event("storage"));
   };
 
   const updateQty = (id, delta) => {
@@ -89,6 +92,7 @@ export default function Cart() {
   const removeItem = (id) => {
     const updatedCart = cartItems.filter((item) => item._id !== id);
     saveCart(updatedCart);
+    toast.success("Item removed from cart");
   };
 
   const toggleItemSelection = (id) => {
@@ -159,34 +163,35 @@ export default function Cart() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-7">
-        {/* Header */}
         <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <ShoppingCart className="w-6 h-6" />
             </div>
 
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-black text-gray-950">
                 Your Shopping Cart
               </h1>
+
               <p className="text-gray-500 text-sm mt-1">
-  Select products you want to checkout.
-</p>
-<div className="mt-4">
-  <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-    <div
-      className="h-full bg-gradient-to-r from-orange-500 to-red-500"
-      style={{
-        width: `${
-          cartItems.length
-            ? (selectedCartItems.length / cartItems.length) * 100
-            : 0
-        }%`,
-      }}
-    />
-  </div>
-</div>
+                Select products you want to checkout.
+              </p>
+
+              <div className="mt-4">
+                <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-orange-500 to-red-500"
+                    style={{
+                      width: `${
+                        cartItems.length
+                          ? (selectedCartItems.length / cartItems.length) * 100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -200,7 +205,7 @@ export default function Cart() {
             </p>
 
             <p className="text-sm text-gray-400 mt-2">
-              Add books or products first before checkout Please.
+              Add books or products first before checkout please.
             </p>
 
             <button
@@ -213,7 +218,6 @@ export default function Cart() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Select All */}
             <div className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
               <button
                 type="button"
@@ -225,6 +229,7 @@ export default function Cart() {
                 ) : (
                   <Square className="w-5 h-5 text-gray-400" />
                 )}
+
                 {allSelected ? "Unselect All" : "Select All"}
               </button>
 
@@ -240,155 +245,123 @@ export default function Cart() {
               </p>
             </div>
 
-            {/* Cart Items */}
             <div className="bg-white rounded-[2rem] border border-gray-100 divide-y divide-gray-100 shadow-sm overflow-hidden">
               {cartItems.map((item) => {
                 const isSelected = selectedItems.includes(item._id);
 
                 return (
                   <div
-                  key={item._id}
-                  className="
-                  p-5
-                  bg-white
-                  hover:bg-slate-50
-                  transition-all
-                  duration-300
-                  border-b
-                  border-slate-100
-                  "
-                >
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                      <button
-                        type="button"
-                        onClick={() => toggleItemSelection(item._id)}
-                        className="text-indigo-600"
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-6 h-6" />
-                        ) : (
-                          <Square className="w-6 h-6 text-gray-400" />
-                        )}
-                      </button>
-
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="
-                        w-24
-                        h-28
-                        object-cover
-                        rounded-2xl
-                        shadow-md
-                        border
-                        border-slate-100
-                        "
-                      />
-
-<div className="flex-1 min-w-0">
-
-<p className="text-xs text-indigo-600 font-bold uppercase">
-  PatraPatrika
-</p>
-
-<h4 className="font-black text-lg text-slate-900 mt-1">
-  {item.title}
-</h4>
-
-<p className="text-sm text-slate-400 mt-1">
-  Books & Stationery
-</p>
-
-<div className="mt-3">
-  <span className="text-orange-500 text-xl font-black">
-    NPR {Number(item.price || 0).toLocaleString()}
-  </span>
-
-  <span className="ml-3 text-slate-400 line-through text-sm">
-    NPR {Math.round(item.price * 1.2).toLocaleString()}
-  </span>
-</div>
-
-</div>
+                    key={item._id}
+                    className="relative overflow-hidden bg-red-500"
+                  >
+                    <div className="absolute right-0 top-0 h-full w-32 bg-red-500 flex items-center justify-center text-white font-black">
+                      Delete
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
-                    <div className="
-flex
-items-center
-bg-slate-100
-rounded-2xl
-p-1
-shadow-inner
-">
+                    <motion.div
+                      drag="x"
+                      dragConstraints={{ left: -150, right: 0 }}
+                      dragElastic={0.1}
+                      onDragEnd={(e, info) => {
+                        if (info.offset.x < -120) {
+                          removeItem(item._id);
+                        }
+                      }}
+                      className="relative flex items-center justify-between p-6 bg-white hover:bg-slate-50 transition-all duration-300 border-b border-slate-100"
+                    >
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
                         <button
                           type="button"
-                          onClick={() => updateQty(item._id, -1)}
-                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
+                          onClick={() => toggleItemSelection(item._id)}
+                          className="text-indigo-600 shrink-0"
                         >
-                          <Minus className="w-4 h-4" />
+                          {isSelected ? (
+                            <CheckSquare className="w-6 h-6" />
+                          ) : (
+                            <Square className="w-6 h-6 text-gray-400" />
+                          )}
                         </button>
 
-                        <span className="text-sm font-black px-2 text-gray-800 min-w-[24px] text-center">
-                          {item.quantity}
-                        </span>
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-24 h-28 object-cover rounded-2xl shadow-md border border-slate-100"
+                        />
 
-                        <button
-                          type="button"
-                          onClick={() => updateQty(item._id, 1)}
-                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-indigo-600 font-bold uppercase">
+                            PatraPatrika
+                          </p>
+
+                          <h4 className="font-black text-lg text-slate-900 mt-1">
+                            {item.title}
+                          </h4>
+
+                          <p className="text-sm text-slate-400 mt-1">
+                            Books & Stationery
+                          </p>
+
+                          <div className="mt-3">
+                            <span className="text-orange-500 text-xl font-black">
+                              NPR {Number(item.price || 0).toLocaleString()}
+                            </span>
+
+                            <span className="ml-3 text-slate-400 line-through text-sm">
+                              NPR{" "}
+                              {Math.round(
+                                Number(item.price || 0) * 1.2
+                              ).toLocaleString()}
+                            </span>
+
+                            <p className="mt-2 text-sm font-bold text-slate-600">
+                              Total: NPR{" "}
+                              {(
+                                Number(item.price || 0) *
+                                Number(item.quantity || 1)
+                              ).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="text-right flex items-center gap-4">
-                        <span className="text-sm font-black text-slate-900">
-                          NPR{" "}
-                          {(
-                            Number(item.price || 0) *
-                            Number(item.quantity || 1)
-                          ).toLocaleString()}
-                        </span>
+                      <div className="flex items-start gap-8 ml-auto -mt-4">
+                        <div className="flex items-center bg-white border border-slate-200 rounded-2xl shadow-md h-14 px-1">
+                          <button
+                            type="button"
+                            onClick={() => updateQty(item._id, -1)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item._id)}
-                          className="text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-2 rounded-xl transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          <span className="w-12 text-center font-black text-lg text-slate-900">
+                            {item.quantity}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => updateQty(item._id, 1)}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Checkout Summary */}
-<div
-className="
-bg-gradient-to-br
-from-indigo-50
-via-white
-to-purple-50
-p-8
-rounded-[2rem]
-shadow-xl
-border
-border-indigo-100
-mt-6
-"
->
-<div className="space-y-1">
+            <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-8 rounded-[2rem] shadow-xl border border-indigo-100 mt-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-600 text-xs font-bold">
+                    🚚 Fast Delivery Available
+                  </div>
+                </div>
 
-<div className="flex items-center gap-2 mb-3">
-  <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
-    🚚 Fast Delivery Available
-  </div>
-</div>
-
-<p className="text-xs font-black text-indigo-500 uppercase tracking-wider">
+                <p className="text-xs font-black text-indigo-500 uppercase tracking-wider">
                   Total Cart Estimate
                 </p>
 
@@ -408,7 +381,7 @@ mt-6
                 type="button"
                 onClick={proceedToDelivery}
                 disabled={selectedCartItems.length === 0}
-                className={`w-full sm:w-auto text-white text-sm font-black py-4 px-7 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 ${
+                className={`mt-6 w-full sm:w-auto text-white text-sm font-black py-4 px-7 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 ${
                   selectedCartItems.length === 0
                     ? "bg-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-orange-500 to-red-500 hover:scale-105 hover:shadow-xl transition-all duration-300"

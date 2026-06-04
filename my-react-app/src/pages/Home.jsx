@@ -1198,7 +1198,7 @@ export default function Home() {
         </>
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+<section className="max-w-[1500px] mx-auto px-4 sm:px-6 py-14">
         <div className="relative overflow-hidden rounded-[3rem] bg-slate-950 p-8 sm:p-12 transition-all hover:-translate-y-1 hover:shadow-2xl">
           <div className="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/25 blur-3xl rounded-full" />
           <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-400/20 blur-3xl rounded-full" />
