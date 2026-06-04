@@ -986,16 +986,16 @@ export default function Home() {
 
                 <div className="relative bg-white/10 border border-white/10 rounded-[3.4rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                   <img
-                    src={
-                      heroData?.sliderImages?.length > 0
-                        ? heroData.sliderImages[
-                            currentSlide % heroData.sliderImages.length
-                          ]
-                        : ""
-                    }
-                    alt="Hero Image"
-                    className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
-                  />
+  src={
+    heroData?.sliderImages?.length > 0
+      ? heroData.sliderImages[
+          currentSlide % heroData.sliderImages.length
+        ]
+      : CART_IMAGE_PLACEHOLDER
+  }
+  alt="Hero Image"
+  className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
+/>
 
                   <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
                     <div className="flex items-start gap-4">
