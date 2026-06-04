@@ -384,7 +384,7 @@ mt-6
 
 <div className="flex items-center gap-2 mb-3">
   <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
-    🚚 Free Delivery Available
+    🚚 Fast Delivery Available
   </div>
 </div>
 
