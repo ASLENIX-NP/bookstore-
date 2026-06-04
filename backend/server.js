@@ -57,6 +57,114 @@ console.log("ESEWA_SECRET_KEY loaded:", Boolean(process.env.ESEWA_SECRET_KEY));
 console.log("STRIPE_SECRET_KEY loaded:", Boolean(process.env.STRIPE_SECRET_KEY));
 
 // ORDER SCHEMA & MODEL
+
+const ORDER_STATUSES = [
+  "Processing",
+  "Confirmed",
+  "Packaging",
+  "Shipped",
+  "Out for Delivery",
+  "Delivered",
+  "Completed",
+  "Cancelled",
+  "Failed Delivery",
+];
+
+const PAYMENT_STATUSES = [
+  "Pending",
+  "Paid",
+  "Failed",
+  "Verification Required",
+];
+
+const TRACKING_STEP_TITLES = [
+  "Processing",
+  "Confirmed",
+  "Packaging",
+  "Shipped",
+  "Out for Delivery",
+  "Delivered",
+  "Completed",
+];
+
+const makeTrackingSteps = (currentStatus = "Processing") => {
+  const normalizedStatus = normalizeOrderStatus(currentStatus) || "Processing";
+  const currentIndex = TRACKING_STEP_TITLES.indexOf(normalizedStatus);
+
+  return TRACKING_STEP_TITLES.map((title, index) => ({
+    title,
+    completed:
+      normalizedStatus === "Cancelled" ||
+      normalizedStatus === "Failed Delivery"
+        ? false
+        : currentIndex >= index,
+    date:
+      normalizedStatus === "Cancelled" ||
+      normalizedStatus === "Failed Delivery"
+        ? null
+        : currentIndex >= index
+        ? new Date()
+        : null,
+  }));
+};
+
+const normalizeOrderStatus = (value) => {
+  const status = String(value || "").trim();
+
+  if (!status) return null;
+
+  const aliasMap = {
+    pending: "Processing",
+    processing: "Processing",
+    confirmed: "Confirmed",
+    packaging: "Packaging",
+    packed: "Packaging",
+    shipped: "Shipped",
+    "out for delivery": "Out for Delivery",
+    outfordelivery: "Out for Delivery",
+    delivered: "Delivered",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    canceled: "Cancelled",
+    "failed delivery": "Failed Delivery",
+    faileddelivery: "Failed Delivery",
+  };
+
+  const key = status.toLowerCase().replace(/\s+/g, " ");
+
+  return aliasMap[key] || null;
+};
+
+const normalizePaymentStatus = (value) => {
+  const status = String(value || "").trim();
+
+  const matchedStatus = PAYMENT_STATUSES.find(
+    (item) => item.toLowerCase() === status.toLowerCase()
+  );
+
+  return matchedStatus || null;
+};
+
+const trackingStepSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+    },
+
+    completed: {
+      type: Boolean,
+      default: false,
+    },
+
+    date: {
+      type: Date,
+      default: null,
+    },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     email: {
@@ -193,17 +301,125 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Paid", "Failed", "Verification Required"],
     },
 
-    orderStatus: {
+        orderStatus: {
       type: String,
       default: "Processing",
-      enum: ["Processing", "Confirmed", "Completed", "Cancelled"],
+      enum: ORDER_STATUSES,
     },
 
     status: {
       type: String,
       required: true,
       default: "Processing",
+      enum: ORDER_STATUSES,
     },
+
+    trackingSteps: {
+      type: [trackingStepSchema],
+      default: () => makeTrackingSteps("Processing"),
+    },
+
+    deliveryPartner: {
+      name: {
+        type: String,
+        default: "",
+      },
+
+      phone: {
+        type: String,
+        default: "",
+      },
+
+      company: {
+        type: String,
+        default: "",
+      },
+
+      trackingNumber: {
+        type: String,
+        default: "",
+      },
+
+      note: {
+        type: String,
+        default: "",
+      },
+    },
+
+    deliveryLastUpdatedAt: {
+      type: Date,
+      default: null,
+    },
+           deliveryUpdateToken: {
+      type: String,
+      default: "",
+      index: true,
+    },
+
+   deliveryUpdateTokenCreatedAt: {
+  type: Date,
+  default: null,
+},
+
+deliveryUpdateTokenExpiresAt: {
+  type: Date,
+  default: null,
+  index: true,
+},
+
+    cashCollected: {
+      type: Boolean,
+      default: false,
+    },
+
+    cashCollectedAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    cashCollectedAt: {
+      type: Date,
+      default: null,
+    },
+
+    deliveryFailureReason: {
+      type: String,
+      default: "",
+    },
+
+    deliveryUpdateHistory: [
+      {
+        status: {
+          type: String,
+          default: "",
+        },
+
+        note: {
+          type: String,
+          default: "",
+        },
+
+        updatedBy: {
+          type: String,
+          default: "Delivery Partner",
+        },
+
+        cashCollected: {
+          type: Boolean,
+          default: false,
+        },
+
+        cashCollectedAmount: {
+          type: Number,
+          default: 0,
+        },
+
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
     cancelledAt: {
       type: Date,
@@ -284,6 +500,70 @@ const orderSchema = new mongoose.Schema(
 );
 
 const Order = mongoose.models.Order || mongoose.model("Order", orderSchema);
+const DELIVERY_UPDATE_TOKEN_EXPIRY_DAYS = Number(
+  process.env.DELIVERY_UPDATE_TOKEN_EXPIRY_DAYS || 7
+);
+
+const DELIVERY_UPDATE_TOKEN_EXPIRY_MS =
+  DELIVERY_UPDATE_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+const createDeliveryUpdateTokenExpiry = (fromDate = new Date()) => {
+  const startDate = new Date(fromDate);
+
+  if (Number.isNaN(startDate.getTime())) {
+    return new Date(Date.now() + DELIVERY_UPDATE_TOKEN_EXPIRY_MS);
+  }
+
+  return new Date(startDate.getTime() + DELIVERY_UPDATE_TOKEN_EXPIRY_MS);
+};
+
+const issueDeliveryUpdateToken = (order) => {
+  const now = new Date();
+
+  order.deliveryUpdateToken = crypto.randomBytes(32).toString("hex");
+  order.deliveryUpdateTokenCreatedAt = now;
+  order.deliveryUpdateTokenExpiresAt = createDeliveryUpdateTokenExpiry(now);
+
+  return order;
+};
+
+const getDeliveryUpdateTokenExpiresAt = (order) => {
+  if (order?.deliveryUpdateTokenExpiresAt) {
+    return new Date(order.deliveryUpdateTokenExpiresAt);
+  }
+
+  if (order?.deliveryUpdateTokenCreatedAt) {
+    return createDeliveryUpdateTokenExpiry(order.deliveryUpdateTokenCreatedAt);
+  }
+
+  return null;
+};
+
+const isDeliveryUpdateTokenExpired = (order) => {
+  const expiresAt = getDeliveryUpdateTokenExpiresAt(order);
+
+  if (!expiresAt || Number.isNaN(expiresAt.getTime())) {
+    return true;
+  }
+
+  return expiresAt <= new Date();
+};
+
+const ensureDeliveryUpdateTokenExpiry = (order) => {
+  if (!order.deliveryUpdateToken) {
+    return;
+  }
+
+  if (!order.deliveryUpdateTokenCreatedAt) {
+    order.deliveryUpdateTokenCreatedAt = new Date();
+  }
+
+  if (!order.deliveryUpdateTokenExpiresAt) {
+    order.deliveryUpdateTokenExpiresAt = createDeliveryUpdateTokenExpiry(
+      order.deliveryUpdateTokenCreatedAt
+    );
+  }
+};
 const notificationSchema = new mongoose.Schema(
   {
     userEmail: String,
@@ -1993,17 +2273,30 @@ app.put("/api/products/:id", async (req, res) => {
 });
 app.post("/api/products/:id/reviews", async (req, res) => {
   try {
-    const { name, email, rating, comment } = req.body;
+    const { name, email, rating, comment, orderId } = req.body;
 
-    if (!name || !email || !rating || !comment) {
+    if (!name || !email || !rating || !comment || !orderId) {
       return res.status(400).json({
-        error: "Name, email, rating and comment are required",
+        error: "Name, email, rating, comment, and orderId are required",
       });
     }
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        error: "Invalid product ID",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({
+        error: "Invalid order ID",
+      });
+    }
+
+    const cleanEmail = String(email).toLowerCase().trim();
     const numericRating = Number(rating);
 
-    if (numericRating < 1 || numericRating > 5) {
+    if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
       return res.status(400).json({
         error: "Rating must be between 1 and 5",
       });
@@ -2018,8 +2311,17 @@ app.post("/api/products/:id/reviews", async (req, res) => {
     }
 
     const completedOrder = await Order.findOne({
-      email: email.toLowerCase().trim(),
-      orderStatus: "Completed",
+      _id: orderId,
+
+      email: {
+        $regex: `^${escapeRegex(cleanEmail)}$`,
+        $options: "i",
+      },
+
+      orderStatus: {
+        $in: ["Delivered", "Completed"],
+      },
+
       orderItems: {
         $elemMatch: {
           productId: product._id,
@@ -2030,26 +2332,32 @@ app.post("/api/products/:id/reviews", async (req, res) => {
     if (!completedOrder) {
       return res.status(403).json({
         error:
-          "You can review this product only after purchasing and receiving it.",
+          "You can review this product only after this order is delivered or completed.",
       });
     }
 
-    const alreadyReviewed = product.reviews.find(
-      (review) =>
-        review.email?.toLowerCase() === email.toLowerCase()
-    );
+    const alreadyReviewedThisOrder = product.reviews.find((review) => {
+      const reviewEmail = String(review.email || "").toLowerCase().trim();
 
-    if (alreadyReviewed) {
-      return res.status(400).json({
-        error: "You have already reviewed this product.",
+      return (
+        reviewEmail === cleanEmail &&
+        review.orderId &&
+        String(review.orderId) === String(completedOrder._id)
+      );
+    });
+
+    if (alreadyReviewedThisOrder) {
+      return res.status(409).json({
+        error: "You have already reviewed this product for this order.",
       });
     }
 
     product.reviews.push({
-      name,
-      email: email.toLowerCase().trim(),
+      orderId: completedOrder._id,
+      name: String(name).trim(),
+      email: cleanEmail,
       rating: numericRating,
-      comment,
+      comment: String(comment).trim(),
     });
 
     product.numReviews = product.reviews.length;
@@ -2068,6 +2376,8 @@ app.post("/api/products/:id/reviews", async (req, res) => {
       product,
     });
   } catch (error) {
+    console.error("Review submit error:", error);
+
     res.status(500).json({
       error: error.message,
     });
@@ -2389,33 +2699,7 @@ app.post("/api/orders", async (req, res) => {
 
             status: "Processing",
 
-            trackingSteps: [
-              {
-                title: "Order Placed",
-                completed: true,
-                date: new Date(),
-              },
-
-              {
-                title: "Order Confirmed",
-                completed: false,
-              },
-
-              {
-                title: "Packaging",
-                completed: false,
-              },
-
-              {
-                title: "Shipped",
-                completed: false,
-              },
-
-              {
-                title: "Delivered",
-                completed: false,
-              },
-            ],
+                        trackingSteps: makeTrackingSteps(orderStatus || "Processing"),
 
             estimatedDelivery: deliveryData.days,
 
@@ -2630,7 +2914,7 @@ app.get("/api/orders/:id", async (req, res) => {
 // COMMON ORDER STATUS UPDATE FUNCTION
 const updateOrderStatusHandler = async (req, res) => {
   try {
-    const { orderStatus, status, paymentStatus } = req.body;
+    const { orderStatus, status, paymentStatus, deliveryPartner } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({
@@ -2639,64 +2923,121 @@ const updateOrderStatusHandler = async (req, res) => {
       });
     }
 
-    const updateData = {};
+    const order = await Order.findById(req.params.id);
 
-    const finalOrderStatus = orderStatus || status;
-
-    if (finalOrderStatus) {
-      updateData.orderStatus = finalOrderStatus;
-      updateData.status = finalOrderStatus;
-    }
-
-    if (paymentStatus) {
-      updateData.paymentStatus = paymentStatus;
-
-      if (paymentStatus === "Paid") {
-        updateData.paidAt = new Date();
-      }
-    }
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "No status value provided",
-      });
-    }
-
-    const oldOrder = await Order.findById(req.params.id);
-
-    const updatedOrder = await Order.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      {
-        returnDocument: "after",
-      }
-    );
-    
-    if (!updatedOrder) {
+    if (!order) {
       return res.status(404).json({
         success: false,
         error: "Order not found",
       });
     }
-    
-    if (
-      oldOrder?.orderStatus !== "Completed" &&
-updatedOrder?.orderStatus === "Completed"
-    ) {
-      for (const item of updatedOrder.orderItems) {
+
+    const oldOrderStatus = normalizeOrderStatus(
+      order.orderStatus || order.status || "Processing"
+    );
+
+    const requestedOrderStatus = orderStatus || status;
+
+    if (requestedOrderStatus !== undefined) {
+      const finalOrderStatus = normalizeOrderStatus(requestedOrderStatus);
+
+      if (!finalOrderStatus) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order status",
+          allowedStatuses: ORDER_STATUSES,
+        });
+      }
+
+      order.orderStatus = finalOrderStatus;
+      order.status = finalOrderStatus;
+
+      if (
+        finalOrderStatus !== "Cancelled" &&
+        finalOrderStatus !== "Failed Delivery"
+      ) {
+        order.trackingSteps = makeTrackingSteps(finalOrderStatus);
+      }
+
+      order.deliveryLastUpdatedAt = new Date();
+
+      if (finalOrderStatus === "Cancelled") {
+        order.cancelledAt = order.cancelledAt || new Date();
+        order.cancelledBy = order.cancelledBy || "admin";
+        order.cancelReason = order.cancelReason || "Cancelled by admin";
+      }
+    } else {
+      const safeCurrentStatus = oldOrderStatus || "Processing";
+
+      order.orderStatus = safeCurrentStatus;
+      order.status = safeCurrentStatus;
+    }
+
+    if (paymentStatus !== undefined) {
+      const finalPaymentStatus = normalizePaymentStatus(paymentStatus);
+
+      if (!finalPaymentStatus) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid payment status",
+          allowedStatuses: PAYMENT_STATUSES,
+        });
+      }
+
+      order.paymentStatus = finalPaymentStatus;
+
+      if (finalPaymentStatus === "Paid" && !order.paidAt) {
+        order.paidAt = new Date();
+      }
+
+      if (finalPaymentStatus === "Pending") {
+        order.paidAt = null;
+      }
+    }
+
+        if (deliveryPartner && typeof deliveryPartner === "object") {
+      order.deliveryPartner = {
+        name: String(deliveryPartner.name || "").trim(),
+        phone: String(deliveryPartner.phone || "").trim(),
+        company: String(deliveryPartner.company || "").trim(),
+        trackingNumber: String(deliveryPartner.trackingNumber || "").trim(),
+        note: String(deliveryPartner.note || "").trim(),
+      };
+
+      const hasDeliveryPartnerInfo =
+        order.deliveryPartner.name ||
+        order.deliveryPartner.phone ||
+        order.deliveryPartner.company ||
+        order.deliveryPartner.trackingNumber;
+
+      if (hasDeliveryPartnerInfo) {
+  if (!order.deliveryUpdateToken) {
+    issueDeliveryUpdateToken(order);
+  } else {
+    ensureDeliveryUpdateTokenExpiry(order);
+  }
+}
+
+      order.deliveryLastUpdatedAt = new Date();
+    }
+
+    const updatedOrder = await order.save();
+
+    const becameDeliveredOrCompleted =
+      !["Delivered", "Completed"].includes(oldOrderStatus) &&
+      ["Delivered", "Completed"].includes(updatedOrder.orderStatus);
+
+    if (becameDeliveredOrCompleted) {
+      for (const item of updatedOrder.orderItems || []) {
+        if (!item.productId) continue;
+
         await Notification.create({
           userEmail: updatedOrder.email,
-    
           orderId: updatedOrder._id,
-    
           productId: item.productId,
-    
           title: "Delivery Completed",
-    
           message:
-            "Your order has been delivered successfully. Please review your product.",
-    
+            "Your order has been delivered successfully. You can now review your product.",
           type: "review",
         });
       }
@@ -2704,10 +3045,8 @@ updatedOrder?.orderStatus === "Completed"
 
     res.status(200).json({
       success: true,
-      message: "Order status updated successfully",
+      message: "Order updated successfully",
       order: updatedOrder,
-
-      // compatibility
       data: updatedOrder,
     });
   } catch (error) {
@@ -2727,6 +3066,67 @@ app.put("/api/orders/:id/status", updateOrderStatusHandler);
 // ADMIN STATUS ROUTE ALIAS
 app.patch("/api/admin/orders/:id/status", updateOrderStatusHandler);
 app.put("/api/admin/orders/:id/status", updateOrderStatusHandler);
+const regenerateDeliveryUpdateLinkHandler = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID",
+      });
+    }
+
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Order not found",
+      });
+    }
+
+    const hasDeliveryPartnerInfo =
+      order.deliveryPartner?.name ||
+      order.deliveryPartner?.phone ||
+      order.deliveryPartner?.company ||
+      order.deliveryPartner?.trackingNumber;
+
+    if (!hasDeliveryPartnerInfo) {
+      return res.status(400).json({
+        success: false,
+        error: "Save delivery partner details first before regenerating link.",
+      });
+    }
+
+    issueDeliveryUpdateToken(order);
+    order.deliveryLastUpdatedAt = new Date();
+
+    const updatedOrder = await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Delivery update link regenerated successfully",
+      order: updatedOrder,
+      data: updatedOrder,
+    });
+  } catch (error) {
+    console.error("Regenerate delivery update link error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
+
+app.patch(
+  "/api/orders/:id/delivery-link/regenerate",
+  regenerateDeliveryUpdateLinkHandler
+);
+
+app.patch(
+  "/api/admin/orders/:id/delivery-link/regenerate",
+  regenerateDeliveryUpdateLinkHandler
+);
 
 // CANCEL ORDER
 app.patch("/api/orders/:id/cancel", async (req, res) => {
@@ -3853,42 +4253,256 @@ app.patch("/api/orders/:id/status", async (req, res) => {
 });
 
 // UPDATE PAYMENT STATUS
-app.patch("/api/orders/:id/payment", async (req, res) => {
+app.patch("/api/orders/:id/payment", updateOrderStatusHandler);
+// DELIVERY PARTNER LIMITED UPDATE ROUTES
+const DELIVERY_LINK_STATUSES = [
+  "Shipped",
+  "Out for Delivery",
+  "Delivered",
+  "Failed Delivery",
+];
+
+app.get("/api/delivery-update/:token", async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    const token = String(req.params.token || "").trim();
+
+    if (!token) {
       return res.status(400).json({
         success: false,
-        error: "Invalid order ID",
+        error: "Delivery update token is required",
       });
     }
 
-    const { paymentStatus, transactionId, paymentProof } = req.body;
-
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findOne({
+      deliveryUpdateToken: token,
+    });
 
     if (!order) {
-      return res.status(404).json({ error: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Invalid or expired delivery update link",
+      });
     }
 
-    if (paymentStatus) {
-      order.paymentStatus = paymentStatus;
+    ensureDeliveryUpdateTokenExpiry(order);
 
-      if (paymentStatus === "Paid" && !order.paidAt) {
-        order.paidAt = new Date();
+    if (isDeliveryUpdateTokenExpired(order)) {
+      await order.save();
+
+      return res.status(410).json({
+        success: false,
+        error: "This delivery update link has expired. Please ask admin to regenerate a new link.",
+      });
+    }
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      order: {
+        _id: order._id,
+        customerName: order.customerName,
+        phone: order.phone,
+        email: order.email,
+
+        deliveryInfo: order.deliveryInfo,
+
+        orderItems: order.orderItems,
+
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+
+        productSubtotal: order.productSubtotal,
+        deliveryCharge: order.deliveryCharge,
+        grandTotal: order.grandTotal,
+        totalPrice: order.totalPrice,
+
+        orderStatus: order.orderStatus,
+        status: order.status,
+
+        deliveryPartner: order.deliveryPartner,
+        estimatedDelivery: order.estimatedDelivery,
+
+        deliveryUpdateTokenCreatedAt: order.deliveryUpdateTokenCreatedAt,
+        deliveryUpdateTokenExpiresAt: order.deliveryUpdateTokenExpiresAt,
+
+        cashCollected: order.cashCollected,
+        cashCollectedAmount: order.cashCollectedAmount,
+        cashCollectedAt: order.cashCollectedAt,
+
+        deliveryFailureReason: order.deliveryFailureReason,
+        deliveryLastUpdatedAt: order.deliveryLastUpdatedAt,
+        deliveryUpdateHistory: order.deliveryUpdateHistory || [],
+
+        createdAt: order.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error("Delivery update fetch error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+app.patch("/api/delivery-update/:token", async (req, res) => {
+  try {
+    const token = String(req.params.token || "").trim();
+
+    const {
+      orderStatus,
+      status,
+      note,
+      cashCollected,
+      cashCollectedAmount,
+    } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: "Delivery update token is required",
+      });
+    }
+
+    const order = await Order.findOne({
+      deliveryUpdateToken: token,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Invalid or expired delivery update link",
+      });
+    }
+
+    ensureDeliveryUpdateTokenExpiry(order);
+
+    if (isDeliveryUpdateTokenExpired(order)) {
+      await order.save();
+
+      return res.status(410).json({
+        success: false,
+        error: "This delivery update link has expired. Please ask admin to regenerate a new link.",
+      });
+    }
+
+    if (["Cancelled", "Completed"].includes(order.orderStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: `This order is already ${order.orderStatus}`,
+      });
+    }
+
+    const requestedStatus = orderStatus || status;
+
+    if (!requestedStatus) {
+      return res.status(400).json({
+        success: false,
+        error: "Delivery status is required",
+      });
+    }
+
+    const finalOrderStatus = normalizeOrderStatus(requestedStatus);
+
+    if (!finalOrderStatus || !DELIVERY_LINK_STATUSES.includes(finalOrderStatus)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid delivery status",
+        allowedStatuses: DELIVERY_LINK_STATUSES,
+      });
+    }
+
+    const oldOrderStatus = order.orderStatus || order.status || "Processing";
+
+    order.orderStatus = finalOrderStatus;
+    order.status = finalOrderStatus;
+    order.deliveryLastUpdatedAt = new Date();
+
+    if (finalOrderStatus !== "Failed Delivery") {
+      order.trackingSteps = makeTrackingSteps(finalOrderStatus);
+      order.deliveryFailureReason = "";
+    }
+
+    if (finalOrderStatus === "Failed Delivery") {
+      order.deliveryFailureReason =
+        String(note || "").trim() || "Delivery failed";
+    }
+
+    const cashWasCollected =
+      cashCollected === true ||
+      cashCollected === "true" ||
+      cashCollected === 1 ||
+      cashCollected === "1";
+
+    if (cashWasCollected) {
+      order.cashCollected = true;
+      order.cashCollectedAmount =
+        Number(cashCollectedAmount || 0) ||
+        Number(order.grandTotal || order.totalPrice || 0);
+      order.cashCollectedAt = new Date();
+
+      /*
+        Do not automatically mark paymentStatus as Paid here.
+        Admin should verify collected cash and then mark payment as Paid.
+        This keeps COD invoice logic safe.
+      */
+    }
+
+    if (!Array.isArray(order.deliveryUpdateHistory)) {
+      order.deliveryUpdateHistory = [];
+    }
+
+    order.deliveryUpdateHistory.push({
+      status: finalOrderStatus,
+      note: String(note || "").trim(),
+      updatedBy:
+        order.deliveryPartner?.name ||
+        order.deliveryPartner?.company ||
+        "Delivery Partner",
+      cashCollected: cashWasCollected,
+      cashCollectedAmount: cashWasCollected
+        ? Number(order.cashCollectedAmount || 0)
+        : 0,
+      createdAt: new Date(),
+    });
+
+    const updatedOrder = await order.save();
+
+    const becameDelivered =
+      oldOrderStatus !== "Delivered" &&
+      updatedOrder.orderStatus === "Delivered";
+
+    if (becameDelivered) {
+      for (const item of updatedOrder.orderItems || []) {
+        if (!item.productId) continue;
+
+        await Notification.create({
+          userEmail: updatedOrder.email,
+          orderId: updatedOrder._id,
+          productId: item.productId,
+          title: "Delivery Completed",
+          message:
+            "Your order has been delivered successfully. You can now review your product.",
+          type: "review",
+        });
       }
     }
 
-    if (transactionId !== undefined) {
-      order.transactionId = transactionId;
-    }
-
-    if (paymentProof !== undefined) {
-      order.paymentProof = paymentProof;
-    }
-
-    res.status(200).json(await order.save());
+    res.status(200).json({
+      success: true,
+      message: "Delivery status updated successfully",
+      order: updatedOrder,
+      data: updatedOrder,
+    });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error("Delivery update error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
   }
 });
 

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./components/ScrollToTop";
 import Layout from "./layout/Layout";
 import PolicyPage from "./pages/PolicyPage";
+import DeliveryUpdate from "./pages/DeliveryUpdate";
 
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="contact" element={<Contact />} />
           <Route path="products" element={<Products />} />
           <Route path="products/:id" element={<ProductDetails />} />
+          <Route path="/delivery-update/:token" element={<DeliveryUpdate />} />
           <Route path="location" element={<Location />} />
           <Route path="cart" element={<Cart />} />
           <Route path="wishlist" element={<Wishlist />} />

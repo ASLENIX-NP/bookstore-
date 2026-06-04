@@ -19,7 +19,7 @@ import {
   Lock,
 } from "lucide-react";
 
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 const CART_IMAGE_PLACEHOLDER =
   "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500";
@@ -63,9 +63,7 @@ const getRawSalePriceValue = (product) => {
 
   return possibleFields.find(
     (value) =>
-      value !== undefined &&
-      value !== null &&
-      String(value).trim() !== ""
+      value !== undefined && value !== null && String(value).trim() !== ""
   );
 };
 
@@ -132,8 +130,17 @@ const getDiscountPercent = (product) => {
 export default function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const reviewOrderFromUrl = searchParams.get("reviewOrder") || "";
 
   const [product, setProduct] = useState(null);
+
+  const [zoomActive, setZoomActive] = useState(false);
+  const [zoomPosition, setZoomPosition] = useState({
+    x: 50,
+    y: 50,
+  });
 
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
@@ -144,81 +151,207 @@ export default function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [reviewOrderId, setReviewOrderId] = useState("");
   const [error, setError] = useState(null);
 
   const getLoggedUser = () => {
-    try {
-      const storedUser = localStorage.getItem("user");
+    const directEmail =
+      localStorage.getItem("email") || localStorage.getItem("userEmail");
 
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch {
-      return null;
+    const possibleUserKeys = ["user", "currentUser", "authUser"];
+
+    for (const key of possibleUserKeys) {
+      try {
+        const value = localStorage.getItem(key);
+
+        if (!value) continue;
+
+        const parsed = JSON.parse(value);
+
+        if (parsed?.email) {
+          return parsed;
+        }
+      } catch {
+        // ignore invalid localStorage value
+      }
     }
+
+    if (directEmail) {
+      return {
+        email: directEmail,
+      };
+    }
+
+    return null;
+  };
+
+  const getLoggedUserEmail = () => {
+    const user = getLoggedUser();
+
+    return String(user?.email || "").toLowerCase().trim();
+  };
+
+  const getLoggedUserName = () => {
+    const user = getLoggedUser();
+
+    return String(
+      user?.name ||
+        user?.firstName ||
+        user?.fullName ||
+        user?.email?.split("@")[0] ||
+        "Customer"
+    ).trim();
+  };
+
+  const hasUserReviewedOrder = (productData, orderId) => {
+    const userEmail = getLoggedUserEmail();
+
+    const reviews = Array.isArray(productData?.reviews)
+      ? productData.reviews
+      : [];
+
+    return reviews.some((review) => {
+      const reviewEmail = String(review?.email || "").toLowerCase().trim();
+      const reviewOrderId = review?.orderId || "";
+
+      return (
+        userEmail &&
+        reviewEmail === userEmail &&
+        String(reviewOrderId) === String(orderId)
+      );
+    });
+  };
+
+  const isDeliveredOrCompleted = (order) => {
+    const possibleStatuses = [
+      order?.orderStatus,
+      order?.status,
+      order?.deliveryStatus,
+    ];
+
+    return possibleStatuses.some((status) =>
+      ["delivered", "completed"].includes(
+        String(status || "").toLowerCase().trim()
+      )
+    );
+  };
+
+  const getOrderItemProductId = (item) => {
+    return (
+      item?.productId?._id ||
+      item?.productId ||
+      item?.product?._id ||
+      item?.product ||
+      item?._id ||
+      ""
+    );
   };
 
   const fetchProduct = async () => {
-    try {
-      setLoading(true);
+    const res = await axios.get(`http://localhost:5000/api/products/${id}`);
 
-      const res = await axios.get(`http://localhost:5000/api/products/${id}`);
+    const productData = res.data?.product || res.data?.data || res.data;
 
-      setProduct(res.data);
-      setError(null);
-    } catch (err) {
-      console.error("Error loading product details:", err);
-      setError("Unable to load product details.");
-    } finally {
-      setLoading(false);
-    }
+    setProduct(productData);
+    setError(null);
+
+    return productData;
   };
 
-  const checkReviewEligibility = async () => {
+  const checkReviewEligibility = async (productData) => {
     try {
-      const user = getLoggedUser();
+      const userEmail = getLoggedUserEmail();
 
-      if (!user?.email) {
+      if (!userEmail) {
         setCanReview(false);
+        setHasReviewed(false);
+        setReviewOrderId("");
         return;
       }
 
       const ordersRes = await axios.get(
-        `http://localhost:5000/api/orders/user/${user.email}`
+        `http://localhost:5000/api/orders/user/${encodeURIComponent(userEmail)}`
       );
 
       const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
 
-      const eligible = orders.some((order) => {
-        const delivered =
-          String(order.orderStatus || "").toLowerCase() === "delivered" ||
-          String(order.status || "").toLowerCase() === "delivered" ||
-          String(order.deliveryStatus || "").toLowerCase() === "delivered";
+      const deliveredOrdersForProduct = orders.filter((order) => {
+        if (!isDeliveredOrCompleted(order)) {
+          return false;
+        }
 
         const orderItems =
           order.orderItems || order.items || order.cartItems || [];
 
-        const containsProduct = orderItems.some((item) => {
-          const itemProductId =
-            item.productId?._id ||
-            item.productId ||
-            item.product?._id ||
-            item._id;
+        return orderItems.some((item) => {
+          const itemProductId = getOrderItemProductId(item);
 
           return String(itemProductId) === String(id);
         });
-
-        return delivered && containsProduct;
       });
 
-      setCanReview(eligible);
+      if (deliveredOrdersForProduct.length === 0) {
+        setCanReview(false);
+        setHasReviewed(false);
+        setReviewOrderId("");
+        return;
+      }
+
+      const requestedOrder = reviewOrderFromUrl
+        ? deliveredOrdersForProduct.find(
+            (order) => String(order._id) === String(reviewOrderFromUrl)
+          )
+        : null;
+
+      const orderToReview =
+        requestedOrder ||
+        deliveredOrdersForProduct.find(
+          (order) => !hasUserReviewedOrder(productData, order._id)
+        );
+
+      if (!orderToReview) {
+        setCanReview(false);
+        setHasReviewed(true);
+        setReviewOrderId("");
+        return;
+      }
+
+      const alreadyReviewedThisOrder = hasUserReviewedOrder(
+        productData,
+        orderToReview._id
+      );
+
+      setHasReviewed(alreadyReviewedThisOrder);
+      setCanReview(!alreadyReviewedThisOrder);
+      setReviewOrderId(
+        alreadyReviewedThisOrder ? "" : String(orderToReview._id)
+      );
     } catch (error) {
       console.error("Review eligibility error:", error);
       setCanReview(false);
+      setHasReviewed(false);
+      setReviewOrderId("");
     }
   };
 
   useEffect(() => {
-    fetchProduct();
-    checkReviewEligibility();
+    const loadProductAndReviewStatus = async () => {
+      try {
+        setLoading(true);
+
+        const productData = await fetchProduct();
+
+        await checkReviewEligibility(productData);
+      } catch (err) {
+        console.error("Error loading product details:", err);
+        setError("Unable to load product details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProductAndReviewStatus();
   }, [id]);
 
   const getStatus = () => {
@@ -231,6 +364,18 @@ export default function ProductDetails() {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleImageZoomMove = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+    setZoomPosition({
+      x: Math.min(100, Math.max(0, x)),
+      y: Math.min(100, Math.max(0, y)),
+    });
   };
 
   const addToCart = () => {
@@ -337,16 +482,21 @@ export default function ProductDetails() {
     }
 
     if (!canReview) {
-      toast.error("You can review this product only after purchase and delivery.");
+      toast.error(
+        hasReviewed
+          ? "You have already reviewed this product."
+          : "You can review this product only after purchase and delivery."
+      );
       return;
     }
 
-    if (!reviewForm.comment.trim()) {
-      toast.error("Please write your review comment.");
+    if (!reviewOrderId) {
+      toast.error("Review order not found. Please open review from My Orders.");
       return;
     }
 
     const user = getLoggedUser();
+    const userEmail = getLoggedUserEmail();
 
     try {
       setReviewLoading(true);
@@ -357,18 +507,23 @@ export default function ProductDetails() {
           name:
             user?.name ||
             user?.firstName ||
+            user?.fullName ||
             user?.email?.split("@")[0] ||
             "Customer",
 
-          email: user?.email || "",
+          email: userEmail,
 
           rating: Number(reviewForm.rating),
 
           comment: reviewForm.comment.trim(),
+
+          orderId: reviewOrderId,
         }
       );
 
-      setProduct(res.data);
+      const updatedProduct = res.data?.product || res.data?.data || res.data;
+
+      setProduct(updatedProduct);
 
       setReviewForm({
         rating: 5,
@@ -376,10 +531,17 @@ export default function ProductDetails() {
       });
 
       setHoverRating(0);
+      setHasReviewed(true);
+      setCanReview(false);
 
       toast.success("Review submitted successfully!");
     } catch (err) {
       console.error("Error submitting review:", err);
+
+      if (err.response?.status === 409) {
+        setHasReviewed(true);
+        setCanReview(false);
+      }
 
       toast.error(err.response?.data?.error || "Failed to submit review.");
     } finally {
@@ -504,6 +666,8 @@ export default function ProductDetails() {
     ? `${product.stock} left`
     : status;
 
+  const productDisplayImage = getSafeCartImage(product.image);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <section className="relative overflow-hidden bg-slate-950 text-white">
@@ -522,13 +686,13 @@ export default function ProductDetails() {
       </section>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 pb-20">
-        <section className="relative bg-white rounded-[2rem] border border-gray-100 shadow-2xl overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-100 rounded-full blur-3xl opacity-70 translate-x-1/2 -translate-y-1/2" />
+        <section className="relative bg-white rounded-[2rem] border border-gray-100 shadow-2xl overflow-visible">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-100 rounded-full blur-3xl opacity-70 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-100 rounded-full blur-3xl opacity-70 -translate-x-1/2 translate-y-1/2" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-100 rounded-full blur-3xl opacity-70 -translate-x-1/2 translate-y-1/2 pointer-events-none" />
 
           <div className="relative grid grid-cols-1 lg:grid-cols-2">
-            <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 p-4 sm:p-8 lg:p-10">
+            <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 p-4 sm:p-8 lg:p-10 rounded-l-[2rem]">
               <div className="absolute top-7 left-7 z-10 flex flex-wrap gap-2">
                 <span className="bg-white/95 backdrop-blur-xl text-orange-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
                   {product.category}
@@ -545,19 +709,50 @@ export default function ProductDetails() {
                 </span>
               </div>
 
-              <div className="relative rounded-[2rem] overflow-hidden bg-white shadow-2xl border border-white group">
-                <img
-                  src={product.image || CART_IMAGE_PLACEHOLDER}
-                  alt={product.name}
-                  className="w-full h-[430px] sm:h-[580px] lg:h-[680px] object-cover group-hover:scale-105 transition-transform duration-700"
-                />
+              <div
+                className="relative rounded-[2rem] bg-white shadow-2xl border border-white"
+                onMouseEnter={() => setZoomActive(true)}
+                onMouseLeave={() => setZoomActive(false)}
+                onMouseMove={handleImageZoomMove}
+              >
+                <div className="relative overflow-hidden rounded-[2rem] cursor-zoom-in">
+                  <img
+                    src={productDisplayImage}
+                    alt={product.name}
+                    className="w-full h-[430px] sm:h-[580px] lg:h-[680px] object-cover select-none"
+                    draggable="false"
+                  />
 
-                <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/70 to-transparent">
-                  <div className="inline-flex items-center gap-2 text-white text-xs font-black bg-white/15 border border-white/15 backdrop-blur-xl px-4 py-2 rounded-full">
-                    <Sparkles className="w-4 h-4 text-orange-300" />
-                    Store Verified Product
+                  {zoomActive && (
+                    <div
+                      className="hidden lg:block absolute w-36 h-36 border-2 border-orange-500 bg-orange-100/20 pointer-events-none rounded-xl"
+                      style={{
+                        left: `calc(${zoomPosition.x}% - 72px)`,
+                        top: `calc(${zoomPosition.y}% - 72px)`,
+                      }}
+                    />
+                  )}
+
+                  <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/70 to-transparent">
+                    <div className="inline-flex items-center gap-2 text-white text-xs font-black bg-white/15 border border-white/15 backdrop-blur-xl px-4 py-2 rounded-full">
+                      <Sparkles className="w-4 h-4 text-orange-300" />
+                      Hover image to zoom
+                    </div>
                   </div>
                 </div>
+
+                {zoomActive && (
+                  <div className="hidden xl:block absolute left-[calc(100%+1rem)] top-0 w-[520px] h-[520px] bg-white border border-gray-200 rounded-[1.5rem] shadow-2xl overflow-hidden z-50">
+                    <div
+                      className="w-full h-full bg-no-repeat"
+                      style={{
+                        backgroundImage: `url(${productDisplayImage})`,
+                        backgroundSize: "240%",
+                        backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -830,6 +1025,26 @@ export default function ProductDetails() {
                 </div>
               </form>
             </div>
+          ) : hasReviewed ? (
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl p-6 sm:p-8 h-fit">
+              <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center mb-4">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+
+              <h2 className="text-2xl font-black text-gray-950 mb-4">
+                Review Submitted
+              </h2>
+
+              <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+                <p className="font-bold text-green-700">
+                  You have already reviewed this product.
+                </p>
+
+                <p className="text-sm text-gray-600 mt-2">
+                  Your review is visible in the buyer reviews section.
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl p-6 sm:p-8 h-fit">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
@@ -847,8 +1062,8 @@ export default function ProductDetails() {
 
                 <ul className="mt-3 space-y-2 text-sm text-gray-700">
                   <li>✓ Product purchased</li>
-                  <li>✓ Order delivered</li>
-                  <li>✓ Delivery completed</li>
+                  <li>✓ Order delivered or completed</li>
+                  <li>✓ You have not already reviewed it</li>
                 </ul>
               </div>
             </div>
