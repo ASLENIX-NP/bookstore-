@@ -10,11 +10,39 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+const defaultStoreInfo = {
+  storeName: "PatraPatrika Center",
+  address: "Parijat Marg, Hetauda, Nepal",
+  phone: "+9779865436980",
+  weekdaysHours: "6:00 AM - 9:00 PM",
+  saturdayHours: "6:00 AM - 11:00 AM",
+  sundayHours: "Closed",
+};
+
 const Location = () => {
   const [heroData, setHeroData] = useState({
     backgroundImage: "",
     sliderImages: [],
   });
+
+  const [storeInfo, setStoreInfo] = useState(defaultStoreInfo);
+
+  useEffect(() => {
+    const savedStore = localStorage.getItem("storeInfo");
+
+    if (savedStore) {
+      try {
+        const parsedStore = JSON.parse(savedStore);
+
+        setStoreInfo({
+          ...defaultStoreInfo,
+          ...parsedStore,
+        });
+      } catch (error) {
+        console.error("Store info parse error:", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchHero = async () => {
@@ -59,7 +87,6 @@ const Location = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 animate-in fade-in duration-500">
-      {/* Header Section */}
       <section
         className="relative overflow-hidden bg-slate-950 text-white"
         style={heroBackgroundStyle}
@@ -85,10 +112,8 @@ const Location = () => {
         </div>
       </section>
 
-      {/* Main Location Section */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 -mt-10 pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-          {/* Left Side: Store Info */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white p-6 sm:p-8 rounded-[2rem] border border-gray-100 shadow-xl">
               <div className="flex items-center gap-3 mb-8">
@@ -100,8 +125,9 @@ const Location = () => {
                   <p className="text-xs font-black uppercase tracking-widest text-indigo-600">
                     Main Store
                   </p>
+
                   <h2 className="text-2xl font-black text-gray-950">
-                    Patrapatrika Centre
+                    {storeInfo.storeName}
                   </h2>
                 </div>
               </div>
@@ -114,8 +140,9 @@ const Location = () => {
 
                   <div>
                     <h4 className="font-black text-gray-950">Address</h4>
+
                     <p className="text-gray-600 text-sm mt-1">
-                      Parijat Marg, Hetauda City, Nepal
+                      {storeInfo.address}
                     </p>
                   </div>
                 </div>
@@ -127,18 +154,16 @@ const Location = () => {
 
                   <div>
                     <h4 className="font-black text-gray-950">Store Hours</h4>
+
                     <div className="mt-2 space-y-1">
                       <p className="text-gray-600 text-sm">
-                        <span className="font-bold">Mon - Fri:</span> 9:00 AM -
-                        8:00 PM
+                        <span className="font-bold">Mon - Fri:</span>{" "}
+                        {storeInfo.weekdaysHours}
                       </p>
+
                       <p className="text-gray-600 text-sm">
-                        <span className="font-bold">Sat:</span> 10:00 AM - 6:00
-                        PM
-                      </p>
-                      <p className="text-gray-600 text-sm">
-                        <span className="font-bold">Sun:</span> 11:00 AM - 5:00
-                        PM
+                        <span className="font-bold">Sat:</span>{" "}
+                        {storeInfo.saturdayHours}
                       </p>
                     </div>
                   </div>
@@ -151,13 +176,15 @@ const Location = () => {
 
                   <div>
                     <h4 className="font-black text-gray-950">Phone</h4>
-                    <p className="text-gray-600 text-sm mt-1">000000</p>
+
+                    <p className="text-gray-600 text-sm mt-1">
+                      {storeInfo.phone}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Visit Info Card */}
             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 text-white p-6 sm:p-8 rounded-[2rem] shadow-xl relative overflow-hidden">
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
 
@@ -175,11 +202,12 @@ const Location = () => {
               </div>
             </div>
 
-            {/* Quick Info */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
                 <CalendarDays className="w-6 h-6 text-indigo-600 mb-3" />
+
                 <h4 className="font-black text-gray-950">Open Weekly</h4>
+
                 <p className="text-sm text-gray-500 mt-1">
                   Available throughout the week.
                 </p>
@@ -187,7 +215,9 @@ const Location = () => {
 
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
                 <Navigation className="w-6 h-6 text-orange-600 mb-3" />
+
                 <h4 className="font-black text-gray-950">Easy Access</h4>
+
                 <p className="text-sm text-gray-500 mt-1">
                   Located around Parijat Marg.
                 </p>
@@ -195,7 +225,6 @@ const Location = () => {
             </div>
           </div>
 
-          {/* Right Side: Embedded Google Map */}
           <div className="lg:col-span-3">
             <div className="bg-white rounded-[2rem] border border-gray-100 shadow-xl p-4 h-full">
               <div className="h-[420px] lg:h-full min-h-[520px] rounded-[1.5rem] overflow-hidden border border-gray-200 relative">
@@ -215,9 +244,11 @@ const Location = () => {
                     <p className="text-xs font-black uppercase tracking-widest text-indigo-600">
                       Store Location
                     </p>
+
                     <h4 className="font-black text-gray-950">
-                      Parijat Marg, Hetauda City
+                      {storeInfo.address}
                     </h4>
+
                     <p className="text-sm text-gray-500">
                       Open for books and stationery customers.
                     </p>

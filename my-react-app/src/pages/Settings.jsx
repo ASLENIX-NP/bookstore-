@@ -2,34 +2,34 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
   Save,
-  ShieldCheck,
-  Key,
   Settings,
-  AlertTriangle,
-  RefreshCw,
-  Truck,
   FileText,
   Loader2,
+  Building2,
+  User,
+  Calendar,
+  Shield,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const defaultPolicies = {
   contactDetails: {
-  title: "Contact Details",
-  content: JSON.stringify(
-    {
-      primaryEmail: "support@PatraPatrikaCenter.com",
-      secondaryEmail: "info@patrapatrikacentre.com",
-      phone: "+977-9866666666",
-      whatsappNumber: "9779866666666",
-      storeName: "PatraPatrika Center",
-      address: "Parijat Marg, Hetauda, Nepal",
-      responseTime: "We usually reply within a few hours.",
-      mapUrl: "https://www.google.com/maps/place/Parijat+Marg,+Hetauda+44107",
-    },
-    null,
-    2
-  ),
-},
+    title: "Contact Details",
+    content: JSON.stringify(
+      {
+        primaryEmail: "support@PatraPatrikaCenter.com",
+        secondaryEmail: "info@patrapatrikacentre.com",
+        phone: "+977-9866666666",
+        whatsappNumber: "9779866666666",
+        storeName: "PatraPatrika Center",
+        address: "Parijat Marg, Hetauda, Nepal",
+        responseTime: "We usually reply within a few hours.",
+        mapUrl: "https://www.google.com/maps/place/Parijat+Marg,+Hetauda+44107",
+      },
+      null,
+      2
+    ),
+  },
   terms: {
     title: "Terms & Conditions",
     content: "",
@@ -83,44 +83,25 @@ const policyTabs = [
 export default function AdminSettings() {
   const [adminEmail, setAdminEmail] = useState("admin@bookstore.com");
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
-  const [lowStockThreshold, setLowStockThreshold] = useState(5);
-  const [shippingFee, setShippingFee] = useState(150);
-  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
-
-  const [statusMessage, setStatusMessage] = useState({ type: "", text: "" });
-  const [isBackingUp, setIsBackingUp] = useState(false);
-
   const [policies, setPolicies] = useState(defaultPolicies);
   const [activePolicyKey, setActivePolicyKey] = useState("terms");
   const [policyLoading, setPolicyLoading] = useState(false);
   const [policySaving, setPolicySaving] = useState(false);
 
-  useEffect(() => {
-    const savedAdmin = localStorage.getItem("adminUser");
+  const [adminProfile, setAdminProfile] = useState({
+    name: "System Admin",
+    role: "Root Administrator",
+  });
 
-    if (savedAdmin) {
-      try {
-        const parsed = JSON.parse(savedAdmin);
-        if (parsed.email) setAdminEmail(parsed.email);
-      } catch (e) {
-        console.error("Error retrieving admin config state:", e);
-      }
-    }
-
-    fetchPolicies();
-  }, []);
-
-  const triggerStatus = (type, text) => {
-    setStatusMessage({ type, text });
-    setTimeout(() => setStatusMessage({ type: "", text: "" }), 4000);
-  };
-
+  const [storeInfo, setStoreInfo] = useState({
+    storeName: "PatraPatrika Center",
+    email: "support@patrapatrikacenter.com",
+    phone: "+9779865436980",
+    whatsapp: "9779865436980",
+    address: "Parijat Marg, Hetauda, Nepal",
+    weekdaysHours: "9:00 AM - 8:00 PM",
+    saturdayHours: "10:00 AM - 6:00 PM",
+  });
   const fetchPolicies = async () => {
     try {
       setPolicyLoading(true);
@@ -139,11 +120,58 @@ export default function AdminSettings() {
       setPolicies(policyMap);
     } catch (error) {
       console.error("Policy fetch error:", error);
-      triggerStatus("error", "Failed to load policy content.");
+      toast.error("Failed to load policy content.");
     } finally {
       setPolicyLoading(false);
     }
   };
+
+  useEffect(() => {
+    const savedAdmin = localStorage.getItem("adminUser");
+
+    if (savedAdmin) {
+      try {
+        const parsed = JSON.parse(savedAdmin);
+
+        if (parsed.email) {
+          setAdminEmail(parsed.email);
+
+          setAdminProfile((prev) => ({
+            ...prev,
+            name: parsed.name || prev.name,
+          }));
+        }
+      } catch (e) {
+        console.error("Error retrieving admin config state:", e);
+      }
+    }
+
+    fetchPolicies();
+  }, []);
+
+  useEffect(() => {
+    const savedProfile = localStorage.getItem("adminProfile");
+
+    if (savedProfile) {
+      try {
+        setAdminProfile(JSON.parse(savedProfile));
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const savedStore = localStorage.getItem("storeInfo");
+
+    if (savedStore) {
+      try {
+        setStoreInfo(JSON.parse(savedStore));
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  }, []);
 
   const handlePolicyChange = (field, value) => {
     setPolicies((prev) => ({
@@ -159,7 +187,7 @@ export default function AdminSettings() {
     const selectedPolicy = policies[activePolicyKey];
 
     if (!selectedPolicy?.title || !selectedPolicy?.content) {
-      triggerStatus("error", "Title and content are required.");
+      toast.error("Title and content are required.");
       return;
     }
 
@@ -174,12 +202,12 @@ export default function AdminSettings() {
         }
       );
 
-      triggerStatus("success", "Content saved successfully.");
+      toast.success("Content saved successfully.");
       await fetchPolicies();
     } catch (error) {
       console.error("Policy save error:", error);
-      triggerStatus(
-        "error",
+
+      toast.error(
         error.response?.data?.message || "Failed to save content."
       );
     } finally {
@@ -187,45 +215,21 @@ export default function AdminSettings() {
     }
   };
 
-  const handleSecurityUpdate = (e) => {
-    e.preventDefault();
-
-    if (!passwordData.currentPassword || !passwordData.newPassword) {
-      triggerStatus("error", "Please fill out all password fields.");
-      return;
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      triggerStatus("error", "New passwords do not match.");
-      return;
-    }
-
-    triggerStatus("success", "Security configurations modified successfully!");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-  };
-
-  const handlePreferencesUpdate = (e) => {
-    e.preventDefault();
-    triggerStatus("success", "Store operational policies deployed successfully.");
-  };
-
-  const runSystemBackup = () => {
-    setIsBackingUp(true);
-
-    setTimeout(() => {
-      setIsBackingUp(false);
-      triggerStatus("success", "Cloud snapshot pipeline completed safely.");
-    }, 2000);
-  };
-
   const activePolicy = policies[activePolicyKey] || {
     title: "",
     content: "",
   };
+
+  const saveAdminProfile = () => {
+    localStorage.setItem("adminProfile", JSON.stringify(adminProfile));
+
+    toast.success("Profile updated successfully.");
+  };
+
+  const saveStoreInfo = () => {
+    localStorage.setItem("storeInfo", JSON.stringify(storeInfo));
+    toast.success("Store information updated successfully!");
+  }
 
   return (
     <div className="p-6 space-y-8 max-w-6xl mx-auto">
@@ -241,18 +245,6 @@ export default function AdminSettings() {
             page, and footer content.
           </p>
         </div>
-
-        {statusMessage.text && (
-          <div
-            className={`px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm ${
-              statusMessage.type === "success"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                : "bg-red-50 text-red-700 border border-red-100"
-            }`}
-          >
-            {statusMessage.text}
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -295,7 +287,9 @@ export default function AdminSettings() {
                   <input
                     type="text"
                     value={activePolicy.title}
-                    onChange={(e) => handlePolicyChange("title", e.target.value)}
+                    onChange={(e) =>
+                      handlePolicyChange("title", e.target.value)
+                    }
                     className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                   />
                 </div>
@@ -337,181 +331,194 @@ export default function AdminSettings() {
             )}
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-            <h3 className="font-bold text-gray-800 text-base flex items-center gap-2 border-b border-gray-50 pb-3">
-              <Truck className="w-5 h-5 text-indigo-500" />
-              Bookstore Core Defaults
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-800 text-base flex items-center gap-2 border-b border-gray-50 pb-3 mb-6">
+              <Building2 className="w-5 h-5 text-indigo-500" />
+              Store Information
             </h3>
 
-            <form
-              onSubmit={handlePreferencesUpdate}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-6"
-            >
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Low Stock Trigger Threshold
-                </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <input
+                type="text"
+                value={storeInfo.storeName}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    storeName: e.target.value,
+                  })
+                }
+                placeholder="Store Name"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+              />
 
-                <input
-                  type="number"
-                  value={lowStockThreshold}
-                  onChange={(e) => setLowStockThreshold(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Base Delivery Charge
-                </label>
-
-                <input
-                  type="number"
-                  value={shippingFee}
-                  onChange={(e) => setShippingFee(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl shadow-md"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Operational Rules
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-            <h3 className="font-bold text-gray-800 text-base flex items-center gap-2 border-b border-gray-50 pb-3">
-              <Key className="w-5 h-5 text-orange-500" />
-              Update Security Credentials
-            </h3>
-
-            <form onSubmit={handleSecurityUpdate} className="space-y-5">
               <input
                 type="email"
-                disabled
-                value={adminEmail}
-                className="w-full bg-slate-100 border border-gray-200 text-gray-400 font-medium rounded-xl px-4 py-2.5 text-sm cursor-not-allowed"
+                value={storeInfo.email}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    email: e.target.value,
+                  })
+                }
+                placeholder="Store Email"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <input
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      currentPassword: e.target.value,
-                    })
-                  }
-                  placeholder="Current password"
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm"
-                />
+              <input
+                type="text"
+                value={storeInfo.phone}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    phone: e.target.value,
+                  })
+                }
+                placeholder="Phone Number"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+              />
 
-                <input
-                  type="password"
-                  value={passwordData.newPassword}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      newPassword: e.target.value,
-                    })
-                  }
-                  placeholder="New password"
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm"
-                />
+              <input
+                type="text"
+                value={storeInfo.whatsapp}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    whatsapp: e.target.value,
+                  })
+                }
+                placeholder="WhatsApp Number"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+              />
 
-                <input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) =>
-                    setPasswordData({
-                      ...passwordData,
-                      confirmPassword: e.target.value,
-                    })
-                  }
-                  placeholder="Confirm password"
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm"
-                />
-              </div>
+              <input
+                type="text"
+                value={storeInfo.weekdaysHours}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    weekdaysHours: e.target.value,
+                  })
+                }
+                placeholder="Mon - Fri Hours"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+              />
 
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-xl shadow-md"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                Commit Security Patch
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="space-y-8">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-            <h3 className="font-bold text-gray-800 text-base flex items-center gap-2 border-b border-gray-50 pb-3">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Database Diagnostics
-            </h3>
+              <input
+                type="text"
+                value={storeInfo.saturdayHours}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    saturdayHours: e.target.value,
+                  })
+                }
+                placeholder="Saturday Hours"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+              />
+              <input
+                type="text"
+                value={storeInfo.address}
+                onChange={(e) =>
+                  setStoreInfo({
+                    ...storeInfo,
+                    address: e.target.value,
+                  })
+                }
+                placeholder="Store Address"
+                className="md:col-span-2 w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+              />
+            </div>
 
             <button
-              onClick={runSystemBackup}
-              disabled={isBackingUp}
-              className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-300 text-xs font-bold uppercase tracking-wider py-3 px-4 rounded-xl transition-colors"
+              type="button"
+              onClick={saveStoreInfo}
+              className="mt-6 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-3 rounded-xl shadow-md transition-all"
             >
-              <RefreshCw
-                className={`w-4 h-4 ${isBackingUp ? "animate-spin" : ""}`}
-              />
-              {isBackingUp ? "Compiling Archives..." : "Execute Backup"}
+              <Save className="w-4 h-4" />
+              Save Store Information
             </button>
           </div>
 
-          <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl space-y-6 relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 translate-x-6 translate-y-6 opacity-10">
-              <Settings className="w-32 h-32 text-white" />
-            </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-800 text-base flex items-center gap-2 border-b border-gray-50 pb-3 mb-6">
+              <User className="w-5 h-5 text-indigo-500" />
+              Admin Profile
+            </h3>
 
-            <div className="space-y-2 relative z-10">
-              <h4 className="font-black text-sm uppercase tracking-wider text-orange-400">
-                Maintenance Sandbox
-              </h4>
+            <div className="flex flex-col lg:flex-row gap-8">
+              <div className="flex flex-col items-center">
+                <div className="w-28 h-28 rounded-full bg-orange-500 flex items-center justify-center text-white text-4xl font-bold">
+                  {adminProfile.name?.charAt(0)?.toUpperCase() || "A"}
+                </div>
 
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Activate maintenance mode when you want to temporarily disable
-                customer access.
-              </p>
-            </div>
+                <button
+                  type="button"
+                  onClick={saveAdminProfile}
+                  className="mt-4 px-5 py-3 border border-indigo-200 text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50"
+                >
+                  Update Profile
+                </button>
+              </div>
 
-            <div className="relative z-10 flex items-center justify-between pt-2 border-t border-slate-800">
-              <span className="text-xs font-bold text-slate-300">
-                Public Front-End Access
-              </span>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMaintenanceMode(!isMaintenanceMode);
-                  triggerStatus(
-                    "success",
-                    `Platform status set to: ${
-                      !isMaintenanceMode ? "Offline Mode" : "Live Mode"
-                    }`
-                  );
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isMaintenanceMode ? "bg-orange-500" : "bg-emerald-500"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
-                    isMaintenanceMode ? "translate-x-6" : "translate-x-1"
-                  }`}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={adminProfile.name}
+                  onChange={(e) =>
+                    setAdminProfile({
+                      ...adminProfile,
+                      name: e.target.value,
+                    })
+                  }
+                  className="bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
                 />
-              </button>
+
+                <input
+                  type="email"
+                  value={adminEmail}
+                  readOnly
+                  className="bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+                />
+
+                <input
+                  type="text"
+                  value={adminProfile.role}
+                  onChange={(e) =>
+                    setAdminProfile({
+                      ...adminProfile,
+                      role: e.target.value,
+                    })
+                  }
+                  className="bg-slate-50 border border-gray-200 rounded-xl px-4 py-3"
+                />
+
+                <input
+                  type="text"
+                  value="Active"
+                  readOnly
+                  className="bg-green-50 border border-green-200 text-green-600 rounded-xl px-4 py-3"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              <div className="bg-slate-50 rounded-xl p-4 flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-indigo-500" />
+
+                <div>
+                  <p className="text-xs text-gray-500">Last Login</p>
+                  <p className="font-semibold">Today</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4 flex items-center gap-3">
+                <Shield className="w-5 h-5 text-emerald-500" />
+
+                <div>
+                  <p className="text-xs text-gray-500">Status</p>
+                  <p className="font-semibold text-emerald-600">Active</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
