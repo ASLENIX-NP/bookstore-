@@ -205,6 +205,14 @@ export default function Home() {
     endsAt: null,
   });
 
+  const [flashSaleSoldStats, setFlashSaleSoldStats] = useState({
+    totalSold: 0,
+    totalOrders: 0,
+    isActive: false,
+    startsAt: null,
+    endsAt: null,
+  });
+
   const [feedbackStats, setFeedbackStats] = useState({
     averageRating: 0,
     averageRatingText: "0.0",
@@ -281,6 +289,7 @@ export default function Home() {
 
       const [
         flashSaleSettingsRes,
+        flashSaleSoldStatsRes,
         feedbackStatsRes,
         allProductsRes,
         featuredRes,
@@ -289,6 +298,7 @@ export default function Home() {
         newArrivalRes,
       ] = await Promise.all([
         axios.get("http://localhost:5000/api/flash-sale-settings"),
+        axios.get("http://localhost:5000/api/flash-sale-sold-count"),
         axios.get("http://localhost:5000/api/feedback-stats"),
         axios.get("http://localhost:5000/api/products"),
         axios.get("http://localhost:5000/api/products?featured=true"),
@@ -300,6 +310,16 @@ export default function Home() {
       setFlashSaleSettings(
         flashSaleSettingsRes.data?.settings || {
           isEnabled: false,
+          isActive: false,
+          startsAt: null,
+          endsAt: null,
+        }
+      );
+
+      setFlashSaleSoldStats(
+        flashSaleSoldStatsRes.data?.stats || {
+          totalSold: 0,
+          totalOrders: 0,
           isActive: false,
           startsAt: null,
           endsAt: null,
@@ -386,6 +406,16 @@ export default function Home() {
 
     return () => clearTimeout(timeout);
   }, [flashSaleSettings]);
+
+  useEffect(() => {
+    const soldCountRefresh = setInterval(() => {
+      if (flashSaleTimerInfo?.status === "active") {
+        fetchProductsAndFlashSaleSettings(false);
+      }
+    }, 30000);
+
+    return () => clearInterval(soldCountRefresh);
+  }, [flashSaleTimerInfo?.status]);
 
   useEffect(() => {
     if (!heroData.sliderImages?.length) return;
@@ -751,6 +781,10 @@ export default function Home() {
     const visibleProducts = Array.isArray(products) ? products.slice(0, 5) : [];
     const isFlashSale = type === "Flash Sale";
 
+    const totalFlashSaleSold = isFlashSale
+      ? Number(flashSaleSoldStats?.totalSold || 0)
+      : 0;
+
     return (
       <section className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div
@@ -805,7 +839,7 @@ export default function Home() {
             </div>
 
             {isFlashSale && flashSaleTimerInfo && (
-              <div className="md:absolute md:left-1/2 md:top-2 md:-translate-x-1/2 inline-flex items-center gap-3 rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-sm shadow-orange-100/80 backdrop-blur">
+              <div className="md:absolute md:left-1/2 md:top-2 md:-translate-x-1/2 inline-flex flex-wrap items-center gap-3 sm:gap-4 rounded-2xl border border-orange-200 bg-white/90 px-4 py-3 shadow-sm shadow-orange-100/80 backdrop-blur">
                 <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
                   <Clock className="w-5 h-5" />
                 </div>
@@ -817,6 +851,18 @@ export default function Home() {
 
                   <p className="text-lg sm:text-xl font-black text-slate-950 leading-none mt-1">
                     {flashSaleTimerInfo.text}
+                  </p>
+                </div>
+
+                <div className="hidden sm:block h-10 w-px bg-orange-200" />
+
+                <div>
+                  <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-orange-600">
+                    Sold
+                  </p>
+
+                  <p className="text-lg sm:text-xl font-black text-slate-950 leading-none mt-1">
+                    {totalFlashSaleSold.toLocaleString()} items
                   </p>
                 </div>
               </div>
@@ -986,16 +1032,16 @@ export default function Home() {
 
                 <div className="relative bg-white/10 border border-white/10 rounded-[3.4rem] p-4 backdrop-blur-xl shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
                   <img
-  src={
-    heroData?.sliderImages?.length > 0
-      ? heroData.sliderImages[
-          currentSlide % heroData.sliderImages.length
-        ]
-      : CART_IMAGE_PLACEHOLDER
-  }
-  alt="Hero Image"
-  className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
-/>
+                    src={
+                      heroData?.sliderImages?.length > 0
+                        ? heroData.sliderImages[
+                            currentSlide % heroData.sliderImages.length
+                          ]
+                        : CART_IMAGE_PLACEHOLDER
+                    }
+                    alt="Hero Image"
+                    className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
 
                   <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
                     <div className="flex items-start gap-4">
@@ -1007,6 +1053,7 @@ export default function Home() {
                         <p className="font-black text-slate-950">
                           Secure bookstore checkout
                         </p>
+
                         <p className="text-sm text-slate-500 mt-1">
                           Cart, delivery, payment, tracking, and invoice flow
                           ready.
@@ -1078,8 +1125,8 @@ export default function Home() {
                       </div>
 
                       <p className="text-sm text-slate-300 mt-1">
-  Based on verified purchase reviews
-</p>
+                        Based on verified purchase reviews
+                      </p>
                     </>
                   ) : (
                     <>
@@ -1198,7 +1245,7 @@ export default function Home() {
         </>
       )}
 
-<section className="max-w-[1500px] mx-auto px-4 sm:px-6 py-14">
+      <section className="max-w-[1500px] mx-auto px-4 sm:px-6 py-14">
         <div className="relative overflow-hidden rounded-[3rem] bg-slate-950 p-8 sm:p-12 transition-all hover:-translate-y-1 hover:shadow-2xl">
           <div className="absolute -top-24 -right-24 w-80 h-80 bg-indigo-500/25 blur-3xl rounded-full" />
           <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-400/20 blur-3xl rounded-full" />

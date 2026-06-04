@@ -1722,6 +1722,145 @@ app.get("/api/flash-sale-settings", async (req, res) => {
     });
   }
 });
+app.get("/api/flash-sale-sold-count", async (req, res) => {
+  try {
+    const settings = await getFlashSaleSettingsDocument();
+
+    const startsAt = settings?.startsAt ? new Date(settings.startsAt) : null;
+    const endsAt = settings?.endsAt ? new Date(settings.endsAt) : null;
+
+    const hasValidSchedule =
+      settings?.isEnabled &&
+      startsAt &&
+      endsAt &&
+      !Number.isNaN(startsAt.getTime()) &&
+      !Number.isNaN(endsAt.getTime());
+
+    if (!hasValidSchedule) {
+      return res.status(200).json({
+        success: true,
+        stats: {
+          totalSold: 0,
+          totalOrders: 0,
+          isActive: false,
+          startsAt: settings?.startsAt || null,
+          endsAt: settings?.endsAt || null,
+        },
+      });
+    }
+
+    const activeFlashSale = isGlobalFlashSaleActive(settings);
+
+    if (!activeFlashSale) {
+      return res.status(200).json({
+        success: true,
+        stats: {
+          totalSold: 0,
+          totalOrders: 0,
+          isActive: false,
+          startsAt: settings.startsAt,
+          endsAt: settings.endsAt,
+        },
+      });
+    }
+
+    const flashSaleProducts = await Product.find({
+      flashSale: true,
+    }).select("_id");
+
+    const flashSaleProductIds = flashSaleProducts.map(
+      (product) => product._id
+    );
+
+    if (flashSaleProductIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        stats: {
+          totalSold: 0,
+          totalOrders: 0,
+          isActive: true,
+          startsAt: settings.startsAt,
+          endsAt: settings.endsAt,
+        },
+      });
+    }
+
+    const result = await Order.aggregate([
+      {
+        $match: {
+          createdAt: {
+            $gte: startsAt,
+            $lt: endsAt,
+          },
+          orderStatus: {
+            $nin: ["Cancelled", "Failed Delivery"],
+          },
+          status: {
+            $nin: ["Cancelled", "Failed Delivery"],
+          },
+          paymentStatus: {
+            $ne: "Failed",
+          },
+        },
+      },
+      {
+        $unwind: "$orderItems",
+      },
+      {
+        $match: {
+          "orderItems.productId": {
+            $in: flashSaleProductIds,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSold: {
+            $sum: {
+              $ifNull: ["$orderItems.qty", 0],
+            },
+          },
+          orderIds: {
+            $addToSet: "$_id",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalSold: 1,
+          totalOrders: {
+            $size: "$orderIds",
+          },
+        },
+      },
+    ]);
+
+    const stats = result[0] || {
+      totalSold: 0,
+      totalOrders: 0,
+    };
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalSold: Number(stats.totalSold || 0),
+        totalOrders: Number(stats.totalOrders || 0),
+        isActive: true,
+        startsAt: settings.startsAt,
+        endsAt: settings.endsAt,
+      },
+    });
+  } catch (error) {
+    console.error("Flash sale sold count error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 
 app.get("/api/admin/flash-sale-settings", async (req, res) => {
   try {

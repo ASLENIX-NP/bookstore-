@@ -280,6 +280,16 @@ const getSaleInfo = (book, flashSaleIsActive) => {
   };
 };
 
+const handleNumberInputWheel = (e) => {
+  e.currentTarget.blur();
+};
+
+const handleNumberInputKeyDown = (e) => {
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+  }
+};
+
 export default function ManageBooks() {
   const [books, setBooks] = useState([]);
   const [formData, setFormData] = useState(emptyFormData);
@@ -869,6 +879,10 @@ export default function ManageBooks() {
                 type="number"
                 placeholder="650"
                 value={formData.price}
+                min="0"
+                step="any"
+                onWheel={handleNumberInputWheel}
+                onKeyDown={handleNumberInputKeyDown}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
@@ -888,6 +902,10 @@ export default function ManageBooks() {
                 type="number"
                 placeholder="50"
                 value={formData.stock}
+                min="0"
+                step="1"
+                onWheel={handleNumberInputWheel}
+                onKeyDown={handleNumberInputKeyDown}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
@@ -971,6 +989,10 @@ export default function ManageBooks() {
                 }
                 value={formData.salePrice}
                 disabled={!formData.flashSale}
+                min="0"
+                step="any"
+                onWheel={handleNumberInputWheel}
+                onKeyDown={handleNumberInputKeyDown}
                 onChange={(e) =>
                   setFormData({
                     ...formData,

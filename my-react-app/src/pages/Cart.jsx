@@ -162,15 +162,15 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10 space-y-7">
-        <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 sm:p-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-8 sm:py-10 space-y-7">
+        <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 sm:p-8">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <ShoppingCart className="w-6 h-6" />
             </div>
 
             <div className="flex-1">
-              <h1 className="text-3xl font-black text-gray-950">
+              <h1 className="text-2xl sm:text-3xl font-black text-gray-950">
                 Your Shopping Cart
               </h1>
 
@@ -254,97 +254,102 @@ export default function Cart() {
                     key={item._id}
                     className="relative overflow-hidden bg-red-500"
                   >
-                    <div className="absolute right-0 top-0 h-full w-32 bg-red-500 flex items-center justify-center text-white font-black">
+                    <div className="absolute right-0 top-0 h-full w-24 sm:w-32 bg-red-500 flex items-center justify-center text-white font-black">
                       Delete
                     </div>
 
                     <motion.div
                       drag="x"
-                      dragConstraints={{ left: -150, right: 0 }}
+                      dragConstraints={{ left: -110, right: 0 }}
                       dragElastic={0.1}
                       onDragEnd={(e, info) => {
-                        if (info.offset.x < -120) {
+                        if (info.offset.x < -95) {
                           removeItem(item._id);
                         }
                       }}
-                      className="relative flex items-center justify-between p-6 bg-white hover:bg-slate-50 transition-all duration-300 border-b border-slate-100"
+                      className="relative bg-white hover:bg-slate-50 transition-all duration-300 border-b border-slate-100 p-3 sm:p-6"
                     >
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <button
-                          type="button"
-                          onClick={() => toggleItemSelection(item._id)}
-                          className="text-indigo-600 shrink-0"
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-6 h-6" />
-                          ) : (
-                            <Square className="w-6 h-6 text-gray-400" />
-                          )}
-                        </button>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-5">
+                        <div className="flex items-start gap-2.5 sm:gap-4 w-full min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => toggleItemSelection(item._id)}
+                            className="text-indigo-600 shrink-0 mt-9 sm:mt-10"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-6 h-6" />
+                            ) : (
+                              <Square className="w-6 h-6 text-gray-400" />
+                            )}
+                          </button>
 
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-24 h-28 object-cover rounded-2xl shadow-md border border-slate-100"
-                        />
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-20 h-24 sm:w-24 sm:h-28 object-cover rounded-2xl shadow-md border border-slate-100 shrink-0"
+                          />
 
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-indigo-600 font-bold uppercase">
-                            PatraPatrika
-                          </p>
-
-                          <h4 className="font-black text-lg text-slate-900 mt-1">
-                            {item.title}
-                          </h4>
-
-                          <p className="text-sm text-slate-400 mt-1">
-                            Books & Stationery
-                          </p>
-
-                          <div className="mt-3">
-                            <span className="text-orange-500 text-xl font-black">
-                              NPR {Number(item.price || 0).toLocaleString()}
-                            </span>
-
-                            <span className="ml-3 text-slate-400 line-through text-sm">
-                              NPR{" "}
-                              {Math.round(
-                                Number(item.price || 0) * 1.2
-                              ).toLocaleString()}
-                            </span>
-
-                            <p className="mt-2 text-sm font-bold text-slate-600">
-                              Total: NPR{" "}
-                              {(
-                                Number(item.price || 0) *
-                                Number(item.quantity || 1)
-                              ).toLocaleString()}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] sm:text-xs text-indigo-600 font-bold uppercase">
+                              PatraPatrika
                             </p>
+
+                            <h4 className="font-black text-base sm:text-lg text-slate-900 mt-1 break-words leading-snug">
+                              {item.title}
+                            </h4>
+
+                            <p className="text-sm text-slate-400 mt-1">
+                              Books & Stationery
+                            </p>
+
+                            <div className="mt-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-orange-500 text-lg sm:text-xl font-black">
+                                  NPR{" "}
+                                  {Number(item.price || 0).toLocaleString()}
+                                </span>
+
+                                <span className="text-slate-400 line-through text-xs sm:text-sm">
+                                  NPR{" "}
+                                  {Math.round(
+                                    Number(item.price || 0) * 1.2
+                                  ).toLocaleString()}
+                                </span>
+                              </div>
+
+                              <p className="mt-2 text-sm font-bold text-slate-600">
+                                Total: NPR{" "}
+                                {(
+                                  Number(item.price || 0) *
+                                  Number(item.quantity || 1)
+                                ).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-start gap-8 ml-auto -mt-4">
-                        <div className="flex items-center bg-white border border-slate-200 rounded-2xl shadow-md h-14 px-1">
-                          <button
-                            type="button"
-                            onClick={() => updateQty(item._id, -1)}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
+                        <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end pl-0">
+                          <div className="w-full max-w-[145px] sm:max-w-none flex items-center justify-center bg-white border border-slate-200 rounded-2xl shadow-md h-11 sm:h-14 px-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => updateQty(item._id, -1)}
+                              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
 
-                          <span className="w-12 text-center font-black text-lg text-slate-900">
-                            {item.quantity}
-                          </span>
+                            <span className="w-9 sm:w-12 text-center font-black text-base sm:text-lg text-slate-900">
+                              {item.quantity}
+                            </span>
 
-                          <button
-                            type="button"
-                            onClick={() => updateQty(item._id, 1)}
-                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => updateQty(item._id, 1)}
+                              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:bg-indigo-50 transition-all"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -353,7 +358,7 @@ export default function Cart() {
               })}
             </div>
 
-            <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-8 rounded-[2rem] shadow-xl border border-indigo-100 mt-6">
+            <div className="bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 sm:p-8 rounded-[2rem] shadow-xl border border-indigo-100 mt-6">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="px-3 py-1 rounded-full bg-green-500/20 text-green-600 text-xs font-bold">
@@ -365,7 +370,7 @@ export default function Cart() {
                   Total Cart Estimate
                 </p>
 
-                <h3 className="text-4xl font-black text-slate-900">
+                <h3 className="text-3xl sm:text-4xl font-black text-slate-900">
                   NPR {cartSubtotal.toLocaleString()}
                 </h3>
 
