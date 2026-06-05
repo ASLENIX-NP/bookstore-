@@ -11,6 +11,8 @@ import {
   FileText,
 } from "lucide-react";
 
+const API_BASE_URL = "http://localhost:5000";
+
 const DEFAULT_SETTINGS = {
   sellerName: "PatraPatrika Center",
   sellerVatPan: "000000",
@@ -35,18 +37,41 @@ export default function VatBillSettings() {
 
   const adminToken = localStorage.getItem("adminToken") || "";
 
+  const getHeaders = () => {
+    return {
+      Authorization: `Bearer ${adminToken}`,
+    };
+  };
+
+  const getErrorMessage = (err) => {
+    if (err?.response?.data?.error) {
+      return err.response.data.error;
+    }
+
+    if (err?.response?.data?.message) {
+      return err.response.data.message;
+    }
+
+    if (err?.response?.status) {
+      return `Request failed with status ${err.response.status}`;
+    }
+
+    if (err?.message) {
+      return err.message;
+    }
+
+    return "Unable to load VAT bill settings. Please make sure backend is running.";
+  };
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
       setError("");
 
       const response = await axios.get(
-        "http://localhost:5000/api/admin/invoice-settings",
+        `${API_BASE_URL}/api/admin/invoice-settings`,
         {
-          headers: {
-            Authorization: `Bearer ${adminToken}`,
-            "x-admin-token": adminToken,
-          },
+          headers: getHeaders(),
         }
       );
 
@@ -59,11 +84,7 @@ export default function VatBillSettings() {
       });
     } catch (err) {
       console.error("VAT bill settings fetch error:", err);
-
-      setError(
-        err.response?.data?.error ||
-          "Unable to load VAT bill settings. Please make sure backend is running."
-      );
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -92,13 +113,10 @@ export default function VatBillSettings() {
       };
 
       const response = await axios.put(
-        "http://localhost:5000/api/admin/invoice-settings",
+        `${API_BASE_URL}/api/admin/invoice-settings`,
         payload,
         {
-          headers: {
-            Authorization: `Bearer ${adminToken}`,
-            "x-admin-token": adminToken,
-          },
+          headers: getHeaders(),
         }
       );
 
@@ -113,11 +131,7 @@ export default function VatBillSettings() {
       toast.success("VAT bill settings updated successfully");
     } catch (err) {
       console.error("VAT bill settings save error:", err);
-
-      toast.error(
-        err.response?.data?.error ||
-          "Failed to save VAT bill settings."
-      );
+      toast.error(getErrorMessage(err) || "Failed to save VAT bill settings.");
     } finally {
       setSaving(false);
     }
@@ -161,6 +175,7 @@ export default function VatBillSettings() {
       {loading && (
         <div className="bg-white border border-gray-100 rounded-[2rem] p-12 flex items-center justify-center shadow-sm">
           <div className="w-9 h-9 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin" />
+
           <p className="ml-3 text-sm font-black text-gray-500">
             Loading VAT bill settings...
           </p>
@@ -173,7 +188,17 @@ export default function VatBillSettings() {
 
           <div>
             <h3 className="font-black">Settings Error</h3>
+
             <p className="text-sm mt-1">{error}</p>
+
+            <button
+              type="button"
+              onClick={fetchSettings}
+              className="mt-4 inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-black"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </button>
           </div>
         </div>
       )}
@@ -190,6 +215,7 @@ export default function VatBillSettings() {
                 <h2 className="text-xl font-black text-gray-950">
                   Seller Information
                 </h2>
+
                 <p className="text-sm text-gray-500">
                   These details appear at the top of every invoice.
                 </p>
@@ -199,6 +225,7 @@ export default function VatBillSettings() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div>
                 <label className={labelClass}>Business / Shop Name</label>
+
                 <input
                   type="text"
                   value={settings.sellerName}
@@ -213,6 +240,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>VAT / PAN Number</label>
+
                 <input
                   type="text"
                   value={settings.sellerVatPan}
@@ -227,6 +255,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Phone Number</label>
+
                 <input
                   type="text"
                   value={settings.sellerPhone}
@@ -241,6 +270,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Email Address</label>
+
                 <input
                   type="email"
                   value={settings.sellerEmail}
@@ -255,6 +285,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Website</label>
+
                 <input
                   type="text"
                   value={settings.sellerWebsite}
@@ -268,6 +299,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Default Buyer VAT/PAN</label>
+
                 <input
                   type="text"
                   value={settings.defaultBuyerVatPan}
@@ -281,6 +313,7 @@ export default function VatBillSettings() {
 
               <div className="lg:col-span-2">
                 <label className={labelClass}>Business Address</label>
+
                 <input
                   type="text"
                   value={settings.sellerAddress}
@@ -305,6 +338,7 @@ export default function VatBillSettings() {
                 <h2 className="text-xl font-black text-gray-950">
                   Invoice & Tax Settings
                 </h2>
+
                 <p className="text-sm text-gray-500">
                   Control invoice title, invoice number prefix, and VAT rate.
                 </p>
@@ -314,6 +348,7 @@ export default function VatBillSettings() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <div>
                 <label className={labelClass}>Invoice Title</label>
+
                 <input
                   type="text"
                   value={settings.invoiceTitle}
@@ -328,6 +363,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Invoice Prefix</label>
+
                 <input
                   type="text"
                   value={settings.invoicePrefix}
@@ -342,11 +378,13 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>VAT Rate (%)</label>
+
                 <input
                   type="number"
                   min="0"
                   step="0.01"
                   value={settings.vatRate}
+                  onWheel={(e) => e.currentTarget.blur()}
                   onChange={(e) => handleChange("vatRate", e.target.value)}
                   className={inputClass}
                   placeholder="13"
@@ -366,6 +404,7 @@ export default function VatBillSettings() {
                 <h2 className="text-xl font-black text-gray-950">
                   Invoice Notes
                 </h2>
+
                 <p className="text-sm text-gray-500">
                   Optional notes shown at the bottom of the invoice.
                 </p>
@@ -375,6 +414,7 @@ export default function VatBillSettings() {
             <div className="space-y-5">
               <div>
                 <label className={labelClass}>Invoice Note</label>
+
                 <textarea
                   value={settings.invoiceNote}
                   onChange={(e) =>
@@ -387,6 +427,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Declaration</label>
+
                 <textarea
                   value={settings.declaration}
                   onChange={(e) =>
@@ -399,6 +440,7 @@ export default function VatBillSettings() {
 
               <div>
                 <label className={labelClass}>Footer Text</label>
+
                 <input
                   type="text"
                   value={settings.footerText}
