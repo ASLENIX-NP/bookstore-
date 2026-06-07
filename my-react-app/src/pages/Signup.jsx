@@ -58,7 +58,7 @@ export default function Signup() {
     try {
       setLoading(true);
 
-      const response = await axios.post("http://localhost:5000/api/auth/signup", {
+      const response = await axios.post("https://bookstore-f3if.onrender.com/api/auth/signup", {
         name: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,

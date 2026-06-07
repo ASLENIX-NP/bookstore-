@@ -11,7 +11,7 @@ import {
   FileText,
 } from "lucide-react";
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "https://bookstore-f3if.onrender.com";
 
 const DEFAULT_SETTINGS = {
   sellerName: "PatraPatrika Center",

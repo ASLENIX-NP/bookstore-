@@ -47,10 +47,10 @@ const Location = () => {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        let response = await fetch("http://localhost:5000/api/admin/hero");
+        let response = await fetch("https://bookstore-f3if.onrender.com/api/admin/hero");
 
         if (!response.ok) {
-          response = await fetch("http://localhost:5000/api/hero");
+          response = await fetch("https://bookstore-f3if.onrender.com/api/hero");
         }
 
         if (!response.ok) {

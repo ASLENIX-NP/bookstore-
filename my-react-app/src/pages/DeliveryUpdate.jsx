@@ -75,7 +75,7 @@ export default function DeliveryUpdate() {
       setError("");
 
       const response = await fetch(
-        `http://localhost:5000/api/delivery-update/${token}`
+        `https://bookstore-f3if.onrender.com/api/delivery-update/${token}`
       );
 
       const data = await response.json();
@@ -168,7 +168,7 @@ export default function DeliveryUpdate() {
       setSubmitting(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/delivery-update/${token}`,
+        `https://bookstore-f3if.onrender.com/api/delivery-update/${token}`,
         {
           method: "PATCH",
           headers: {

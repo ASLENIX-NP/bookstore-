@@ -39,7 +39,7 @@ const AdminLogin = () => {
       setErrorMsg("");
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        "https://bookstore-f3if.onrender.com/api/auth/login",
         {
           email: cleanEmail,
           password: cleanPassword,

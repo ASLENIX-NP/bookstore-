@@ -21,7 +21,7 @@ export default function ManageMessages() {
   const fetchMessages = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/admin/messages');
+      const res = await axios.get('https://bookstore-f3if.onrender.com/api/admin/messages');
       setMessages(res.data);
     } catch (err) {
       console.error('Error fetching messages:', err);
@@ -41,7 +41,7 @@ export default function ManageMessages() {
     if (!msg.isRead) {
       try {
         const res = await axios.patch(
-          `http://localhost:5000/api/admin/messages/${msg._id}/read`,
+          `https://bookstore-f3if.onrender.com/api/admin/messages/${msg._id}/read`,
           { isRead: true }
         );
 
@@ -65,7 +65,7 @@ export default function ManageMessages() {
       const newReadValue = !msg.isRead;
 
       const res = await axios.patch(
-        `http://localhost:5000/api/admin/messages/${msg._id}/read`,
+        `https://bookstore-f3if.onrender.com/api/admin/messages/${msg._id}/read`,
         { isRead: newReadValue }
       );
 
@@ -92,7 +92,7 @@ export default function ManageMessages() {
     }
 
     try {
-      await axios.delete(`http://localhost:5000/api/admin/messages/${id}`);
+      await axios.delete(`https://bookstore-f3if.onrender.com/api/admin/messages/${id}`);
 
       setMessages((prev) => prev.filter((msg) => msg._id !== id));
 

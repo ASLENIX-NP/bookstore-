@@ -58,7 +58,7 @@ export default function Invoice() {
         setError("");
 
         const orderResponse = await axios.get(
-          `http://localhost:5000/api/orders/${id}`
+          `https://bookstore-f3if.onrender.com/api/orders/${id}`
         );
 
         const orderData =
@@ -70,7 +70,7 @@ export default function Invoice() {
 
         try {
           const settingsResponse = await axios.get(
-            "http://localhost:5000/api/invoice-settings"
+            "https://bookstore-f3if.onrender.com/api/invoice-settings"
           );
 
           const settingsData =

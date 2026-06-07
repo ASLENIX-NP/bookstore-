@@ -297,14 +297,14 @@ export default function Home() {
         bestSellerRes,
         newArrivalRes,
       ] = await Promise.all([
-        axios.get("http://localhost:5000/api/flash-sale-settings"),
-        axios.get("http://localhost:5000/api/flash-sale-sold-count"),
-        axios.get("http://localhost:5000/api/feedback-stats"),
-        axios.get("http://localhost:5000/api/products"),
-        axios.get("http://localhost:5000/api/products?featured=true"),
-        axios.get("http://localhost:5000/api/products?flashSale=true"),
-        axios.get("http://localhost:5000/api/products?bestSeller=true"),
-        axios.get("http://localhost:5000/api/products?newArrival=true"),
+        axios.get("https://bookstore-f3if.onrender.com/api/flash-sale-settings"),
+        axios.get("https://bookstore-f3if.onrender.com/api/flash-sale-sold-count"),
+        axios.get("https://bookstore-f3if.onrender.com/api/feedback-stats"),
+        axios.get("https://bookstore-f3if.onrender.com/api/products"),
+        axios.get("https://bookstore-f3if.onrender.com/api/products?featured=true"),
+        axios.get("https://bookstore-f3if.onrender.com/api/products?flashSale=true"),
+        axios.get("https://bookstore-f3if.onrender.com/api/products?bestSeller=true"),
+        axios.get("https://bookstore-f3if.onrender.com/api/products?newArrival=true"),
       ]);
 
       setFlashSaleSettings(
@@ -360,7 +360,7 @@ export default function Home() {
   useEffect(() => {
     const fetchHero = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/admin/hero");
+        const res = await axios.get("https://bookstore-f3if.onrender.com/api/admin/hero");
 
         setHeroData(res.data);
       } catch (error) {

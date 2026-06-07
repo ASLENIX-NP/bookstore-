@@ -140,7 +140,7 @@ export default function MyOrders() {
       setUserEmail(email);
 
       const response = await axios.get(
-        `http://localhost:5000/api/orders/user/${encodeURIComponent(email)}`
+        `https://bookstore-f3if.onrender.com/api/orders/user/${encodeURIComponent(email)}`
       );
 
       setOrders(Array.isArray(response.data) ? response.data : []);
@@ -303,7 +303,7 @@ export default function MyOrders() {
       setCancellingId(orderId);
 
       const response = await axios.patch(
-        `http://localhost:5000/api/orders/${orderId}/cancel`,
+        `https://bookstore-f3if.onrender.com/api/orders/${orderId}/cancel`,
         {
           cancelReason: "Cancelled by customer",
         }

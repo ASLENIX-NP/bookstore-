@@ -260,7 +260,7 @@ export default function ProductDetails() {
   };
 
   const fetchProduct = async () => {
-    const res = await axios.get(`http://localhost:5000/api/products/${id}`);
+    const res = await axios.get(`https://bookstore-f3if.onrender.com/api/products/${id}`);
 
     const productData = res.data?.product || res.data?.data || res.data;
 
@@ -283,7 +283,7 @@ export default function ProductDetails() {
       }
 
       const ordersRes = await axios.get(
-        `http://localhost:5000/api/orders/user/${encodeURIComponent(userEmail)}`
+        `https://bookstore-f3if.onrender.com/api/orders/user/${encodeURIComponent(userEmail)}`
       );
 
       const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
@@ -529,7 +529,7 @@ export default function ProductDetails() {
       setReviewLoading(true);
 
       const res = await axios.post(
-        `http://localhost:5000/api/products/${id}/reviews`,
+        `https://bookstore-f3if.onrender.com/api/products/${id}/reviews`,
         {
           name:
             user?.name ||

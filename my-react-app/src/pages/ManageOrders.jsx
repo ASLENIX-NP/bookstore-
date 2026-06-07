@@ -84,7 +84,7 @@ export default function ManageOrders() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("http://localhost:5000/api/orders");
+      const response = await fetch("https://bookstore-f3if.onrender.com/api/orders");
 
       if (!response.ok) {
         throw new Error("Failed to fetch order records");
@@ -224,7 +224,7 @@ export default function ManageOrders() {
       setUpdatingId(order._id);
 
       const response = await fetch(
-        `http://localhost:5000/api/orders/${order._id}/delivery-link/regenerate`,
+        `https://bookstore-f3if.onrender.com/api/orders/${order._id}/delivery-link/regenerate`,
         {
           method: "PATCH",
           headers: {
@@ -349,7 +349,7 @@ Please use this link to update only the delivery status.`;
       setUpdatingId(orderId);
 
       const response = await fetch(
-        `http://localhost:5000/api/orders/${orderId}/status`,
+        `https://bookstore-f3if.onrender.com/api/orders/${orderId}/status`,
         {
           method: "PATCH",
           headers: {
@@ -382,7 +382,7 @@ Please use this link to update only the delivery status.`;
       setUpdatingId(orderId);
 
       const response = await fetch(
-        `http://localhost:5000/api/orders/${orderId}/payment`,
+        `https://bookstore-f3if.onrender.com/api/orders/${orderId}/payment`,
         {
           method: "PATCH",
           headers: {
@@ -417,7 +417,7 @@ Please use this link to update only the delivery status.`;
       const form = getDeliveryForm(order);
 
       const response = await fetch(
-        `http://localhost:5000/api/orders/${order._id}/status`,
+        `https://bookstore-f3if.onrender.com/api/orders/${order._id}/status`,
         {
           method: "PATCH",
           headers: {
@@ -458,7 +458,7 @@ Please use this link to update only the delivery status.`;
       setUpdatingId(orderId);
 
       const response = await fetch(
-        `http://localhost:5000/api/orders/${orderId}`,
+        `https://bookstore-f3if.onrender.com/api/orders/${orderId}`,
         {
           method: "DELETE",
         }

@@ -46,7 +46,7 @@ const Login = () => {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        "https://bookstore-f3if.onrender.com/api/auth/login",
         {
           email: email.trim().toLowerCase(),
           password,

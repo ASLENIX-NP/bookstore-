@@ -64,7 +64,7 @@ export default function AdminDashboard() {
       setError("");
 
       const response = await axios.get(
-        "http://localhost:5000/api/admin/dashboard-stats"
+        "https://bookstore-f3if.onrender.com/api/admin/dashboard-stats"
       );
 
       if (response.data.success) {

@@ -153,7 +153,7 @@ export default function CheckoutPayment() {
         }
 
         const response = await axios.post(
-          "http://localhost:5000/api/delivery/calculate",
+          "https://bookstore-f3if.onrender.com/api/delivery/calculate",
           {
             lat,
             lng,
@@ -320,7 +320,7 @@ export default function CheckoutPayment() {
       const orderPayload = createOrderPayload(selectedMethod);
 
       const orderResponse = await axios.post(
-        "http://localhost:5000/api/orders",
+        "https://bookstore-f3if.onrender.com/api/orders",
         orderPayload
       );
 
@@ -340,7 +340,7 @@ export default function CheckoutPayment() {
 
       if (selectedMethod.id === "khalti") {
         const khaltiResponse = await axios.post(
-          "http://localhost:5000/api/payments/khalti/initiate",
+          "https://bookstore-f3if.onrender.com/api/payments/khalti/initiate",
           { orderId: createdOrder._id }
         );
 
@@ -355,7 +355,7 @@ export default function CheckoutPayment() {
 
       if (selectedMethod.id === "esewa") {
         const esewaResponse = await axios.post(
-          "http://localhost:5000/api/payments/esewa/initiate",
+          "https://bookstore-f3if.onrender.com/api/payments/esewa/initiate",
           { orderId: createdOrder._id }
         );
 
@@ -374,7 +374,7 @@ export default function CheckoutPayment() {
 
       if (selectedMethod.id === "card") {
         const cardResponse = await axios.post(
-          "http://localhost:5000/api/payments/card/initiate",
+          "https://bookstore-f3if.onrender.com/api/payments/card/initiate",
           { orderId: createdOrder._id }
         );
 

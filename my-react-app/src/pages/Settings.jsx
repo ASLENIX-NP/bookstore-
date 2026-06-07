@@ -106,7 +106,7 @@ export default function AdminSettings() {
     try {
       setPolicyLoading(true);
 
-      const response = await axios.get("http://localhost:5000/api/policies");
+      const response = await axios.get("https://bookstore-f3if.onrender.com/api/policies");
 
       const policyMap = { ...defaultPolicies };
 
@@ -195,7 +195,7 @@ export default function AdminSettings() {
       setPolicySaving(true);
 
       await axios.put(
-        `http://localhost:5000/api/admin/policies/${activePolicyKey}`,
+        `https://bookstore-f3if.onrender.com/api/admin/policies/${activePolicyKey}`,
         {
           title: selectedPolicy.title,
           content: selectedPolicy.content,

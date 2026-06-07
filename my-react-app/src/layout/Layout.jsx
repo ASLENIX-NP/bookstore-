@@ -75,7 +75,7 @@ export default function Layout() {
     if (!notification?._id) return;
 
     await axios.patch(
-      `http://localhost:5000/api/notifications/${notification._id}/read`
+      `https://bookstore-f3if.onrender.com/api/notifications/${notification._id}/read`
     );
   };
 

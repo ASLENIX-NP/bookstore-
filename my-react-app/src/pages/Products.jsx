@@ -224,7 +224,7 @@ const getDisplayPriceText = (product, allowSalePrice = true) => {
 };
 
 const getCollectionApiUrl = (collection) => {
-  const baseUrl = "http://localhost:5000/api/products";
+  const baseUrl = "https://bookstore-f3if.onrender.com/api/products";
 
   if (collection === "featured") {
     return `${baseUrl}?featured=true`;

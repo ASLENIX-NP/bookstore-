@@ -397,7 +397,7 @@ export default function ManageBooks() {
       setLoadingProducts(true);
 
       const response = await axios.get(
-        "http://localhost:5000/api/products?admin=true"
+        "https://bookstore-f3if.onrender.com/api/products?admin=true"
       );
 
       const products = Array.isArray(response.data)
@@ -416,7 +416,7 @@ export default function ManageBooks() {
   const fetchFlashSaleSettings = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/admin/flash-sale-settings"
+        "https://bookstore-f3if.onrender.com/api/admin/flash-sale-settings"
       );
 
       const settings = response.data?.settings || {
@@ -563,7 +563,7 @@ export default function ManageBooks() {
       };
 
       const response = await axios.put(
-        "http://localhost:5000/api/admin/flash-sale-settings",
+        "https://bookstore-f3if.onrender.com/api/admin/flash-sale-settings",
         payload
       );
 
@@ -660,7 +660,7 @@ export default function ManageBooks() {
 
       if (isEditing) {
         const response = await axios.put(
-          `http://localhost:5000/api/products/${editingProductId}`,
+          `https://bookstore-f3if.onrender.com/api/products/${editingProductId}`,
           data,
           {
             headers: {
@@ -678,7 +678,7 @@ export default function ManageBooks() {
         toast.success("Product updated successfully");
       } else {
         const response = await axios.post(
-          "http://localhost:5000/api/products",
+          "https://bookstore-f3if.onrender.com/api/products",
           data,
           {
             headers: {
@@ -753,7 +753,7 @@ export default function ManageBooks() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/products/${id}`);
+      await axios.delete(`https://bookstore-f3if.onrender.com/api/products/${id}`);
 
       setBooks(books.filter((book) => book._id !== id));
 
@@ -774,7 +774,7 @@ export default function ManageBooks() {
         product.stockStatus === "In Stock" ? "Out of Stock" : "In Stock";
 
       const response = await axios.patch(
-        `http://localhost:5000/api/products/${product._id}`,
+        `https://bookstore-f3if.onrender.com/api/products/${product._id}`,
         {
           stockStatus: updatedStatus,
         }

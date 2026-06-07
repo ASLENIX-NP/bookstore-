@@ -147,7 +147,7 @@ export default function CheckoutDelivery() {
         setDeliveryPreviewLoading(true);
 
         const response = await fetch(
-          "http://localhost:5000/api/delivery/calculate",
+          "https://bookstore-f3if.onrender.com/api/delivery/calculate",
           {
             method: "POST",
             headers: {

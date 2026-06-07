@@ -82,7 +82,7 @@ export default function PolicyPage() {
       try {
         setLoading(true);
 
-        const response = await axios.get("http://localhost:5000/api/policies");
+        const response = await axios.get("https://bookstore-f3if.onrender.com/api/policies");
 
         const policyMap = { ...defaultPolicies };
 

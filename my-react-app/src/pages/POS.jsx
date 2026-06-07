@@ -52,7 +52,7 @@ export default function POS() {
       setLastScannedCode(cleanBarcode);
 
       const res = await axios.get(
-        `http://localhost:5000/api/products/barcode/${cleanBarcode}`
+        `https://bookstore-f3if.onrender.com/api/products/barcode/${cleanBarcode}`
       );
 
       const product = res.data.product || res.data.data || res.data;
@@ -223,7 +223,7 @@ export default function POS() {
       }));
 
       const res = await axios.post(
-        "http://localhost:5000/api/products/pos-checkout",
+        "https://bookstore-f3if.onrender.com/api/products/pos-checkout",
         {
           cart: checkoutCart,
           paymentMethod,

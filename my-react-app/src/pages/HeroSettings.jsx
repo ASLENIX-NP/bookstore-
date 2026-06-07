@@ -15,7 +15,7 @@ export default function HeroSettings() {
     const fetchHeroImages = async () => {
       try {
         const { data } = await axios.get(
-          "http://localhost:5000/api/admin/hero"
+          "https://bookstore-f3if.onrender.com/api/admin/hero"
         );
   
         setImages({
@@ -45,7 +45,7 @@ export default function HeroSettings() {
     });
 
     try {
-      await axios.put("http://localhost:5000/api/admin/hero", formData, {
+      await axios.put("https://bookstore-f3if.onrender.com/api/admin/hero", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success("Hero section saved successfully!");

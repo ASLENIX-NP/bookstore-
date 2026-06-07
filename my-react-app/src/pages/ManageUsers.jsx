@@ -54,7 +54,7 @@ export default function ManageUsers() {
       setLoading(true);
       setErrorMessage("");
 
-      const response = await axios.get("http://localhost:5000/api/users");
+      const response = await axios.get("https://bookstore-f3if.onrender.com/api/users");
 
       const usersData = Array.isArray(response.data)
         ? response.data

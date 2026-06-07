@@ -110,7 +110,7 @@ export default function UserSettings() {
     try {
       setLoadingProfile(true);
 
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get("https://bookstore-f3if.onrender.com/api/auth/profile", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -288,7 +288,7 @@ export default function UserSettings() {
       setSavingProfile(true);
 
       const response = await axios.put(
-        "http://localhost:5000/api/auth/profile",
+        "https://bookstore-f3if.onrender.com/api/auth/profile",
         {
           name: user.name,
           phone: user.phone,
@@ -338,7 +338,7 @@ export default function UserSettings() {
       }
 
       const response = await axios.put(
-        "http://localhost:5000/api/auth/change-password",
+        "https://bookstore-f3if.onrender.com/api/auth/change-password",
         passwordData,
         {
           headers: {
@@ -368,7 +368,7 @@ export default function UserSettings() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/contact", {
+      await axios.post("https://bookstore-f3if.onrender.com/api/contact", {
         firstName: feedbackName,
         lastName: "Feedback",
         email: feedbackEmail,

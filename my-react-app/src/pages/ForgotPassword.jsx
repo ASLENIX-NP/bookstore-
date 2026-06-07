@@ -62,7 +62,7 @@ const ForgotPassword = () => {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password/send-otp",
+        "https://bookstore-f3if.onrender.com/api/auth/forgot-password/send-otp",
         {
           email: cleanEmail,
           role,
@@ -106,7 +106,7 @@ const ForgotPassword = () => {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password/verify-otp",
+        "https://bookstore-f3if.onrender.com/api/auth/forgot-password/verify-otp",
         {
           email: cleanEmail,
           role,
@@ -167,7 +167,7 @@ const ForgotPassword = () => {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password/reset",
+        "https://bookstore-f3if.onrender.com/api/auth/forgot-password/reset",
         {
           email: cleanEmail,
           role,
@@ -204,7 +204,7 @@ const ForgotPassword = () => {
       setLoading(true);
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password/send-otp",
+        "https://bookstore-f3if.onrender.com/api/auth/forgot-password/send-otp",
         {
           email: cleanEmail,
           role,

@@ -55,8 +55,8 @@ const Contact = () => {
     const fetchContactContent = async () => {
       try {
         const [pageResponse, detailsResponse] = await Promise.all([
-          fetch("http://localhost:5000/api/policies/contactPage"),
-          fetch("http://localhost:5000/api/policies/contactDetails"),
+          fetch("https://bookstore-f3if.onrender.com/api/policies/contactPage"),
+          fetch("https://bookstore-f3if.onrender.com/api/policies/contactDetails"),
         ]);
 
         const pageData = await pageResponse.json();
@@ -100,10 +100,10 @@ const Contact = () => {
 
     const fetchHeroBackground = async () => {
       try {
-        let response = await fetch("http://localhost:5000/api/admin/hero");
+        let response = await fetch("https://bookstore-f3if.onrender.com/api/admin/hero");
 
         if (!response.ok) {
-          response = await fetch("http://localhost:5000/api/hero");
+          response = await fetch("https://bookstore-f3if.onrender.com/api/hero");
         }
 
         if (!response.ok) {
@@ -165,7 +165,7 @@ const Contact = () => {
     try {
       setLoading(true);
 
-      const response = await axios.post("http://localhost:5000/api/contact", {
+      const response = await axios.post("https://bookstore-f3if.onrender.com/api/contact", {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim().toLowerCase(),

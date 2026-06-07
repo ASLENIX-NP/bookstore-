@@ -100,7 +100,7 @@ export default function PrintBarcode() {
     try {
       setLoading(true);
 
-      const response = await axios.get("http://localhost:5000/api/products");
+      const response = await axios.get("https://bookstore-f3if.onrender.com/api/products");
 
       const productsData = Array.isArray(response.data)
         ? response.data
