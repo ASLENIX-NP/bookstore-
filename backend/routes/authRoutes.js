@@ -41,6 +41,22 @@ const createToken = (payload) => {
 const normalizeEmail = (email) => {
   return String(email || "").toLowerCase().trim();
 };
+const buildSafeUser = (user) => {
+  return {
+    id: user._id,
+    _id: user._id,
+    name: user.name || "",
+    email: user.email || "",
+    role: user.role || "customer",
+    phone: user.phone || "",
+    address: user.address || "",
+    profileImage: user.profileImage || "",
+    birthday: user.birthday || "",
+    gender: user.gender || "",
+    lastSeen: user.lastSeen || null,
+    createdAt: user.createdAt || null,
+  };
+};
 
 const getOtpKey = (email, role) => {
   return `${role}:${normalizeEmail(email)}`;
@@ -165,12 +181,7 @@ router.post("/signup", async (req, res) => {
       success: true,
       message: "Signup successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: "customer",
-      },
+      user: buildSafeUser(user),
     });
   } catch (error) {
     console.error("Signup error:", error);
@@ -273,12 +284,7 @@ router.post("/login", async (req, res) => {
       success: true,
       message: "Customer login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: "customer",
-      },
+      user: buildSafeUser(user),
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -574,6 +580,95 @@ router.put("/change-password", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+});
+router.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin profile is not handled here",
+      });
+    }
+
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: buildSafeUser(user),
+    });
+  } catch (error) {
+    console.error("Fetch profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch profile",
+    });
+  }
+});
+
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role === "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin profile is not handled here",
+      });
+    }
+
+    const existingUser = await User.findById(req.user.id);
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const profileImage = String(req.body.profileImage || "");
+
+    if (profileImage && profileImage.length > 2500000) {
+      return res.status(400).json({
+        success: false,
+        message: "Profile image is too large. Please choose a smaller image.",
+      });
+    }
+
+    const gender = String(req.body.gender || "").trim();
+
+    const safeGender = ["", "Male", "Female", "Other"].includes(gender)
+      ? gender
+      : "";
+
+    existingUser.name = String(req.body.name || existingUser.name || "").trim();
+    existingUser.phone = String(req.body.phone || "").trim();
+    existingUser.address = String(req.body.address || "").trim();
+    existingUser.birthday = String(req.body.birthday || "").trim();
+    existingUser.gender = safeGender;
+    existingUser.profileImage = profileImage || existingUser.profileImage || "";
+    existingUser.lastSeen = new Date();
+
+    await existingUser.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: buildSafeUser(existingUser),
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
     });
   }
 });

@@ -1,19 +1,58 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import axios from "axios";
 import Scanner from "../components/Scanner";
+import {
+  ScanLine,
+  ReceiptText,
+  ShoppingCart,
+  Plus,
+  Minus,
+  Trash2,
+  AlertCircle,
+  Banknote,
+  CreditCard,
+  Barcode,
+  PackageCheck,
+  RefreshCw,
+  Calculator,
+  XCircle,
+  Sparkles,
+} from "lucide-react";
+
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500";
+
+const getProductImage = (image) => {
+  if (!image) return FALLBACK_IMAGE;
+  return image;
+};
 
 export default function POS() {
   const [cart, setCart] = useState([]);
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState("");
+  const [lastScannedCode, setLastScannedCode] = useState("");
+
+  const getItemPrice = (item) => {
+    return Number(item.salePrice || item.price || 0);
+  };
 
   const addProduct = async (barcode) => {
+    const cleanBarcode = String(barcode || "").trim();
+
+    if (!cleanBarcode) {
+      setError("Please enter or scan a valid barcode.");
+      return;
+    }
+
     try {
       setError("");
+      setLastScannedCode(cleanBarcode);
 
       const res = await axios.get(
-        `http://localhost:5000/api/products/barcode/${barcode}`
+        `http://localhost:5000/api/products/barcode/${cleanBarcode}`
       );
 
       const product = res.data.product || res.data.data || res.data;
@@ -83,6 +122,20 @@ export default function POS() {
     }
   };
 
+  const handleManualAdd = (event) => {
+    event.preventDefault();
+
+    const code = manualBarcode.trim();
+
+    if (!code) {
+      setError("Please enter barcode first.");
+      return;
+    }
+
+    addProduct(code);
+    setManualBarcode("");
+  };
+
   const increaseQty = (productId) => {
     setCart((prev) =>
       prev.map((item) => {
@@ -123,12 +176,30 @@ export default function POS() {
     setCart((prev) => prev.filter((item) => item._id !== productId));
   };
 
-  const total = cart.reduce((sum, item) => {
-    const price = Number(item.salePrice || item.price || 0);
-    const quantity = Number(item.quantity || 1);
+  const clearCart = () => {
+    if (cart.length === 0) return;
 
-    return sum + price * quantity;
-  }, 0);
+    const confirmClear = window.confirm("Clear all products from POS cart?");
+    if (!confirmClear) return;
+
+    setCart([]);
+    setError("");
+  };
+
+  const total = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const price = getItemPrice(item);
+      const quantity = Number(item.quantity || 1);
+
+      return sum + price * quantity;
+    }, 0);
+  }, [cart]);
+
+  const totalItems = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      return sum + Number(item.quantity || 1);
+    }, 0);
+  }, [cart]);
 
   const checkout = async () => {
     try {
@@ -186,128 +257,369 @@ export default function POS() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      {/* SCANNER SECTION */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <h2 className="text-lg font-bold">📷 Smart Scanner</h2>
-        <Scanner onScan={addProduct} />
+    <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-6 sm:p-8 shadow-xl shadow-slate-200">
+        <div className="absolute -top-24 -right-20 w-72 h-72 rounded-full bg-orange-500/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-20 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-orange-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
+              <ScanLine className="w-4 h-4" />
+              POS System
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-black text-white">
+              Counter Billing Desk
+            </h1>
+
+            <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
+              Scan barcode, add products to cart, collect payment, and generate
+              VAT invoice instantly.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-white/10 border border-white/10 px-5 py-4">
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                Cart Items
+              </p>
+
+              <p className="text-2xl font-black text-white mt-1">
+                {totalItems}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/10 border border-white/10 px-5 py-4">
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                Bill Total
+              </p>
+
+              <p className="text-2xl font-black text-orange-300 mt-1">
+                NPR {total.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* CART SECTION */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <h2 className="text-lg font-bold mb-4">🧾 Cashier Panel</h2>
+      {error && (
+        <div className="bg-red-50 border border-red-100 text-red-700 rounded-[2rem] p-5 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
 
-        {error && <p className="text-red-500 mb-3 font-semibold">{error}</p>}
-
-        {cart.length === 0 ? (
-          <div className="border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-400 font-semibold">
-            Scan products to add them here.
+          <div>
+            <p className="font-black">POS Alert</p>
+            <p className="text-sm font-bold mt-1">{error}</p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {cart.map((item) => {
-              const price = Number(item.salePrice || item.price || 0);
-              const quantity = Number(item.quantity || 1);
+        </div>
+      )}
 
-              return (
-                <div
-                  key={item._id}
-                  className="flex items-center justify-between border-b py-3 gap-3"
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <section className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-3">
+                    <Barcode className="w-4 h-4" />
+                    Smart Scanner
+                  </div>
+
+                  <h2 className="text-xl font-black text-slate-950">
+                    Scan Product Barcode
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    Use camera scanner or enter barcode manually.
+                  </p>
+                </div>
+
+                <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                  <ScanLine className="w-6 h-6" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6">
+              <div className="rounded-[2rem] border border-dashed border-indigo-200 bg-indigo-50/40 p-3 overflow-hidden">
+                <Scanner onScan={addProduct} />
+              </div>
+
+              <form onSubmit={handleManualAdd} className="mt-5">
+                <label className="block text-[11px] font-black text-gray-400 uppercase tracking-[0.18em] mb-2">
+                  Manual Barcode Entry
+                </label>
+
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={manualBarcode}
+                    onChange={(e) => setManualBarcode(e.target.value)}
+                    placeholder="Type or paste barcode..."
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-orange-100 focus:border-orange-400"
+                  />
+
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-orange-600 text-white px-5 py-3 rounded-2xl text-sm font-black transition-all"
+                  >
+                    <PackageCheck className="w-4 h-4" />
+                    Add
+                  </button>
+                </div>
+              </form>
+
+              <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                    Last Scan
+                  </p>
+                </div>
+
+                <p className="font-mono text-sm font-black text-slate-800 mt-2 break-all">
+                  {lastScannedCode || "No barcode scanned yet"}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-white border border-gray-100 rounded-[2rem] p-5 sm:p-6 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                <Calculator className="w-6 h-6" />
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+                  Quick Summary
+                </p>
+
+                <h3 className="text-xl font-black text-gray-950">
+                  NPR {total.toLocaleString()}
+                </h3>
+
+                <p className="text-sm text-gray-500">
+                  {totalItems} item(s) in cashier cart
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div className="xl:col-span-3">
+          <section className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-3">
+                    <ReceiptText className="w-4 h-4" />
+                    Cashier Panel
+                  </div>
+
+                  <h2 className="text-xl font-black text-slate-950">
+                    Current Sale Cart
+                  </h2>
+
+                  <p className="text-sm text-slate-500 mt-1">
+                    Review quantity, payment method, and complete counter sale.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  disabled={cart.length === 0}
+                  className="inline-flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 disabled:bg-gray-50 disabled:text-gray-400 text-red-600 border border-red-100 px-4 py-3 rounded-2xl text-sm font-black transition-all"
                 >
-                  <div className="flex-1">
-                    <p className="font-semibold">{item.name}</p>
+                  <XCircle className="w-4 h-4" />
+                  Clear Cart
+                </button>
+              </div>
+            </div>
 
-                    <p className="text-sm text-gray-500">
-                      Rate: Rs {price} | Stock: {Number(item.stock || 0)}
+            <div className="p-5 sm:p-6">
+              {cart.length === 0 ? (
+                <div className="border border-dashed border-gray-200 rounded-[2rem] p-12 text-center bg-slate-50">
+                  <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+
+                  <p className="text-sm font-black text-gray-500">
+                    Scan products to add them here.
+                  </p>
+
+                  <p className="text-xs text-gray-400 mt-1">
+                    Cart is empty. Use scanner or manual barcode entry.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cart.map((item) => {
+                    const price = getItemPrice(item);
+                    const quantity = Number(item.quantity || 1);
+                    const lineTotal = price * quantity;
+
+                    return (
+                      <div
+                        key={item._id}
+                        className="bg-slate-50 border border-gray-100 rounded-[1.5rem] p-4 hover:bg-white hover:shadow-sm transition-all"
+                      >
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                          <div className="lg:col-span-5 flex items-center gap-3 min-w-0">
+                            <img
+                              src={getProductImage(item.image)}
+                              alt={item.name}
+                              className="w-14 h-16 rounded-2xl object-cover bg-white border border-gray-100 shrink-0"
+                            />
+
+                            <div className="min-w-0">
+                              <p className="font-black text-gray-950 truncate">
+                                {item.name}
+                              </p>
+
+                              <p className="text-xs text-gray-500 mt-1">
+                                Rate: NPR {price.toLocaleString()} | Stock:{" "}
+                                {Number(item.stock || 0)}
+                              </p>
+
+                              {item.barcode && (
+                                <p className="text-[11px] font-mono text-indigo-500 mt-1 truncate">
+                                  {item.barcode}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="lg:col-span-3 flex items-center justify-start lg:justify-center">
+                            <div className="inline-flex items-center bg-white border border-slate-200 rounded-2xl shadow-sm p-1">
+                              <button
+                                type="button"
+                                onClick={() => decreaseQty(item._id)}
+                                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700"
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+
+                              <span className="w-12 text-center font-black text-slate-950">
+                                {quantity}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => increaseQty(item._id)}
+                                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="lg:col-span-3 lg:text-right">
+                            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+                              Line Total
+                            </p>
+
+                            <p className="font-black text-lg text-emerald-600 mt-1">
+                              NPR {lineTotal.toLocaleString()}
+                            </p>
+                          </div>
+
+                          <div className="lg:col-span-1 flex lg:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item._id)}
+                              className="w-10 h-10 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center"
+                              title="Remove item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mt-6 rounded-[2rem] bg-gradient-to-br from-slate-950 to-slate-900 text-white p-5 sm:p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-center">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                      Total Payable
                     </p>
 
-                    <p className="text-sm text-gray-500">Qty: {quantity}</p>
+                    <h3 className="text-3xl sm:text-4xl font-black mt-2">
+                      NPR {total.toLocaleString()}
+                    </h3>
+
+                    <p className="text-sm text-slate-400 mt-1">
+                      {totalItems} item(s) • {cart.length} product row(s)
+                    </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">
+                        Payment Method
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("cash")}
+                          className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
+                            paymentMethod === "cash"
+                              ? "bg-green-500 text-white shadow-lg shadow-green-950/20"
+                              : "bg-white/10 text-slate-300 hover:bg-white/15"
+                          }`}
+                        >
+                          <Banknote className="w-4 h-4" />
+                          Cash
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("card")}
+                          className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-all ${
+                            paymentMethod === "card"
+                              ? "bg-blue-500 text-white shadow-lg shadow-blue-950/20"
+                              : "bg-white/10 text-slate-300 hover:bg-white/15"
+                          }`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Card
+                        </button>
+                      </div>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={() => decreaseQty(item._id)}
-                      className="w-8 h-8 rounded bg-gray-200 font-bold"
+                      onClick={checkout}
+                      disabled={loading || cart.length === 0}
+                      className={`w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-black transition-all ${
+                        loading || cart.length === 0
+                          ? "bg-slate-600 text-slate-300 cursor-not-allowed"
+                          : "bg-orange-500 hover:bg-orange-400 text-slate-950 shadow-lg shadow-orange-950/20"
+                      }`}
                     >
-                      -
-                    </button>
-
-                    <span className="w-8 text-center font-bold">
-                      {quantity}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => increaseQty(item._id)}
-                      className="w-8 h-8 rounded bg-gray-200 font-bold"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="font-bold">Rs {price * quantity}</p>
-
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item._id)}
-                      className="text-xs text-red-500 font-bold mt-1"
-                    >
-                      Remove
+                      {loading ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Processing Sale...
+                        </>
+                      ) : (
+                        <>
+                          <ReceiptText className="w-4 h-4" />
+                          Complete Sale & Print Invoice
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* TOTAL */}
-        <div className="mt-4 text-xl font-bold">
-          Total: Rs {total.toLocaleString()}
+              </div>
+            </div>
+          </section>
         </div>
-
-        {/* PAYMENT METHOD */}
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setPaymentMethod("cash")}
-            className={`px-3 py-2 rounded ${
-              paymentMethod === "cash"
-                ? "bg-green-600 text-white"
-                : "bg-gray-200"
-            }`}
-          >
-            Cash
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPaymentMethod("card")}
-            className={`px-3 py-2 rounded ${
-              paymentMethod === "card"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200"
-            }`}
-          >
-            Card
-          </button>
-        </div>
-
-        {/* CHECKOUT */}
-        <button
-          type="button"
-          onClick={checkout}
-          disabled={loading || cart.length === 0}
-          className={`w-full mt-4 py-3 rounded text-white transition-colors ${
-            loading || cart.length === 0
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-black hover:bg-gray-800"
-          }`}
-        >
-          {loading ? "Processing..." : "COMPLETE SALE"}
-        </button>
       </div>
     </div>
   );

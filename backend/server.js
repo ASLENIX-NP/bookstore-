@@ -2095,31 +2095,31 @@ app.post("/api/products/pos-checkout", async (req, res) => {
       }).session(session);
 
       const productMap = new Map(
-        productsFromDb.map((product) => [String(product._id), product])
+        products.map((product) => [String(product._id), product])
       );
-      
+
       console.log("================================");
-      console.log("PRODUCT IDS FROM CART:", productIds);
+      console.log("POS PRODUCT IDS FROM CART:", productIds);
       console.log(
-        "PRODUCT IDS FOUND IN DB:",
-        productsFromDb.map((p) => String(p._id))
+        "POS PRODUCT IDS FOUND IN DB:",
+        products.map((product) => String(product._id))
       );
       console.log("================================");
-      
+
       for (const productId of productIds) {
         const product = productMap.get(productId);
-        const requiredQty = Number(stockRequiredMap.get(productId) || 0);
-      
-        console.log("CHECKING PRODUCT:", productId);
-        console.log("FOUND IN DB:", !!product);
-      
+        const requiredQty = Number(quantityMap.get(productId) || 0);
+
+        console.log("CHECKING POS PRODUCT:", productId);
+        console.log("FOUND IN DB:", Boolean(product));
+
         if (!product) {
-          console.log("❌ MISSING PRODUCT:", productId);
-      
           const error = new Error("One or more products were not found.");
           error.statusCode = 404;
           throw error;
         }
+
+        const availableStock = Number(product.stock || 0);
 
         if (availableStock < requiredQty) {
           const error = new Error(
@@ -2133,10 +2133,11 @@ app.post("/api/products/pos-checkout", async (req, res) => {
       const orderItems = productIds.map((productId) => {
         const product = productMap.get(productId);
         const qty = Number(quantityMap.get(productId) || 0);
+
         const price =
-  Number(product.salePrice) > 0
-    ? Number(product.salePrice)
-    : Number(product.price || 0);
+          Number(product.salePrice) > 0
+            ? Number(product.salePrice)
+            : Number(product.price || 0);
 
         return {
           productId: product._id,
@@ -2148,10 +2149,13 @@ app.post("/api/products/pos-checkout", async (req, res) => {
         };
       });
 
-      const productSubtotal = Math.round(
-        orderItems.reduce((sum, item) => sum + Number(item.subtotal || 0), 0) *
-          100
-      ) / 100;
+      const productSubtotal =
+        Math.round(
+          orderItems.reduce(
+            (sum, item) => sum + Number(item.subtotal || 0),
+            0
+          ) * 100
+        ) / 100;
 
       const vatRate = 13;
 
@@ -2181,9 +2185,9 @@ app.post("/api/products/pos-checkout", async (req, res) => {
         const newStatusFlag = newStock <= 0 ? "Out of Stock" : "In Stock";
 
         const price =
-  Number(product.salePrice) > 0
-    ? Number(product.salePrice)
-    : Number(product.price || 0);
+          Number(product.salePrice) > 0
+            ? Number(product.salePrice)
+            : Number(product.price || 0);
 
         return {
           updateOne: {
@@ -2251,8 +2255,7 @@ app.post("/api/products/pos-checkout", async (req, res) => {
             totalPrice: grandTotal,
 
             checkoutType: "Cart",
-            paymentMethod:
-              paymentMethod === "card" ? "Card" : "Cash",
+            paymentMethod: paymentMethod === "card" ? "Card" : "Cash",
             paymentMethodId: paymentMethod,
             paymentGateway: "pos",
 
@@ -2295,10 +2298,9 @@ app.post("/api/products/pos-checkout", async (req, res) => {
       error: error.message,
     });
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 });
-
 app.post("/api/products", async (req, res) => {
   try {
     let imageUrl = "";
@@ -4786,7 +4788,11 @@ app.delete("/api/orders/:id", async (req, res) => {
 // USER ROUTES
 app.get("/api/users", async (req, res) => {
   try {
-    res.status(200).json(await User.find({}));
+    const users = await User.find({})
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -5221,78 +5227,131 @@ app.get("/api/admin/dashboard-stats", getDashboardStats);
 app.get("/api/admin/dashboard", getDashboardStats);
 
 // REPORT ROUTES
+// REPORT ROUTES
 app.get("/api/admin/daily-report", async (req, res) => {
   try {
-    const { timeframe = "daily" } = req.query;
+    const { timeframe = "daily", startDate: customStartDate, endDate: customEndDate } = req.query;
 
-    const startDate = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
+    let reportMode = timeframe;
+    let reportLabel = "Daily Report";
 
-    if (timeframe === "daily") {
-      startDate.setHours(0, 0, 0, 0);
-    } else if (timeframe === "weekly") {
-      startDate.setDate(startDate.getDate() - 7);
-    } else if (timeframe === "monthly") {
-      startDate.setMonth(startDate.getMonth() - 1);
+    if (customStartDate && customEndDate) {
+      startDate = new Date(`${customStartDate}T00:00:00.000`);
+      endDate = new Date(`${customEndDate}T23:59:59.999`);
+      reportMode = "custom";
+      reportLabel = "Custom Date Range Report";
+
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid start date or end date.",
+        });
+      }
+
+      if (endDate < startDate) {
+        return res.status(400).json({
+          success: false,
+          error: "End date must be after start date.",
+        });
+      }
+    } else {
+      if (timeframe === "daily") {
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        reportLabel = "Today's Report";
+      } else if (timeframe === "weekly") {
+        startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        reportLabel = "Last 7 Days Report";
+      } else if (timeframe === "monthly") {
+        startDate.setMonth(startDate.getMonth() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        reportLabel = "Last 1 Month Report";
+      } else {
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        reportMode = "daily";
+        reportLabel = "Today's Report";
+      }
     }
 
     const orders = await Order.find({
-      createdAt: { $gte: startDate },
+      createdAt: {
+        $gte: startDate,
+        $lte: endDate,
+      },
     });
 
     let revenue = 0;
     let itemsSold = 0;
 
-    orders.forEach((order) => {
-      revenue += Number(
-        order.grandTotal ||
-        order.totalPrice ||
-        0
-      );
+    const breakdownMap = new Map();
 
-      itemsSold += order.orderItems.reduce(
-        (sum, item) => sum + Number(item.qty || 0),
-        0
-      );
-    });
-
-    const itemsAdded = await Product.countDocuments({
-      createdAt: { $gte: startDate },
-    });
-    
-    const breakdown = [];
-    
     orders.forEach((order) => {
-      order.orderItems.forEach((item) => {
-        const existing = breakdown.find(
-          (p) => p.name === item.title
-        );
-    
-        if (existing) {
-          existing.unitsSold += Number(item.qty || 0);
-          existing.revenue += Number(item.subtotal || 0);
+      revenue += Number(order.grandTotal || order.totalPrice || 0);
+
+      const orderItems = Array.isArray(order.orderItems) ? order.orderItems : [];
+
+      orderItems.forEach((item) => {
+        const qty = Number(item.qty || item.quantity || 0);
+        const price = Number(item.price || 0);
+        const subtotal = Number(item.subtotal || price * qty || 0);
+        const name = item.title || item.name || "Unknown Product";
+        const key = item.productId ? String(item.productId) : name;
+
+        itemsSold += qty;
+
+        if (breakdownMap.has(key)) {
+          const existing = breakdownMap.get(key);
+
+          existing.unitsSold += qty;
+          existing.revenue += subtotal;
         } else {
-          breakdown.push({
-            name: item.title,
-            price: Number(item.price || 0),
-            unitsSold: Number(item.qty || 0),
-            revenue: Number(item.subtotal || 0),
+          breakdownMap.set(key, {
+            name,
+            price,
+            unitsSold: qty,
+            revenue: subtotal,
           });
         }
       });
     });
-    
+
+    const itemsAdded = await Product.countDocuments({
+      createdAt: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    });
+
+    const breakdown = Array.from(breakdownMap.values())
+      .map((item) => ({
+        ...item,
+        revenue: Math.round(Number(item.revenue || 0) * 100) / 100,
+      }))
+      .sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0));
+
     res.status(200).json({
       success: true,
+      range: {
+        mode: reportMode,
+        label: reportLabel,
+        startDate,
+        endDate,
+      },
       metrics: {
-        revenue,
+        revenue: Math.round(Number(revenue || 0) * 100) / 100,
         itemsSold,
         itemsAdded,
         breakdown,
       },
     });
-    
   } catch (error) {
-    console.error(error);
+    console.error("Report route error:", error);
 
     res.status(500).json({
       success: false,

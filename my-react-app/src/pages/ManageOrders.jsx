@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
@@ -24,6 +24,12 @@ import {
   ExternalLink,
   Banknote,
   MessageCircle,
+  ShoppingBag,
+  Wallet,
+  ShieldCheck,
+  AlertCircle,
+  ClipboardList,
+  Navigation,
 } from "lucide-react";
 
 const ORDER_STATUSES = [
@@ -152,33 +158,44 @@ export default function ManageOrders() {
 
     return `${window.location.origin}/delivery-update/${order.deliveryUpdateToken}`;
   };
+
   const getDeliveryUpdateExpiryText = (order) => {
-  if (!order?.deliveryUpdateTokenExpiresAt) {
-    return "";
-  }
+    if (!order?.deliveryUpdateTokenExpiresAt) {
+      return "";
+    }
 
-  const expiryDate = new Date(order.deliveryUpdateTokenExpiresAt);
+    const expiryDate = new Date(order.deliveryUpdateTokenExpiresAt);
 
-  if (Number.isNaN(expiryDate.getTime())) {
-    return "";
-  }
+    if (Number.isNaN(expiryDate.getTime())) {
+      return "";
+    }
 
-  return expiryDate.toLocaleString();
-};
+    return expiryDate.toLocaleString();
+  };
 
-const isDeliveryUpdateLinkExpired = (order) => {
-  if (!order?.deliveryUpdateTokenExpiresAt) {
-    return false;
-  }
+  const isDeliveryUpdateLinkExpired = (order) => {
+    if (!order?.deliveryUpdateTokenExpiresAt) {
+      return false;
+    }
 
-  const expiryDate = new Date(order.deliveryUpdateTokenExpiresAt);
+    const expiryDate = new Date(order.deliveryUpdateTokenExpiresAt);
 
-  if (Number.isNaN(expiryDate.getTime())) {
-    return false;
-  }
+    if (Number.isNaN(expiryDate.getTime())) {
+      return false;
+    }
 
-  return expiryDate <= new Date();
-};
+    return expiryDate <= new Date();
+  };
+
+  const replaceUpdatedOrder = (updatedOrder) => {
+    setOrders((prevOrders) => {
+      const safePreviousOrders = Array.isArray(prevOrders) ? prevOrders : [];
+
+      return safePreviousOrders.map((order) =>
+        order._id === updatedOrder._id ? updatedOrder : order
+      );
+    });
+  };
 
   const copyDeliveryUpdateLink = async (order) => {
     const link = getDeliveryUpdateLink(order);
@@ -195,52 +212,54 @@ const isDeliveryUpdateLinkExpired = (order) => {
       toast.error("Unable to copy link. Please copy it manually.");
     }
   };
-const regenerateDeliveryUpdateLink = async (order) => {
-  const confirmRegenerate = window.confirm(
-    "Regenerating will disable the old delivery update link. Continue?"
-  );
 
-  if (!confirmRegenerate) return;
-
-  try {
-    setUpdatingId(order._id);
-
-    const response = await fetch(
-      `http://localhost:5000/api/orders/${order._id}/delivery-link/regenerate`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+  const regenerateDeliveryUpdateLink = async (order) => {
+    const confirmRegenerate = window.confirm(
+      "Regenerating will disable the old delivery update link. Continue?"
     );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.error || data.message || "Failed to regenerate delivery link"
-      );
-    }
-
-    const updatedOrder = data.order || data.data || data;
-
-    replaceUpdatedOrder(updatedOrder);
-
-    const newLink = `${window.location.origin}/delivery-update/${updatedOrder.deliveryUpdateToken}`;
+    if (!confirmRegenerate) return;
 
     try {
-      await navigator.clipboard.writeText(newLink);
-      toast.success("New delivery link generated and copied.");
-    } catch {
-      toast.success("New delivery link generated.");
+      setUpdatingId(order._id);
+
+      const response = await fetch(
+        `http://localhost:5000/api/orders/${order._id}/delivery-link/regenerate`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || "Failed to regenerate delivery link"
+        );
+      }
+
+      const updatedOrder = data.order || data.data || data;
+
+      replaceUpdatedOrder(updatedOrder);
+
+      const newLink = `${window.location.origin}/delivery-update/${updatedOrder.deliveryUpdateToken}`;
+
+      try {
+        await navigator.clipboard.writeText(newLink);
+        toast.success("New delivery link generated and copied.");
+      } catch {
+        toast.success("New delivery link generated.");
+      }
+    } catch (err) {
+      toast.error("Error regenerating delivery link: " + err.message);
+    } finally {
+      setUpdatingId(null);
     }
-  } catch (err) {
-    toast.error("Error regenerating delivery link: " + err.message);
-  } finally {
-    setUpdatingId(null);
-  }
-};
+  };
+
   const getWhatsAppPhoneNumber = (phone) => {
     const digits = String(phone || "").replace(/\D/g, "");
 
@@ -323,16 +342,6 @@ Please use this link to update only the delivery status.`;
       : `https://wa.me/?text=${message}`;
 
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-  };
-
-  const replaceUpdatedOrder = (updatedOrder) => {
-    setOrders((prevOrders) => {
-      const safePreviousOrders = Array.isArray(prevOrders) ? prevOrders : [];
-
-      return safePreviousOrders.map((order) =>
-        order._id === updatedOrder._id ? updatedOrder : order
-      );
-    });
   };
 
   const updateOrderStatus = async (orderId, orderStatus) => {
@@ -590,31 +599,39 @@ Please use this link to update only the delivery status.`;
     return currentIndex >= stepIndex;
   };
 
-  const filteredOrders = safeOrders.filter((order) => {
-    const search = searchTerm.trim().toLowerCase();
+  const filteredOrders = useMemo(() => {
+    return safeOrders.filter((order) => {
+      const search = searchTerm.trim().toLowerCase();
 
-    const matchesSearch =
-      search === "" || getSearchableText(order).includes(search);
+      const matchesSearch =
+        search === "" || getSearchableText(order).includes(search);
 
-    const matchesOrderStatus =
-      orderStatusFilter === "All" ||
-      getOrderStatus(order) === orderStatusFilter;
+      const matchesOrderStatus =
+        orderStatusFilter === "All" ||
+        getOrderStatus(order) === orderStatusFilter;
 
-    const matchesPaymentStatus =
-      paymentStatusFilter === "All" ||
-      getPaymentStatus(order) === paymentStatusFilter;
+      const matchesPaymentStatus =
+        paymentStatusFilter === "All" ||
+        getPaymentStatus(order) === paymentStatusFilter;
 
-    const matchesPaymentMethod =
-      paymentMethodFilter === "All" ||
-      getPaymentMethod(order) === paymentMethodFilter;
+      const matchesPaymentMethod =
+        paymentMethodFilter === "All" ||
+        getPaymentMethod(order) === paymentMethodFilter;
 
-    return (
-      matchesSearch &&
-      matchesOrderStatus &&
-      matchesPaymentStatus &&
-      matchesPaymentMethod
-    );
-  });
+      return (
+        matchesSearch &&
+        matchesOrderStatus &&
+        matchesPaymentStatus &&
+        matchesPaymentMethod
+      );
+    });
+  }, [
+    safeOrders,
+    searchTerm,
+    orderStatusFilter,
+    paymentStatusFilter,
+    paymentMethodFilter,
+  ]);
 
   const totalOrders = safeOrders.length;
 
@@ -634,97 +651,137 @@ Please use this link to update only the delivery status.`;
     ["Shipped", "Out for Delivery"].includes(getOrderStatus(order))
   ).length;
 
-  return (
-    <div className="p-4 sm:p-6 bg-slate-50 min-h-screen">
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  const inputClass =
+    "w-full bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 focus:outline-none focus:ring-4 focus:ring-orange-100 focus:border-orange-400";
+
+  const SummaryCard = ({ title, value, icon: Icon, colorClass, subtitle }) => (
+    <div className="group relative overflow-hidden bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
+      <div className="absolute -top-14 -right-14 w-32 h-32 rounded-full bg-slate-100 blur-2xl group-hover:bg-orange-100 transition-all" />
+
+      <div className="relative flex items-start justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-3">
-            <PackageCheck className="w-4 h-4" />
-            Admin Orders
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-950">
-            Customer Orders
-          </h1>
-
-          <p className="text-gray-500 text-sm mt-1">
-            Manage order status, payment status, delivery partner, tracking, and
-            invoices.
+          <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+            {title}
           </p>
+
+          <p className={`text-3xl font-black mt-2 ${colorClass}`}>{value}</p>
+
+          {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
         </div>
 
-        <button
-          type="button"
-          onClick={fetchOrders}
-          className="inline-flex items-center justify-center gap-2 bg-slate-950 hover:bg-slate-800 text-white px-5 py-3 rounded-2xl text-sm font-black transition-all"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-700 flex items-center justify-center">
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-6 sm:p-8 shadow-xl shadow-slate-200">
+        <div className="absolute -top-24 -right-20 w-72 h-72 rounded-full bg-orange-500/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-20 w-72 h-72 rounded-full bg-sky-500/20 blur-3xl" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-orange-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
+              <PackageCheck className="w-4 h-4" />
+              Admin Orders
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-black text-white">
+              Customer Orders
+            </h1>
+
+            <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
+              Manage order status, payment status, delivery partner, tracking,
+              delivery links, cash collection, and VAT invoices.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={fetchOrders}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 bg-white hover:bg-orange-50 disabled:bg-white/70 text-slate-950 px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-lg"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Refreshing..." : "Refresh Orders"}
+          </button>
+        </div>
       </div>
 
       {!loading && !error && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-              Total Orders
-            </p>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <SummaryCard
+            title="Total Orders"
+            value={totalOrders}
+            icon={ShoppingBag}
+            colorClass="text-gray-950"
+            subtitle="All order records"
+          />
 
-            <p className="text-3xl font-black text-gray-950 mt-2">
-              {totalOrders}
-            </p>
-          </div>
+          <SummaryCard
+            title="To Ship"
+            value={toShipOrders}
+            icon={ClipboardList}
+            colorClass="text-amber-600"
+            subtitle="Processing to packaging"
+          />
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-              To Ship
-            </p>
+          <SummaryCard
+            title="To Receive"
+            value={toReceiveOrders}
+            icon={Truck}
+            colorClass="text-sky-600"
+            subtitle="Courier handover"
+          />
 
-            <p className="text-3xl font-black text-amber-600 mt-2">
-              {toShipOrders}
-            </p>
-          </div>
+          <SummaryCard
+            title="Pending Payment"
+            value={pendingPayments}
+            icon={Wallet}
+            colorClass="text-orange-600"
+            subtitle="Needs verification"
+          />
 
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-              To Receive
-            </p>
-
-            <p className="text-3xl font-black text-sky-600 mt-2">
-              {toReceiveOrders}
-            </p>
-          </div>
-
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-              Pending Payment
-            </p>
-
-            <p className="text-3xl font-black text-orange-600 mt-2">
-              {pendingPayments}
-            </p>
-          </div>
-
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-widest text-gray-400">
-              Paid Orders
-            </p>
-
-            <p className="text-3xl font-black text-green-600 mt-2">
-              {paidOrders}
-            </p>
-          </div>
+          <SummaryCard
+            title="Paid Orders"
+            value={paidOrders}
+            icon={ShieldCheck}
+            colorClass="text-green-600"
+            subtitle="Payment completed"
+          />
         </div>
       )}
 
       {!loading && !error && (
-        <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-indigo-600" />
+        <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-5 sm:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-3">
+                <Filter className="w-4 h-4" />
+                Search & Filter
+              </div>
 
-            <h2 className="font-black text-gray-950">
-              Search & Filter Orders
-            </h2>
+              <h2 className="font-black text-xl text-gray-950">
+                Find Order Records
+              </h2>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Search by customer, phone, product, city, delivery partner,
+                payment method, or order ID.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-2xl text-sm font-black transition-all"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset Filters
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -736,14 +793,14 @@ Please use this link to update only the delivery status.`;
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search order ID, customer, email, phone, product, city..."
-                className="w-full bg-slate-50 border border-gray-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full bg-slate-50 border border-gray-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-4 focus:ring-indigo-100"
               />
             </div>
 
             <select
               value={orderStatusFilter}
               onChange={(e) => setOrderStatusFilter(e.target.value)}
-              className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className={inputClass}
             >
               <option value="All">All Order Status</option>
 
@@ -757,7 +814,7 @@ Please use this link to update only the delivery status.`;
             <select
               value={paymentStatusFilter}
               onChange={(e) => setPaymentStatusFilter(e.target.value)}
-              className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className={inputClass}
             >
               <option value="All">All Payment Status</option>
 
@@ -771,7 +828,7 @@ Please use this link to update only the delivery status.`;
             <select
               value={paymentMethodFilter}
               onChange={(e) => setPaymentMethodFilter(e.target.value)}
-              className="bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm font-bold text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className={inputClass}
             >
               <option value="All">All Payment Methods</option>
               <option value="Cash on Delivery">Cash on Delivery</option>
@@ -781,7 +838,7 @@ Please use this link to update only the delivery status.`;
             </select>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+          <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3">
             <p className="text-sm text-gray-500">
               Showing{" "}
               <span className="font-black text-gray-950">
@@ -791,39 +848,34 @@ Please use this link to update only the delivery status.`;
               <span className="font-black text-gray-950">
                 {safeOrders.length}
               </span>{" "}
-              orders
+              orders.
             </p>
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-3 rounded-2xl text-sm font-black transition-all"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset Filters
-            </button>
           </div>
         </div>
       )}
 
       {loading && (
         <div className="flex items-center justify-center p-12 bg-white rounded-[2rem] shadow-sm border border-gray-100">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+          <div className="animate-spin rounded-full h-9 w-9 border-4 border-orange-100 border-t-orange-500" />
 
-          <span className="ml-3 text-gray-500 font-bold">
+          <span className="ml-3 text-gray-500 font-black">
             Loading orders data...
           </span>
         </div>
       )}
 
       {error && (
-        <div className="p-4 mb-6 bg-red-50 text-red-700 border border-red-200 rounded-2xl text-sm">
-          <strong>Connection Error:</strong> {error}
+        <div className="p-5 bg-red-50 text-red-700 border border-red-200 rounded-[2rem] text-sm flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+
+          <div>
+            <strong>Connection Error:</strong> {error}
+          </div>
         </div>
       )}
 
       {!loading && !error && safeOrders.length === 0 && (
-        <div className="p-12 text-center text-gray-400 text-sm font-bold bg-white border border-dashed border-gray-200 rounded-[2rem]">
+        <div className="p-12 text-center text-gray-400 text-sm font-black bg-white border border-dashed border-gray-200 rounded-[2rem]">
           No orders have been placed yet.
         </div>
       )}
@@ -832,7 +884,7 @@ Please use this link to update only the delivery status.`;
         !error &&
         safeOrders.length > 0 &&
         filteredOrders.length === 0 && (
-          <div className="p-12 text-center text-gray-400 text-sm font-bold bg-white border border-dashed border-gray-200 rounded-[2rem]">
+          <div className="p-12 text-center text-gray-400 text-sm font-black bg-white border border-dashed border-gray-200 rounded-[2rem]">
             No orders match your current search/filter.
           </div>
         )}
@@ -852,7 +904,7 @@ Please use this link to update only the delivery status.`;
             return (
               <div
                 key={order._id}
-                className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden"
+                className="bg-white border border-gray-100 rounded-[2rem] shadow-sm hover:shadow-xl transition-all overflow-hidden"
               >
                 <div className="p-5 sm:p-6">
                   <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
@@ -999,7 +1051,7 @@ Please use this link to update only the delivery status.`;
                 {isExpanded && (
                   <div className="border-t border-gray-100 bg-slate-50 p-5 sm:p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                      <div className="bg-white border border-gray-100 rounded-2xl p-5">
+                      <div className="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                           <MapPin className="w-5 h-5 text-emerald-600" />
 
@@ -1050,11 +1102,15 @@ Please use this link to update only the delivery status.`;
                             <span className="font-black text-gray-900">
                               Address:
                             </span>{" "}
-                            {order.deliveryInfo?.building},{" "}
-                            {order.deliveryInfo?.area},{" "}
-                            {order.deliveryInfo?.city},{" "}
-                            {order.deliveryInfo?.region},{" "}
-                            {order.deliveryInfo?.address}
+                            {[
+                              order.deliveryInfo?.building,
+                              order.deliveryInfo?.area,
+                              order.deliveryInfo?.city,
+                              order.deliveryInfo?.region,
+                              order.deliveryInfo?.address,
+                            ]
+                              .filter(Boolean)
+                              .join(", ") || "N/A"}
                           </p>
 
                           {order.estimatedDelivery && (
@@ -1084,7 +1140,7 @@ Please use this link to update only the delivery status.`;
                                 )
                               }
                               placeholder="Delivery person name"
-                              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                              className={inputClass}
                             />
 
                             <input
@@ -1097,7 +1153,7 @@ Please use this link to update only the delivery status.`;
                                 )
                               }
                               placeholder="Delivery phone"
-                              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                              className={inputClass}
                             />
 
                             <input
@@ -1110,7 +1166,7 @@ Please use this link to update only the delivery status.`;
                                 )
                               }
                               placeholder="Courier company"
-                              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                              className={inputClass}
                             />
 
                             <input
@@ -1123,7 +1179,7 @@ Please use this link to update only the delivery status.`;
                                 )
                               }
                               placeholder="Tracking number / delivery code"
-                              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                              className={inputClass}
                             />
 
                             <textarea
@@ -1137,14 +1193,14 @@ Please use this link to update only the delivery status.`;
                               }
                               placeholder="Delivery note"
                               rows="3"
-                              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm resize-none"
+                              className={`${inputClass} resize-none`}
                             />
 
                             <button
                               type="button"
                               disabled={updatingId === order._id}
                               onClick={() => saveDeliveryPartner(order)}
-                              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl px-4 py-2.5 text-sm font-black"
+                              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-2xl px-4 py-3 text-sm font-black"
                             >
                               Save Delivery Partner
                             </button>
@@ -1160,58 +1216,66 @@ Please use this link to update only the delivery status.`;
                                 </p>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-  <button
-    type="button"
-    onClick={() => copyDeliveryUpdateLink(order)}
-    className="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-xl text-xs font-black"
-  >
-    <Copy className="w-4 h-4" />
-    Copy Link
-  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      copyDeliveryUpdateLink(order)
+                                    }
+                                    className="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-xl text-xs font-black"
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                    Copy Link
+                                  </button>
 
-  <button
-    type="button"
-    onClick={() => shareDeliveryUpdateOnWhatsApp(order)}
-    className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-black"
-  >
-    <MessageCircle className="w-4 h-4" />
-    WhatsApp
-  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      shareDeliveryUpdateOnWhatsApp(order)
+                                    }
+                                    className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-black"
+                                  >
+                                    <MessageCircle className="w-4 h-4" />
+                                    WhatsApp
+                                  </button>
 
-  <a
-    href={getDeliveryUpdateLink(order)}
-    target="_blank"
-    rel="noreferrer"
-    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-xl text-xs font-black"
-  >
-    <ExternalLink className="w-4 h-4" />
-    Open
-  </a>
+                                  <a
+                                    href={getDeliveryUpdateLink(order)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center justify-center gap-2 bg-white hover:bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-xl text-xs font-black"
+                                  >
+                                    <ExternalLink className="w-4 h-4" />
+                                    Open
+                                  </a>
 
-  <button
-    type="button"
-    disabled={updatingId === order._id}
-    onClick={() => regenerateDeliveryUpdateLink(order)}
-    className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white px-3 py-2 rounded-xl text-xs font-black"
-  >
-    <RefreshCw className="w-4 h-4" />
-    Regenerate
-  </button>
-</div>
-{getDeliveryUpdateExpiryText(order) && (
-  <p
-    className={`text-[11px] font-bold mt-3 ${
-      isDeliveryUpdateLinkExpired(order)
-        ? "text-red-600"
-        : "text-green-700"
-    }`}
-  >
-    {isDeliveryUpdateLinkExpired(order)
-      ? "Expired At: "
-      : "Expires At: "}
-    {getDeliveryUpdateExpiryText(order)}
-  </p>
-)}
+                                  <button
+                                    type="button"
+                                    disabled={updatingId === order._id}
+                                    onClick={() =>
+                                      regenerateDeliveryUpdateLink(order)
+                                    }
+                                    className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white px-3 py-2 rounded-xl text-xs font-black"
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                    Regenerate
+                                  </button>
+                                </div>
+
+                                {getDeliveryUpdateExpiryText(order) && (
+                                  <p
+                                    className={`text-[11px] font-bold mt-3 ${
+                                      isDeliveryUpdateLinkExpired(order)
+                                        ? "text-red-600"
+                                        : "text-green-700"
+                                    }`}
+                                  >
+                                    {isDeliveryUpdateLinkExpired(order)
+                                      ? "Expired At: "
+                                      : "Expires At: "}
+                                    {getDeliveryUpdateExpiryText(order)}
+                                  </p>
+                                )}
+
                                 <p className="text-[11px] text-gray-500 mt-3">
                                   Share this link only with the assigned
                                   delivery partner. They can update delivery
@@ -1230,7 +1294,7 @@ Please use this link to update only the delivery status.`;
                         </div>
                       </div>
 
-                      <div className="bg-white border border-gray-100 rounded-2xl p-5">
+                      <div className="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                           <PackageCheck className="w-5 h-5 text-orange-600" />
 
@@ -1274,7 +1338,8 @@ Please use this link to update only the delivery status.`;
                         </div>
 
                         <div className="mt-5 border-t border-gray-100 pt-5">
-                          <h4 className="font-black text-gray-950 mb-3">
+                          <h4 className="font-black text-gray-950 mb-3 flex items-center gap-2">
+                            <Navigation className="w-4 h-4 text-sky-600" />
                             Tracking Timeline
                           </h4>
 
@@ -1291,7 +1356,7 @@ Please use this link to update only the delivery status.`;
                                   className="flex items-center gap-3"
                                 >
                                   <div
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center ${
                                       completed
                                         ? "bg-green-100 text-green-700"
                                         : "bg-gray-100 text-gray-400"
@@ -1328,7 +1393,7 @@ Please use this link to update only the delivery status.`;
                         </div>
                       </div>
 
-                      <div className="bg-white border border-gray-100 rounded-2xl p-5">
+                      <div className="bg-white border border-gray-100 rounded-[2rem] p-5 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                           <Truck className="w-5 h-5 text-indigo-600" />
 
@@ -1337,7 +1402,7 @@ Please use this link to update only the delivery status.`;
                           </h3>
                         </div>
 
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-5">
                           <div className="flex items-center gap-2 mb-3">
                             <Truck className="w-4 h-4 text-indigo-600" />
 

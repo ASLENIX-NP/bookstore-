@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
     email: {
       type: String,
       required: true,
@@ -14,19 +15,49 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+
     password: {
       type: String,
       required: true,
     },
+
     role: {
       type: String,
       enum: ["customer", "admin"],
       default: "customer",
     },
-    // This field tracks the last time the user was active on the site
-    lastSeen: { 
-      type: Date, 
-      default: Date.now 
+
+    phone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    address: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    profileImage: {
+      type: String,
+      default: "",
+    },
+
+    birthday: {
+      type: String,
+      default: "",
+    },
+
+    gender: {
+      type: String,
+      enum: ["", "Male", "Female", "Other"],
+      default: "",
+    },
+
+    lastSeen: {
+      type: Date,
+      default: Date.now,
     },
   },
   { timestamps: true }

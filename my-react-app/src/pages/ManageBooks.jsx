@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import Barcode from "react-barcode";
@@ -10,6 +10,16 @@ import {
   Pencil,
   XCircle,
   Clock,
+  Search,
+  RefreshCw,
+  UploadCloud,
+  Sparkles,
+  BadgePercent,
+  PackageCheck,
+  Boxes,
+  Tags,
+  ImagePlus,
+  Save,
 } from "lucide-react";
 
 const categoryOptions = {
@@ -149,10 +159,7 @@ const isFlashSaleScheduleActive = (settings) => {
   const startsAt = new Date(settings.startsAt);
   const endsAt = new Date(settings.endsAt);
 
-  if (
-    Number.isNaN(startsAt.getTime()) ||
-    Number.isNaN(endsAt.getTime())
-  ) {
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return false;
   }
 
@@ -164,7 +171,7 @@ const getFlashSaleScheduleStatus = (settings) => {
     return {
       label: "Disabled",
       description: "Flash sale schedule is currently turned off.",
-      className: "bg-gray-100 text-gray-600",
+      className: "bg-gray-100 text-gray-600 border-gray-200",
     };
   }
 
@@ -172,7 +179,7 @@ const getFlashSaleScheduleStatus = (settings) => {
     return {
       label: "Incomplete",
       description: "Start and end date/time are required.",
-      className: "bg-yellow-100 text-yellow-700",
+      className: "bg-yellow-50 text-yellow-700 border-yellow-200",
     };
   }
 
@@ -180,14 +187,11 @@ const getFlashSaleScheduleStatus = (settings) => {
   const startsAt = new Date(settings.startsAt);
   const endsAt = new Date(settings.endsAt);
 
-  if (
-    Number.isNaN(startsAt.getTime()) ||
-    Number.isNaN(endsAt.getTime())
-  ) {
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return {
       label: "Invalid",
       description: "Saved flash sale date/time is invalid.",
-      className: "bg-red-100 text-red-700",
+      className: "bg-red-50 text-red-700 border-red-200",
     };
   }
 
@@ -195,7 +199,7 @@ const getFlashSaleScheduleStatus = (settings) => {
     return {
       label: "Scheduled",
       description: `Sale starts on ${formatDateTime(settings.startsAt)}.`,
-      className: "bg-indigo-100 text-indigo-700",
+      className: "bg-indigo-50 text-indigo-700 border-indigo-200",
     };
   }
 
@@ -203,14 +207,14 @@ const getFlashSaleScheduleStatus = (settings) => {
     return {
       label: "Active",
       description: `Sale is running until ${formatDateTime(settings.endsAt)}.`,
-      className: "bg-orange-100 text-orange-700",
+      className: "bg-orange-50 text-orange-700 border-orange-200",
     };
   }
 
   return {
     label: "Ended",
     description: "Flash sale time has ended.",
-    className: "bg-gray-100 text-gray-600",
+    className: "bg-gray-100 text-gray-600 border-gray-200",
   };
 };
 
@@ -269,9 +273,7 @@ const getSaleInfo = (book, flashSaleIsActive) => {
   }
 
   const discountPercent =
-    actualPrice > 0
-      ? ((actualPrice - salePrice) / actualPrice) * 100
-      : 0;
+    actualPrice > 0 ? ((actualPrice - salePrice) / actualPrice) * 100 : 0;
 
   return {
     hasValidSale: true,
@@ -296,6 +298,7 @@ export default function ManageBooks() {
   const [editingProductId, setEditingProductId] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [fileInputKey, setFileInputKey] = useState(Date.now());
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [flashSaleSettings, setFlashSaleSettings] = useState({
     isEnabled: false,
@@ -311,6 +314,7 @@ export default function ManageBooks() {
   });
 
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(true);
 
   const categories = Object.keys(categoryOptions);
   const subcategories = categoryOptions[formData.category] || [];
@@ -319,16 +323,61 @@ export default function ManageBooks() {
   const flashSaleIsActive = isFlashSaleScheduleActive(flashSaleSettings);
   const scheduleStatus = getFlashSaleScheduleStatus(flashSaleSettings);
 
+  const inventorySummary = useMemo(() => {
+    const safeBooks = Array.isArray(books) ? books : [];
+
+    return {
+      total: safeBooks.length,
+      inStock: safeBooks.filter((book) => book.stockStatus !== "Out of Stock")
+        .length,
+      outOfStock: safeBooks.filter((book) => book.stockStatus === "Out of Stock")
+        .length,
+      flashSale: safeBooks.filter((book) => book.flashSale).length,
+      featured: safeBooks.filter((book) => book.featured).length,
+    };
+  }, [books]);
+
+  const filteredBooks = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    const safeBooks = Array.isArray(books) ? books : [];
+
+    if (!search) return safeBooks;
+
+    return safeBooks.filter((book) => {
+      return [
+        book?.name,
+        book?.category,
+        book?.subcategory,
+        book?.sku,
+        book?.barcode,
+        book?.description,
+        book?.stockStatus,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(search);
+    });
+  }, [books, searchTerm]);
+
   const fetchBooks = async () => {
     try {
+      setLoadingProducts(true);
+
       const response = await axios.get(
         "http://localhost:5000/api/products?admin=true"
       );
 
-      setBooks(response.data);
+      const products = Array.isArray(response.data)
+        ? response.data
+        : response.data?.products || response.data?.data || [];
+
+      setBooks(Array.isArray(products) ? products : []);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load products");
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -390,10 +439,7 @@ export default function ManageBooks() {
         const startsAt = new Date(scheduleForm.startsAt);
         const endsAt = new Date(scheduleForm.endsAt);
 
-        if (
-          Number.isNaN(startsAt.getTime()) ||
-          Number.isNaN(endsAt.getTime())
-        ) {
+        if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
           toast.error("Invalid start or end date/time");
           return;
         }
@@ -566,9 +612,7 @@ export default function ManageBooks() {
       name: book.name || "",
       category: book.category || "Academic Books",
       subcategory:
-        book.subcategory ||
-        categoryOptions[book.category]?.[0] ||
-        "School Books",
+        book.subcategory || categoryOptions[book.category]?.[0] || "School Books",
       price:
         book.price !== undefined && book.price !== null
           ? String(book.price)
@@ -580,9 +624,7 @@ export default function ManageBooks() {
       image: "",
       stockStatus: book.stockStatus || "In Stock",
       stock:
-        book.stock !== undefined && book.stock !== null
-          ? String(book.stock)
-          : "",
+        book.stock !== undefined && book.stock !== null ? String(book.stock) : "",
       description: book.description || "",
       featured: Boolean(book.featured),
       flashSale: Boolean(book.flashSale),
@@ -629,9 +671,7 @@ export default function ManageBooks() {
       );
 
       setBooks(
-        books.map((book) =>
-          book._id === product._id ? response.data : book
-        )
+        books.map((book) => (book._id === product._id ? response.data : book))
       );
     } catch (error) {
       console.error(error);
@@ -639,36 +679,117 @@ export default function ManageBooks() {
     }
   };
 
-  return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Layers className="text-orange-500 w-6 h-6 shrink-0" />
-          Inventory Management Hub
-        </h2>
+  const inputClass =
+    "w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-orange-100 focus:border-orange-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed";
 
-        <p className="text-sm text-gray-500 mt-1">
-          Manage products, categories, stock flags, flash sale schedule, and
-          custom covers.
-        </p>
+  const labelClass =
+    "block text-[11px] font-black text-gray-400 uppercase tracking-[0.18em] mb-2";
+
+  return (
+    <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-6 sm:p-8 shadow-xl shadow-slate-200">
+        <div className="absolute -top-24 -right-20 w-72 h-72 rounded-full bg-orange-500/20 blur-3xl" />
+        <div className="absolute -bottom-24 -left-20 w-72 h-72 rounded-full bg-indigo-500/20 blur-3xl" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-white/10 border border-white/10 text-orange-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
+              <Layers className="w-4 h-4" />
+              Inventory Management Hub
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-black text-white">
+              Manage Books & Products
+            </h1>
+
+            <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
+              Manage products, categories, stock flags, flash sale schedule,
+              custom covers, and barcode records.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              fetchBooks();
+              fetchFlashSaleSettings();
+            }}
+            className="inline-flex items-center justify-center gap-2 bg-white hover:bg-orange-50 text-slate-950 px-5 py-3 rounded-2xl text-sm font-black transition-all shadow-lg"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh Inventory
+          </button>
+        </div>
       </div>
 
-      <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-orange-100 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-orange-50 pb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <Boxes className="w-5 h-5 text-indigo-600 mb-3" />
+          <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+            Total Items
+          </p>
+          <p className="text-3xl font-black text-gray-950 mt-2">
+            {inventorySummary.total}
+          </p>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <PackageCheck className="w-5 h-5 text-green-600 mb-3" />
+          <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+            In Stock
+          </p>
+          <p className="text-3xl font-black text-green-600 mt-2">
+            {inventorySummary.inStock}
+          </p>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <XCircle className="w-5 h-5 text-red-600 mb-3" />
+          <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+            Out of Stock
+          </p>
+          <p className="text-3xl font-black text-red-600 mt-2">
+            {inventorySummary.outOfStock}
+          </p>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <BadgePercent className="w-5 h-5 text-orange-600 mb-3" />
+          <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+            Flash Sale
+          </p>
+          <p className="text-3xl font-black text-orange-600 mt-2">
+            {inventorySummary.flashSale}
+          </p>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+          <Sparkles className="w-5 h-5 text-purple-600 mb-3" />
+          <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+            Featured
+          </p>
+          <p className="text-3xl font-black text-purple-600 mt-2">
+            {inventorySummary.featured}
+          </p>
+        </div>
+      </div>
+
+      <section className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-orange-100 space-y-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-orange-50 pb-5">
           <div>
-            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-orange-500" />
+            <h3 className="font-black text-gray-950 text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5 text-orange-500" />
               Global Flash Sale Schedule
             </h3>
 
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               Set one start and end date/time. All products marked Flash Sale
               will follow this same schedule.
             </p>
           </div>
 
           <span
-            className={`inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-bold ${scheduleStatus.className}`}
+            className={`inline-flex items-center justify-center px-4 py-2 rounded-full text-xs font-black border ${scheduleStatus.className}`}
           >
             {scheduleStatus.label}
           </span>
@@ -676,11 +797,9 @@ export default function ManageBooks() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
           <div className="lg:col-span-2">
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              Schedule
-            </label>
+            <label className={labelClass}>Schedule</label>
 
-            <label className="flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3.5 py-2 text-sm font-semibold text-orange-700">
+            <label className="flex items-center gap-3 bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3 text-sm font-black text-orange-700">
               <input
                 type="checkbox"
                 checked={scheduleForm.isEnabled}
@@ -696,9 +815,7 @@ export default function ManageBooks() {
           </div>
 
           <div className="lg:col-span-4">
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              Start Date & Time
-            </label>
+            <label className={labelClass}>Start Date & Time</label>
 
             <input
               type="datetime-local"
@@ -710,14 +827,12 @@ export default function ManageBooks() {
                   startsAt: e.target.value,
                 })
               }
-              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className={inputClass}
             />
           </div>
 
           <div className="lg:col-span-4">
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              End Date & Time
-            </label>
+            <label className={labelClass}>End Date & Time</label>
 
             <input
               type="datetime-local"
@@ -729,7 +844,7 @@ export default function ManageBooks() {
                   endsAt: e.target.value,
                 })
               }
-              className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className={inputClass}
             />
           </div>
 
@@ -738,48 +853,57 @@ export default function ManageBooks() {
               type="button"
               onClick={handleSaveFlashSaleSchedule}
               disabled={savingSchedule}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-xl px-4 py-2 text-sm font-semibold transition"
+              className="w-full inline-flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white rounded-2xl px-4 py-3 text-sm font-black transition"
             >
-              {savingSchedule ? "Saving..." : "Save Schedule"}
+              <Save className="w-4 h-4" />
+              {savingSchedule ? "Saving..." : "Save"}
             </button>
           </div>
         </div>
 
         <div className="bg-orange-50/70 border border-orange-100 rounded-2xl p-4">
-          <p className="text-xs text-orange-700 font-semibold">
+          <p className="text-sm text-orange-700 font-black">
             {scheduleStatus.description}
           </p>
 
-          {flashSaleSettings?.isEnabled && flashSaleSettings?.startsAt && (
-            <p className="text-[11px] text-orange-600 mt-1">
-              Start: {formatDateTime(flashSaleSettings.startsAt)}
-            </p>
-          )}
+          <div className="mt-2 space-y-1">
+            {flashSaleSettings?.isEnabled && flashSaleSettings?.startsAt && (
+              <p className="text-xs text-orange-600 font-bold">
+                Start: {formatDateTime(flashSaleSettings.startsAt)}
+              </p>
+            )}
 
-          {flashSaleSettings?.isEnabled && flashSaleSettings?.endsAt && (
-            <p className="text-[11px] text-orange-600 mt-1">
-              End: {formatDateTime(flashSaleSettings.endsAt)}
-              {flashSaleIsActive
-                ? ` • ${getFlashSaleRemainingText(flashSaleSettings.endsAt)}`
-                : ""}
-            </p>
-          )}
+            {flashSaleSettings?.isEnabled && flashSaleSettings?.endsAt && (
+              <p className="text-xs text-orange-600 font-bold">
+                End: {formatDateTime(flashSaleSettings.endsAt)}
+                {flashSaleIsActive
+                  ? ` • ${getFlashSaleRemainingText(flashSaleSettings.endsAt)}`
+                  : ""}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
-        <section className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 h-fit space-y-5">
-          <div className="flex items-center justify-between border-b border-gray-50 pb-3">
-            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-              <PlusCircle className="w-4 h-4 text-orange-500" />
-              {isEditing ? "Edit Product" : "Add New Product"}
-            </h3>
+        <section className="bg-white p-5 sm:p-6 rounded-[2rem] shadow-sm border border-gray-100 h-fit space-y-5">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div>
+              <h3 className="font-black text-gray-950 text-lg flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-orange-500" />
+                {isEditing ? "Edit Product" : "Add New Product"}
+              </h3>
+
+              <p className="text-xs text-gray-500 mt-1">
+                Fill product details and save to catalog.
+              </p>
+            </div>
 
             {isEditing && (
               <button
                 type="button"
                 onClick={resetForm}
-                className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-500"
+                className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-2 rounded-xl text-xs font-black hover:bg-red-100"
               >
                 <XCircle className="w-4 h-4" />
                 Cancel
@@ -789,9 +913,7 @@ export default function ManageBooks() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Product Name *
-              </label>
+              <label className={labelClass}>Product Name *</label>
 
               <input
                 type="text"
@@ -803,20 +925,18 @@ export default function ManageBooks() {
                     name: e.target.value,
                   })
                 }
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
+                className={inputClass}
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Category *
-                </label>
+                <label className={labelClass}>Category *</label>
 
                 <select
                   value={formData.category}
                   onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                  className={inputClass}
                 >
                   {categories.map((category) => (
                     <option key={category} value={category}>
@@ -827,9 +947,7 @@ export default function ManageBooks() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Stock Status
-                </label>
+                <label className={labelClass}>Stock Status</label>
 
                 <select
                   value={formData.stockStatus}
@@ -839,7 +957,7 @@ export default function ManageBooks() {
                       stockStatus: e.target.value,
                     })
                   }
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                  className={inputClass}
                 >
                   <option value="In Stock">In Stock</option>
                   <option value="Out of Stock">Out of Stock</option>
@@ -848,9 +966,7 @@ export default function ManageBooks() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Subcategory *
-              </label>
+              <label className={labelClass}>Subcategory *</label>
 
               <select
                 value={formData.subcategory}
@@ -860,7 +976,7 @@ export default function ManageBooks() {
                     subcategory: e.target.value,
                   })
                 }
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                className={inputClass}
               >
                 {subcategories.map((subcategory) => (
                   <option key={subcategory} value={subcategory}>
@@ -870,122 +986,91 @@ export default function ManageBooks() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Price (NPR) *
-              </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Price (NPR) *</label>
 
-              <input
-                type="number"
-                placeholder="650"
-                value={formData.price}
-                min="0"
-                step="any"
-                onWheel={handleNumberInputWheel}
-                onKeyDown={handleNumberInputKeyDown}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    price: e.target.value,
-                  })
-                }
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
-              />
-            </div>
+                <input
+                  type="number"
+                  placeholder="650"
+                  value={formData.price}
+                  min="0"
+                  step="any"
+                  onWheel={handleNumberInputWheel}
+                  onKeyDown={handleNumberInputKeyDown}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price: e.target.value,
+                    })
+                  }
+                  className={inputClass}
+                />
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Stock Quantity
-              </label>
+              <div>
+                <label className={labelClass}>Stock Quantity</label>
 
-              <input
-                type="number"
-                placeholder="50"
-                value={formData.stock}
-                min="0"
-                step="1"
-                onWheel={handleNumberInputWheel}
-                onKeyDown={handleNumberInputKeyDown}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    stock: e.target.value,
-                  })
-                }
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm"
-              />
+                <input
+                  type="number"
+                  placeholder="50"
+                  value={formData.stock}
+                  min="0"
+                  step="1"
+                  onWheel={handleNumberInputWheel}
+                  onKeyDown={handleNumberInputKeyDown}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      stock: e.target.value,
+                    })
+                  }
+                  className={inputClass}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.featured}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      featured: e.target.checked,
-                    })
-                  }
-                />
-                Featured Product
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.flashSale}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      flashSale: e.target.checked,
-                      salePrice: e.target.checked ? formData.salePrice : "",
-                    })
-                  }
-                />
-                Flash Sale
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.bestSeller}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      bestSeller: e.target.checked,
-                    })
-                  }
-                />
-                Best Seller
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={formData.newArrival}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      newArrival: e.target.checked,
-                    })
-                  }
-                />
-                New Arrival
-              </label>
+              {[
+                ["featured", "Featured"],
+                ["flashSale", "Flash Sale"],
+                ["bestSeller", "Best Seller"],
+                ["newArrival", "New Arrival"],
+              ].map(([key, label]) => (
+                <label
+                  key={key}
+                  className={`flex items-center gap-2 text-sm font-bold rounded-2xl border px-3 py-3 cursor-pointer transition-all ${
+                    formData[key]
+                      ? "bg-orange-50 border-orange-200 text-orange-700"
+                      : "bg-slate-50 border-slate-200 text-gray-600 hover:bg-slate-100"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData[key]}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        [key]: e.target.checked,
+                        salePrice:
+                          key === "flashSale" && !e.target.checked
+                            ? ""
+                            : formData.salePrice,
+                      })
+                    }
+                  />
+                  {label}
+                </label>
+              ))}
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Sale Price
-              </label>
+              <label className={labelClass}>Sale Price</label>
 
               <input
                 type="number"
                 placeholder={
-                  formData.flashSale
-                    ? "Example: 499"
-                    : "Tick Flash Sale first"
+                  formData.flashSale ? "Example: 499" : "Tick Flash Sale first"
                 }
                 value={formData.salePrice}
                 disabled={!formData.flashSale}
@@ -999,34 +1084,32 @@ export default function ManageBooks() {
                     salePrice: e.target.value,
                   })
                 }
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className={inputClass}
               />
 
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-xs text-gray-400 mt-2">
                 Sale price applies only when this product is marked Flash Sale
                 and the global schedule is active.
               </p>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                Product Image
-              </label>
+              <label className={labelClass}>Product Image</label>
 
-              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-orange-200 rounded-2xl cursor-pointer bg-orange-50 hover:bg-orange-100 transition overflow-hidden">
+              <label className="group relative flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-orange-200 rounded-[2rem] cursor-pointer bg-orange-50 hover:bg-orange-100 transition overflow-hidden">
                 {imagePreview ? (
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="w-full h-full object-cover rounded-2xl"
+                    className="w-full h-full object-cover rounded-[2rem]"
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-center px-4">
-                    <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow mb-3">
-                      <span className="text-2xl">📚</span>
+                    <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow mb-3 text-orange-500">
+                      <UploadCloud className="w-8 h-8" />
                     </div>
 
-                    <p className="text-sm font-semibold text-gray-700">
+                    <p className="text-sm font-black text-gray-700">
                       Click to upload product image
                     </p>
 
@@ -1058,9 +1141,7 @@ export default function ManageBooks() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Description
-              </label>
+              <label className={labelClass}>Description</label>
 
               <textarea
                 value={formData.description}
@@ -1072,7 +1153,7 @@ export default function ManageBooks() {
                 }
                 placeholder="Write book description..."
                 rows="4"
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-3 text-sm resize-none"
+                className={`${inputClass} resize-none`}
               />
             </div>
 
@@ -1082,7 +1163,7 @@ export default function ManageBooks() {
                 isEditing
                   ? "bg-indigo-600 hover:bg-indigo-700"
                   : "bg-orange-500 hover:bg-orange-600"
-              } text-white rounded-xl py-3 text-sm font-semibold`}
+              } text-white rounded-2xl py-3.5 text-sm font-black transition-all shadow-sm`}
             >
               {isEditing ? (
                 <Pencil className="w-4 h-4" />
@@ -1095,198 +1176,244 @@ export default function ManageBooks() {
           </form>
         </section>
 
-        <section className="xl:col-span-2 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2 border-b border-gray-50 pb-3 mb-5">
-            <BookOpen className="w-4 h-4 text-indigo-500" />
-            Currently Active Items ({books.length})
-          </h3>
+        <section className="xl:col-span-2 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5 sm:p-6 border-b border-gray-100">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h3 className="font-black text-gray-950 text-xl flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-indigo-500" />
+                  Active Catalog Items
+                </h3>
 
-          <div className="space-y-4">
-            {books.map((book) => {
-              const saleInfo = getSaleInfo(book, flashSaleIsActive);
-              const markedForFlashSale = Boolean(book.flashSale);
-              const savedSalePrice =
-                book.salePrice !== undefined &&
-                book.salePrice !== null &&
-                String(book.salePrice).trim() !== "";
+                <p className="text-sm text-gray-500 mt-1">
+                  Showing {filteredBooks.length} of {books.length} products.
+                </p>
+              </div>
 
-              return (
-                <div
-                  key={book._id}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 gap-4 ${
-                    editingProductId === book._id
-                      ? "bg-indigo-50/60 rounded-xl p-3 border border-indigo-100"
-                      : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={getProductImage(book.image)}
-                      alt={book.name}
-                      className="w-16 h-20 rounded-lg object-cover border"
-                    />
+              <div className="relative w-full lg:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
 
-                    <div>
-                      <h4 className="font-semibold text-gray-800">
-                        {book.name}
-                      </h4>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search name, SKU, category..."
+                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl pl-12 pr-4 py-3 text-sm font-bold text-gray-700 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                />
+              </div>
+            </div>
+          </div>
 
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {book.featured && (
-                          <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-1 rounded-full">
-                            Featured
-                          </span>
-                        )}
+          {loadingProducts ? (
+            <div className="p-12 flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
 
-                        {markedForFlashSale && flashSaleIsActive && (
-                          <span className="bg-red-100 text-red-700 text-[10px] px-2 py-1 rounded-full">
-                            Flash Sale Active •{" "}
-                            {getFlashSaleRemainingText(
-                              flashSaleSettings.endsAt
+              <p className="ml-3 text-sm font-black text-gray-500">
+                Loading products...
+              </p>
+            </div>
+          ) : filteredBooks.length === 0 ? (
+            <div className="text-center text-sm text-gray-400 py-14">
+              <ImagePlus className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+              No products found.
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredBooks.map((book) => {
+                const saleInfo = getSaleInfo(book, flashSaleIsActive);
+                const markedForFlashSale = Boolean(book.flashSale);
+                const savedSalePrice =
+                  book.salePrice !== undefined &&
+                  book.salePrice !== null &&
+                  String(book.salePrice).trim() !== "";
+
+                return (
+                  <div
+                    key={book._id}
+                    className={`p-5 transition-all ${
+                      editingProductId === book._id
+                        ? "bg-indigo-50/70"
+                        : "bg-white hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+                      <div className="flex gap-4 min-w-0">
+                        <img
+                          src={getProductImage(book.image)}
+                          alt={book.name}
+                          className="w-20 h-28 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0"
+                        />
+
+                        <div className="min-w-0">
+                          <h4 className="font-black text-gray-950 text-base sm:text-lg">
+                            {book.name}
+                          </h4>
+
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {book.featured && (
+                              <span className="bg-purple-50 text-purple-700 border border-purple-100 text-[10px] font-black px-2.5 py-1 rounded-full">
+                                Featured
+                              </span>
                             )}
-                          </span>
-                        )}
 
-                        {markedForFlashSale && !flashSaleIsActive && (
-                          <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-full">
-                            Flash Sale Ready
-                          </span>
-                        )}
+                            {markedForFlashSale && flashSaleIsActive && (
+                              <span className="bg-red-50 text-red-700 border border-red-100 text-[10px] font-black px-2.5 py-1 rounded-full">
+                                Flash Sale Active •{" "}
+                                {getFlashSaleRemainingText(
+                                  flashSaleSettings.endsAt
+                                )}
+                              </span>
+                            )}
 
-                        {book.bestSeller && (
-                          <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-full">
-                            Best Seller
-                          </span>
-                        )}
+                            {markedForFlashSale && !flashSaleIsActive && (
+                              <span className="bg-orange-50 text-orange-700 border border-orange-100 text-[10px] font-black px-2.5 py-1 rounded-full">
+                                Flash Sale Ready
+                              </span>
+                            )}
 
-                        {book.newArrival && (
-                          <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full">
-                            New Arrival
-                          </span>
-                        )}
+                            {book.bestSeller && (
+                              <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-black px-2.5 py-1 rounded-full">
+                                Best Seller
+                              </span>
+                            )}
+
+                            {book.newArrival && (
+                              <span className="bg-green-50 text-green-700 border border-green-100 text-[10px] font-black px-2.5 py-1 rounded-full">
+                                New Arrival
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                            <p className="text-gray-500">
+                              Category:{" "}
+                              <span className="font-black text-gray-700">
+                                {book.category}
+                              </span>
+                            </p>
+
+                            <p className="text-gray-500">
+                              Subcategory:{" "}
+                              <span className="font-black text-gray-700">
+                                {book.subcategory}
+                              </span>
+                            </p>
+
+                            <p className="text-indigo-500 font-bold">
+                              SKU: {book.sku || "N/A"}
+                            </p>
+
+                            <p className="text-gray-500">
+                              Sold:{" "}
+                              <span className="font-black">
+                                {book.sold || 0}
+                              </span>
+                            </p>
+                          </div>
+
+                          {book.barcode && (
+                            <div className="mt-3 w-full overflow-x-auto bg-white rounded-xl border border-gray-100 p-2">
+                              <Barcode
+                                value={book.barcode}
+                                width={0.8}
+                                height={35}
+                                fontSize={10}
+                                margin={0}
+                                displayValue
+                              />
+                            </div>
+                          )}
+
+                          {markedForFlashSale &&
+                            flashSaleSettings?.isEnabled &&
+                            flashSaleSettings?.startsAt && (
+                              <p className="text-xs text-orange-500 mt-2 font-bold">
+                                Flash sale window:{" "}
+                                {formatDateTime(flashSaleSettings.startsAt)} →{" "}
+                                {formatDateTime(flashSaleSettings.endsAt)}
+                              </p>
+                            )}
+
+                          <p className="text-xs text-gray-500 mt-3 max-w-2xl line-clamp-2">
+                            {book.description || "No description added."}
+                          </p>
+                        </div>
                       </div>
 
-                      <p className="text-xs text-gray-500 mt-2">
-                        {book.category}
-                      </p>
+                      <div className="xl:text-right shrink-0">
+                        {saleInfo.hasValidSale ? (
+                          <div>
+                            <p className="font-black text-orange-600 text-lg">
+                              {saleInfo.finalPrice === 0
+                                ? "FREE"
+                                : `NPR ${saleInfo.finalPrice}`}
+                            </p>
 
-                      <p className="text-xs text-gray-400">
-                        {book.subcategory}
-                      </p>
+                            <p className="text-xs text-gray-400 line-through font-bold">
+                              NPR {book.price}
+                            </p>
 
-                      <p className="text-xs text-indigo-500 mt-1">
-                        SKU: {book.sku}
-                      </p>
+                            <p className="text-xs text-red-500 font-black">
+                              -{saleInfo.discountPercent.toFixed(2)}%
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="font-black text-gray-950 text-lg">
+                              NPR {book.price}
+                            </p>
 
-                      {book.barcode && (
-                        <div className="w-full overflow-x-auto">
-                          <Barcode
-                            value={book.barcode}
-                            width={0.8}
-                            height={35}
-                            fontSize={10}
-                            margin={0}
-                            displayValue
-                          />
-                        </div>
-                      )}
-
-                      {markedForFlashSale &&
-                        flashSaleSettings?.isEnabled &&
-                        flashSaleSettings?.startsAt && (
-                          <p className="text-xs text-orange-500 mt-1">
-                            Flash sale window:{" "}
-                            {formatDateTime(flashSaleSettings.startsAt)} →{" "}
-                            {formatDateTime(flashSaleSettings.endsAt)}
-                          </p>
+                            {markedForFlashSale && savedSalePrice && (
+                              <p className="text-xs text-orange-500 font-black mt-1">
+                                Saved sale price: NPR {book.salePrice}
+                              </p>
+                            )}
+                          </div>
                         )}
 
-                      <p className="text-xs text-gray-500 mt-2 max-w-md">
-                        {book.description}
-                      </p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Stock Left:{" "}
+                          <span className="font-black">{book.stock || 0}</span>
+                        </p>
+
+                        <div className="flex xl:justify-end items-center gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStock(book)}
+                            className={`text-xs px-3 py-2 rounded-full font-black border ${
+                              book.stockStatus === "In Stock"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : "bg-red-50 text-red-700 border-red-200"
+                            }`}
+                          >
+                            {book.stockStatus}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(book)}
+                            className="w-10 h-10 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center"
+                            title="Edit product"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(book._id)}
+                            className="w-10 h-10 rounded-2xl bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center"
+                            title="Delete product"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <div>
-                      {saleInfo.hasValidSale ? (
-                        <div>
-                          <p className="font-bold text-orange-600">
-                            {saleInfo.finalPrice === 0
-                              ? "FREE"
-                              : `NPR ${saleInfo.finalPrice}`}
-                          </p>
-
-                          <p className="text-xs text-gray-400 line-through">
-                            NPR {book.price}
-                          </p>
-
-                          <p className="text-[11px] text-red-500 font-semibold">
-                            -{saleInfo.discountPercent.toFixed(2)}%
-                          </p>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="font-bold text-gray-800">
-                            NPR {book.price}
-                          </p>
-
-                          {markedForFlashSale && savedSalePrice && (
-                            <p className="text-[11px] text-orange-500 font-semibold mt-1">
-                              Saved sale price: NPR {book.salePrice}
-                            </p>
-                          )}
-                        </div>
-                      )}
-
-                      <p className="text-xs text-gray-500 mt-1">
-                        Stock Left: {book.stock || 0}
-                      </p>
-
-                      <p className="text-xs text-gray-400">
-                        Sold: {book.sold || 0}
-                      </p>
-
-                      <button
-                        onClick={() => handleToggleStock(book)}
-                        className={`text-xs px-3 py-1 rounded-full mt-2 ${
-                          book.stockStatus === "In Stock"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {book.stockStatus}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(book)}
-                        className="text-indigo-500 hover:text-indigo-700"
-                        title="Edit product"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleDelete(book._id)}
-                        className="text-red-500 hover:text-red-700"
-                        title="Delete product"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {books.length === 0 && (
-              <div className="text-center text-sm text-gray-400 py-10">
-                No products added yet.
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </div>
     </div>
