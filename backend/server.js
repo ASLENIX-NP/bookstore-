@@ -1953,6 +1953,88 @@ app.put("/api/admin/flash-sale-settings", async (req, res) => {
     });
   }
 });
+
+const normalizeUploadFiles = (input) => {
+  if (!input) return [];
+
+  return Array.isArray(input) ? input : [input];
+};
+
+const collectProductImageFiles = (req) => {
+  const files = [];
+
+  if (req.files?.images) {
+    files.push(...normalizeUploadFiles(req.files.images));
+  }
+
+  // old frontend compatibility
+  if (req.files?.image) {
+    files.push(...normalizeUploadFiles(req.files.image));
+  }
+
+  return files.filter((file) => file && file.data && file.mimetype);
+};
+
+const uploadProductImages = async (files = []) => {
+  const uploadedUrls = [];
+
+  for (const file of files) {
+    const base64File = `data:${file.mimetype};base64,${file.data.toString(
+      "base64"
+    )}`;
+
+    const uploadResponse = await imagekit.upload({
+      file: base64File,
+      fileName: `${Date.now()}-${file.name}`,
+      folder: "/bookstore-products",
+    });
+
+    if (uploadResponse?.url) {
+      uploadedUrls.push(uploadResponse.url);
+    }
+  }
+
+  return uploadedUrls;
+};
+
+const getExistingProductImages = (product) => {
+  const images = [];
+
+  if (Array.isArray(product?.images)) {
+    images.push(...product.images.filter(Boolean));
+  }
+
+  if (product?.image) {
+    images.unshift(product.image);
+  }
+
+  return [...new Set(images)];
+};
+
+const parseImagesToKeep = (value, fallbackImages = []) => {
+  if (value === undefined) {
+    return fallbackImages;
+  }
+
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (Array.isArray(parsed)) {
+      return parsed.filter(Boolean);
+    }
+  } catch {
+    // fallback to comma separated support
+  }
+
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
 // PRODUCT ROUTES
 app.get("/api/products", async (req, res) => {
   try {
@@ -2303,23 +2385,9 @@ app.post("/api/products/pos-checkout", async (req, res) => {
 });
 app.post("/api/products", async (req, res) => {
   try {
-    let imageUrl = "";
-
-    if (req.files && req.files.image) {
-      const file = req.files.image;
-
-      const base64File = `data:${file.mimetype};base64,${file.data.toString(
-        "base64"
-      )}`;
-
-      const uploadResponse = await imagekit.upload({
-        file: base64File,
-        fileName: file.name,
-        folder: "/bookstore-products",
-      });
-
-      imageUrl = uploadResponse.url;
-    }
+    const uploadedImageUrls = await uploadProductImages(
+      collectProductImageFiles(req)
+    );
 
     const name = String(req.body.name || "").trim();
     const category = String(req.body.category || "").trim();
@@ -2358,7 +2426,11 @@ app.post("/api/products", async (req, res) => {
       subcategory,
       description,
 
-      image: imageUrl || undefined,
+      // old frontend compatibility
+      image: uploadedImageUrls[0] || "",
+
+      // new multiple image support
+      images: uploadedImageUrls,
 
       price,
       salePrice: flashSalePayload.salePrice,
@@ -2369,11 +2441,9 @@ app.post("/api/products", async (req, res) => {
       stock: stockValue,
       sold: 0,
 
-      stockStatus:
-        stockValue <= 0 ? "Out of Stock" : requestedStockStatus,
+      stockStatus: stockValue <= 0 ? "Out of Stock" : requestedStockStatus,
 
-      statusFlag:
-        stockValue <= 0 ? "Out of Stock" : requestedStockStatus,
+      statusFlag: stockValue <= 0 ? "Out of Stock" : requestedStockStatus,
 
       featured: isTruthy(req.body.featured),
       flashSale: flashSalePayload.flashSale,
@@ -2417,12 +2487,7 @@ app.put("/api/products/:id", async (req, res) => {
 
     const updateData = {};
 
-    const stringFields = [
-      "name",
-      "category",
-      "subcategory",
-      "description",
-    ];
+    const stringFields = ["name", "category", "subcategory", "description"];
 
     stringFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -2451,9 +2516,7 @@ app.put("/api/products/:id", async (req, res) => {
       updateData.stock = stockValue;
 
       const requestedStockStatus =
-        req.body.stockStatus ||
-        existingProduct.stockStatus ||
-        "In Stock";
+        req.body.stockStatus || existingProduct.stockStatus || "In Stock";
 
       updateData.stockStatus =
         stockValue <= 0 ? "Out of Stock" : requestedStockStatus;
@@ -2475,11 +2538,7 @@ app.put("/api/products/:id", async (req, res) => {
     updateData.flashSaleStartsAt = flashSalePayload.flashSaleStartsAt;
     updateData.flashSaleExpiresAt = flashSalePayload.flashSaleExpiresAt;
 
-    const booleanFields = [
-      "featured",
-      "bestSeller",
-      "newArrival",
-    ];
+    const booleanFields = ["featured", "bestSeller", "newArrival"];
 
     booleanFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -2487,20 +2546,25 @@ app.put("/api/products/:id", async (req, res) => {
       }
     });
 
-    if (req.files && req.files.image) {
-      const file = req.files.image;
+    const existingImages = getExistingProductImages(existingProduct);
 
-      const base64File = `data:${file.mimetype};base64,${file.data.toString(
-        "base64"
-      )}`;
+    const imagesToKeep = parseImagesToKeep(
+      req.body.keepImages,
+      existingImages
+    );
 
-      const uploadResponse = await imagekit.upload({
-        file: base64File,
-        fileName: file.name,
-        folder: "/bookstore-products",
-      });
+    const uploadedImageUrls = await uploadProductImages(
+      collectProductImageFiles(req)
+    );
 
-      updateData.image = uploadResponse.url;
+    const imageWasTouched =
+      req.body.keepImages !== undefined || uploadedImageUrls.length > 0;
+
+    if (imageWasTouched) {
+      const finalImages = [...new Set([...imagesToKeep, ...uploadedImageUrls])];
+
+      updateData.images = finalImages;
+      updateData.image = finalImages[0] || "";
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(

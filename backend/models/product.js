@@ -77,6 +77,10 @@ const productSchema = new mongoose.Schema(
       default:
         "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500",
     },
+    images: {
+  type: [String],
+  default: [],
+},
 
     // ================= PRICING =================
     price: {

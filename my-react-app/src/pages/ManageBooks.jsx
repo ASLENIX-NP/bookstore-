@@ -17,7 +17,6 @@ import {
   BadgePercent,
   PackageCheck,
   Boxes,
-  Tags,
   ImagePlus,
   Save,
 } from "lucide-react";
@@ -91,7 +90,6 @@ const emptyFormData = {
   subcategory: "School Books",
   price: "",
   salePrice: "",
-  image: "",
   stockStatus: "In Stock",
   stock: "",
   description: "",
@@ -99,6 +97,9 @@ const emptyFormData = {
   flashSale: false,
   bestSeller: false,
   newArrival: false,
+  imageFiles: [],
+  imagePreviews: [],
+  existingImages: [],
 };
 
 const placeholderImage =
@@ -110,6 +111,26 @@ const getProductImage = (image) => {
   }
 
   return placeholderImage;
+};
+
+const getProductImages = (product) => {
+  const images = [];
+
+  if (Array.isArray(product?.images)) {
+    images.push(...product.images.filter(Boolean));
+  }
+
+  if (product?.image) {
+    images.unshift(product.image);
+  }
+
+  return [...new Set(images)].filter(Boolean);
+};
+
+const getPrimaryProductImage = (product) => {
+  const images = getProductImages(product);
+
+  return getProductImage(images[0]);
 };
 
 const formatDateTime = (value) => {
@@ -296,7 +317,6 @@ export default function ManageBooks() {
   const [books, setBooks] = useState([]);
   const [formData, setFormData] = useState(emptyFormData);
   const [editingProductId, setEditingProductId] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
   const [fileInputKey, setFileInputKey] = useState(Date.now());
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -322,6 +342,18 @@ export default function ManageBooks() {
 
   const flashSaleIsActive = isFlashSaleScheduleActive(flashSaleSettings);
   const scheduleStatus = getFlashSaleScheduleStatus(flashSaleSettings);
+
+  const allPreviewImages = [
+    ...formData.existingImages.map((url) => ({
+      type: "existing",
+      url,
+    })),
+    ...formData.imagePreviews.map((url, index) => ({
+      type: "new",
+      url,
+      index,
+    })),
+  ];
 
   const inventorySummary = useMemo(() => {
     const safeBooks = Array.isArray(books) ? books : [];
@@ -412,9 +444,14 @@ export default function ManageBooks() {
   }, []);
 
   const resetForm = () => {
+    formData.imagePreviews.forEach((previewUrl) => {
+      if (String(previewUrl).startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    });
+
     setFormData(emptyFormData);
     setEditingProductId(null);
-    setImagePreview("");
     setFileInputKey(Date.now());
   };
 
@@ -424,6 +461,66 @@ export default function ManageBooks() {
       category: selectedCategory,
       subcategory: categoryOptions[selectedCategory][0],
     });
+  };
+
+  const handleImageFilesChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+
+    if (selectedFiles.length === 0) return;
+
+    const validFiles = [];
+    const previews = [];
+
+    selectedFiles.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not a valid image.`);
+        return;
+      }
+
+      if (file.size > 8 * 1024 * 1024) {
+        toast.error(`${file.name} is too large. Please use image below 8MB.`);
+        return;
+      }
+
+      validFiles.push(file);
+      previews.push(URL.createObjectURL(file));
+    });
+
+    if (validFiles.length === 0) {
+      e.target.value = "";
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      imageFiles: [...prev.imageFiles, ...validFiles],
+      imagePreviews: [...prev.imagePreviews, ...previews],
+    }));
+
+    e.target.value = "";
+  };
+
+  const removeExistingImage = (imageUrl) => {
+    setFormData((prev) => ({
+      ...prev,
+      existingImages: prev.existingImages.filter((url) => url !== imageUrl),
+    }));
+  };
+
+  const removeNewImage = (indexToRemove) => {
+    const previewUrl = formData.imagePreviews[indexToRemove];
+
+    if (String(previewUrl).startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      imageFiles: prev.imageFiles.filter((_, index) => index !== indexToRemove),
+      imagePreviews: prev.imagePreviews.filter(
+        (_, index) => index !== indexToRemove
+      ),
+    }));
   };
 
   const handleSaveFlashSaleSchedule = async () => {
@@ -517,9 +614,11 @@ export default function ManageBooks() {
     data.append("bestSeller", formData.bestSeller);
     data.append("newArrival", formData.newArrival);
 
-    if (formData.image instanceof File) {
-      data.append("image", formData.image);
-    }
+    data.append("keepImages", JSON.stringify(formData.existingImages));
+
+    formData.imageFiles.forEach((file) => {
+      data.append("images", file);
+    });
 
     return data;
   };
@@ -606,13 +705,23 @@ export default function ManageBooks() {
   };
 
   const handleEdit = (book) => {
+    const productImages = getProductImages(book);
+
     setEditingProductId(book._id);
+
+    formData.imagePreviews.forEach((previewUrl) => {
+      if (String(previewUrl).startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    });
 
     setFormData({
       name: book.name || "",
       category: book.category || "Academic Books",
       subcategory:
-        book.subcategory || categoryOptions[book.category]?.[0] || "School Books",
+        book.subcategory ||
+        categoryOptions[book.category]?.[0] ||
+        "School Books",
       price:
         book.price !== undefined && book.price !== null
           ? String(book.price)
@@ -621,7 +730,6 @@ export default function ManageBooks() {
         book.salePrice !== undefined && book.salePrice !== null
           ? String(book.salePrice)
           : "",
-      image: "",
       stockStatus: book.stockStatus || "In Stock",
       stock:
         book.stock !== undefined && book.stock !== null ? String(book.stock) : "",
@@ -630,9 +738,11 @@ export default function ManageBooks() {
       flashSale: Boolean(book.flashSale),
       bestSeller: Boolean(book.bestSeller),
       newArrival: Boolean(book.newArrival),
+      imageFiles: [],
+      imagePreviews: [],
+      existingImages: productImages,
     });
 
-    setImagePreview(getProductImage(book.image));
     setFileInputKey(Date.now());
 
     window.scrollTo({
@@ -704,7 +814,7 @@ export default function ManageBooks() {
 
             <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-2xl">
               Manage products, categories, stock flags, flash sale schedule,
-              custom covers, and barcode records.
+              multiple product images, and barcode records.
             </p>
           </div>
 
@@ -1094,50 +1204,75 @@ export default function ManageBooks() {
             </div>
 
             <div>
-              <label className={labelClass}>Product Image</label>
+              <label className={labelClass}>Product Images</label>
 
-              <label className="group relative flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-orange-200 rounded-[2rem] cursor-pointer bg-orange-50 hover:bg-orange-100 transition overflow-hidden">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-[2rem]"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-center px-4">
-                    <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow mb-3 text-orange-500">
-                      <UploadCloud className="w-8 h-8" />
-                    </div>
-
-                    <p className="text-sm font-black text-gray-700">
-                      Click to upload product image
-                    </p>
-
-                    <p className="text-xs text-gray-400 mt-1">
-                      PNG, JPG, JPEG
-                    </p>
+              <label className="group relative flex flex-col items-center justify-center w-full min-h-44 border-2 border-dashed border-orange-200 rounded-[2rem] cursor-pointer bg-orange-50 hover:bg-orange-100 transition overflow-hidden p-5">
+                <div className="flex flex-col items-center justify-center text-center px-4">
+                  <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow mb-3 text-orange-500">
+                    <UploadCloud className="w-8 h-8" />
                   </div>
-                )}
+
+                  <p className="text-sm font-black text-gray-700">
+                    Click to upload multiple product images
+                  </p>
+
+                  <p className="text-xs text-gray-400 mt-1">
+                    PNG, JPG, JPEG • You can select many images at once
+                  </p>
+                </div>
 
                 <input
                   key={fileInputKey}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files[0];
-
-                    if (file) {
-                      setFormData({
-                        ...formData,
-                        image: file,
-                      });
-
-                      setImagePreview(URL.createObjectURL(file));
-                    }
-                  }}
+                  onChange={handleImageFilesChange}
                 />
               </label>
+
+              {allPreviewImages.length > 0 && (
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {allPreviewImages.map((image, index) => (
+                    <div
+                      key={`${image.type}-${image.url}-${index}`}
+                      className="relative group rounded-2xl overflow-hidden border border-gray-100 bg-slate-50 h-32"
+                    >
+                      <img
+                        src={image.url}
+                        alt={`Product preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+
+                      <div className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-black px-2 py-1 rounded-full">
+                        {index === 0 ? "Main" : `Image ${index + 1}`}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (image.type === "existing") {
+                            removeExistingImage(image.url);
+                          } else {
+                            removeNewImage(image.index);
+                          }
+                        }}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center opacity-90 hover:opacity-100"
+                        title="Remove image"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isEditing && formData.existingImages.length === 0 && (
+                <p className="text-xs text-red-500 font-bold mt-2">
+                  All old images are removed. Add new images or save to keep
+                  product without images.
+                </p>
+              )}
             </div>
 
             <div>
@@ -1227,6 +1362,8 @@ export default function ManageBooks() {
                   book.salePrice !== null &&
                   String(book.salePrice).trim() !== "";
 
+                const productImages = getProductImages(book);
+
                 return (
                   <div
                     key={book._id}
@@ -1238,11 +1375,30 @@ export default function ManageBooks() {
                   >
                     <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
                       <div className="flex gap-4 min-w-0">
-                        <img
-                          src={getProductImage(book.image)}
-                          alt={book.name}
-                          className="w-20 h-28 rounded-2xl object-cover border border-gray-100 shadow-sm shrink-0"
-                        />
+                        <div className="shrink-0">
+                          <img
+                            src={getPrimaryProductImage(book)}
+                            alt={book.name}
+                            className="w-20 h-28 rounded-2xl object-cover border border-gray-100 shadow-sm"
+                          />
+
+                          {productImages.length > 1 && (
+                            <div className="mt-2 grid grid-cols-3 gap-1">
+                              {productImages.slice(0, 3).map((image, index) => (
+                                <img
+                                  key={`${image}-${index}`}
+                                  src={getProductImage(image)}
+                                  alt={`Small ${index + 1}`}
+                                  className="w-6 h-6 rounded-md object-cover border border-gray-100"
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          <p className="text-[10px] text-gray-400 font-black mt-1 text-center">
+                            {productImages.length || 0} image(s)
+                          </p>
+                        </div>
 
                         <div className="min-w-0">
                           <h4 className="font-black text-gray-950 text-base sm:text-lg">

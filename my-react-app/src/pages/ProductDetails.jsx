@@ -42,6 +42,28 @@ const getSafeCartImage = (image) => {
   return image;
 };
 
+const getProductImages = (product) => {
+  const images = [];
+
+  if (Array.isArray(product?.images)) {
+    images.push(...product.images.filter(Boolean));
+  }
+
+  if (product?.image) {
+    images.unshift(product.image);
+  }
+
+  const uniqueImages = [...new Set(images)]
+    .map((image) => getSafeCartImage(image))
+    .filter(Boolean);
+
+  return uniqueImages.length > 0 ? uniqueImages : [CART_IMAGE_PLACEHOLDER];
+};
+
+const getPrimaryProductImage = (product) => {
+  return getProductImages(product)[0] || CART_IMAGE_PLACEHOLDER;
+};
+
 const getNumberValue = (value) => {
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : 0;
@@ -135,6 +157,7 @@ export default function ProductDetails() {
   const reviewOrderFromUrl = searchParams.get("reviewOrder") || "";
 
   const [product, setProduct] = useState(null);
+  const [selectedImage, setSelectedImage] = useState("");
 
   const [zoomActive, setZoomActive] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({
@@ -192,18 +215,6 @@ export default function ProductDetails() {
     return String(user?.email || "").toLowerCase().trim();
   };
 
-  const getLoggedUserName = () => {
-    const user = getLoggedUser();
-
-    return String(
-      user?.name ||
-        user?.firstName ||
-        user?.fullName ||
-        user?.email?.split("@")[0] ||
-        "Customer"
-    ).trim();
-  };
-
   const hasUserReviewedOrder = (productData, orderId) => {
     const userEmail = getLoggedUserEmail();
 
@@ -254,6 +265,7 @@ export default function ProductDetails() {
     const productData = res.data?.product || res.data?.data || res.data;
 
     setProduct(productData);
+    setSelectedImage(getPrimaryProductImage(productData));
     setError(null);
 
     return productData;
@@ -352,6 +364,7 @@ export default function ProductDetails() {
     };
 
     loadProductAndReviewStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const getStatus = () => {
@@ -375,6 +388,14 @@ export default function ProductDetails() {
     setZoomPosition({
       x: Math.min(100, Math.max(0, x)),
       y: Math.min(100, Math.max(0, y)),
+    });
+  };
+
+  const handleSelectImage = (image) => {
+    setSelectedImage(image);
+    setZoomPosition({
+      x: 50,
+      y: 50,
     });
   };
 
@@ -406,6 +427,9 @@ export default function ProductDetails() {
       existingItem.quantity += 1;
     } else {
       const finalPrice = getFinalPrice(product);
+      const cartImage = getSafeCartImage(
+        selectedImage || getPrimaryProductImage(product)
+      );
 
       currentCart.push({
         _id: product._id,
@@ -413,7 +437,7 @@ export default function ProductDetails() {
         title: product.name,
         name: product.name,
         price: finalPrice,
-        image: getSafeCartImage(product.image),
+        image: cartImage,
         quantity: 1,
       });
     }
@@ -444,6 +468,9 @@ export default function ProductDetails() {
     }
 
     const finalPrice = getFinalPrice(product);
+    const checkoutImage = getSafeCartImage(
+      selectedImage || getPrimaryProductImage(product)
+    );
 
     const buyNowItem = [
       {
@@ -452,7 +479,7 @@ export default function ProductDetails() {
         title: product.name,
         name: product.name,
         price: finalPrice,
-        image: getSafeCartImage(product.image),
+        image: checkoutImage,
         quantity: 1,
         subtotal: finalPrice,
       },
@@ -512,11 +539,8 @@ export default function ProductDetails() {
             "Customer",
 
           email: userEmail,
-
           rating: Number(reviewForm.rating),
-
           comment: reviewForm.comment.trim(),
-
           orderId: reviewOrderId,
         }
       );
@@ -666,7 +690,10 @@ export default function ProductDetails() {
     ? `${product.stock} left`
     : status;
 
-  const productDisplayImage = getSafeCartImage(product.image);
+  const productImages = getProductImages(product);
+  const productDisplayImage = getSafeCartImage(
+    selectedImage || getPrimaryProductImage(product)
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -754,6 +781,52 @@ export default function ProductDetails() {
                   </div>
                 )}
               </div>
+
+              {productImages.length > 1 && (
+                <div className="mt-5 bg-white/80 backdrop-blur-xl border border-white rounded-[1.5rem] p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                      Product Gallery
+                    </p>
+
+                    <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-100 px-2 py-1 rounded-full font-black">
+                      {productImages.length} images
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                    {productImages.map((image, index) => {
+                      const isActive = productDisplayImage === image;
+
+                      return (
+                        <button
+                          key={`${image}-${index}`}
+                          type="button"
+                          onClick={() => handleSelectImage(image)}
+                          className={`relative h-20 rounded-2xl overflow-hidden border-2 transition-all ${
+                            isActive
+                              ? "border-orange-500 ring-4 ring-orange-100"
+                              : "border-white hover:border-orange-300"
+                          }`}
+                          title={`View image ${index + 1}`}
+                        >
+                          <img
+                            src={image}
+                            alt={`${product.name} thumbnail ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+
+                          {isActive && (
+                            <span className="absolute inset-x-1 bottom-1 bg-orange-500 text-white text-[9px] font-black rounded-full py-0.5">
+                              Selected
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-between">
