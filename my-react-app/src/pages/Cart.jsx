@@ -58,7 +58,9 @@ export default function Cart() {
     });
 
     setCartItems(normalizedCart);
-    setSelectedItems(normalizedCart.map((item) => item._id));
+
+    // Cart items should be unselected first.
+    setSelectedItems([]);
 
     localStorage.setItem("cart", JSON.stringify(normalizedCart));
   }, [navigate]);
@@ -106,6 +108,8 @@ export default function Cart() {
   };
 
   const toggleSelectAll = () => {
+    if (cartItems.length === 0) return;
+
     if (selectedItems.length === cartItems.length) {
       setSelectedItems([]);
     } else {
@@ -385,12 +389,7 @@ export default function Cart() {
               <button
                 type="button"
                 onClick={proceedToDelivery}
-                disabled={selectedCartItems.length === 0}
-                className={`mt-6 w-full sm:w-auto text-white text-sm font-black py-4 px-7 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 ${
-                  selectedCartItems.length === 0
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-orange-500 to-red-500 hover:scale-105 hover:shadow-xl transition-all duration-300"
-                }`}
+                className="mt-6 w-full sm:w-auto text-white text-sm font-black py-4 px-7 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 hover:scale-105 hover:shadow-xl duration-300"
               >
                 Checkout Selected
                 <ArrowRight className="w-5 h-5" />

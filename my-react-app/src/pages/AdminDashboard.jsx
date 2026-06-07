@@ -24,6 +24,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  CartesianGrid,
 } from "recharts";
 
 export default function AdminDashboard() {
@@ -48,10 +49,6 @@ export default function AdminDashboard() {
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
-  const revenueChartData = recentOrders.map((o) => ({
-    date: new Date(o.createdAt).toLocaleDateString(),
-    revenue: o.totalPrice || 0,
-  }));
   const [topProducts, setTopProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -89,6 +86,57 @@ export default function AdminDashboard() {
   const formatMoney = (value) => {
     return Number(value || 0).toLocaleString();
   };
+
+  const getOrderAmount = (order) => {
+    return Number(order?.grandTotal || order?.totalPrice || 0);
+  };
+
+  const getDateKey = (value) => {
+    const date = value ? new Date(value) : null;
+
+    if (!date || Number.isNaN(date.getTime())) {
+      return {
+        key: "unknown",
+        label: "Unknown",
+        sortTime: 0,
+      };
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return {
+      key: `${year}-${month}-${day}`,
+      label: date.toLocaleDateString(),
+      sortTime: new Date(year, date.getMonth(), date.getDate()).getTime(),
+    };
+  };
+
+  const buildChartData = (orders) => {
+    const grouped = {};
+
+    (Array.isArray(orders) ? orders : []).forEach((order) => {
+      const dateInfo = getDateKey(order?.createdAt);
+
+      if (!grouped[dateInfo.key]) {
+        grouped[dateInfo.key] = {
+          dateKey: dateInfo.key,
+          date: dateInfo.label,
+          sortTime: dateInfo.sortTime,
+          revenue: 0,
+          orders: 0,
+        };
+      }
+
+      grouped[dateInfo.key].revenue += getOrderAmount(order);
+      grouped[dateInfo.key].orders += 1;
+    });
+
+    return Object.values(grouped).sort((a, b) => a.sortTime - b.sortTime);
+  };
+
+  const chartData = buildChartData(recentOrders);
 
   const getPaymentStatusStyle = (status) => {
     if (status === "Paid") return "bg-green-50 text-green-700 border-green-200";
@@ -218,7 +266,8 @@ export default function AdminDashboard() {
           </h1>
 
           <p className="text-gray-500 text-sm mt-1">
-            Revenue, orders, users, inventory, and product performance from MongoDB.
+            Revenue, orders, users, inventory, and product performance from
+            MongoDB.
           </p>
         </div>
 
@@ -235,6 +284,7 @@ export default function AdminDashboard() {
       {loading && (
         <div className="bg-white border border-gray-100 rounded-[2rem] p-12 flex items-center justify-center shadow-sm">
           <div className="w-9 h-9 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+
           <p className="ml-3 text-sm font-black text-gray-500">
             Loading dashboard statistics...
           </p>
@@ -270,6 +320,7 @@ export default function AdminDashboard() {
                       {card.subtitle}
                     </p>
                   </div>
+
                   <div
                     className={`w-12 h-12 rounded-2xl flex items-center justify-center ${card.color}`}
                   >
@@ -279,61 +330,89 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-{/* 📊 ERP CHART SECTION */}
-<div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
 
-  {/* REVENUE CHART */}
-  <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
-    <h2 className="text-lg font-black mb-4">
-      📈 Revenue Trend
-    </h2>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+              <h2 className="text-lg font-black mb-4">📈 Revenue Trend</h2>
 
+              {chartData.length === 0 ? (
+                <div className="h-[250px] flex items-center justify-center text-sm font-bold text-gray-400 border border-dashed border-gray-200 rounded-2xl">
+                  No revenue chart data found.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        if (name === "revenue") {
+                          return [`NPR ${formatMoney(value)}`, "Revenue"];
+                        }
 
-    <ResponsiveContainer width="100%" height={250}>
-      <LineChart data={revenueChartData}>
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip />
-        <Line
-          type="monotone"
-          dataKey="revenue"
-          stroke="#f97316"
-          strokeWidth={3}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </div>
+                        return [value, name];
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#f97316"
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
 
-  {/* ORDERS CHART */}
-  <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
-    <h2 className="text-lg font-black mb-4">
-      📦 Orders Overview
-    </h2>
+            <div className="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+              <h2 className="text-lg font-black mb-4">📦 Orders Overview</h2>
 
-    <ResponsiveContainer width="100%" height={250}>
-      <BarChart data={revenueChartData}>
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip />
-        <Bar dataKey="revenue" fill="#4f46e5" />
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
+              {chartData.length === 0 ? (
+                <div className="h-[250px] flex items-center justify-center text-sm font-bold text-gray-400 border border-dashed border-gray-200 rounded-2xl">
+                  No order chart data found.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip
+                      formatter={(value, name) => {
+                        if (name === "orders") {
+                          return [
+                            `${Number(value || 0)} order(s)`,
+                            "Orders",
+                          ];
+                        }
 
-</div>
-<div className="bg-green-50 border border-green-200 rounded-2xl p-5 mb-6">
-  <h2 className="font-black text-green-800">
-    💰 Estimated Profit (ERP)
-  </h2>
+                        return [value, name];
+                      }}
+                    />
+                    <Bar dataKey="orders" fill="#4f46e5" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
 
-  <p className="text-sm text-green-700 mt-2">
-    Profit = Revenue - Cost Price
-  </p>
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-5 mb-6">
+            <h2 className="font-black text-green-800">
+              💰 Estimated Profit (ERP)
+            </h2>
 
-  <h3 className="text-2xl font-black mt-2 text-green-900">
-    NPR {(stats.totalRevenue * 0.35).toFixed(0)}
-  </h3>
-</div>
+            <p className="text-sm text-green-700 mt-2">
+              Profit = Revenue - Cost Price
+            </p>
+
+            <h3 className="text-2xl font-black mt-2 text-green-900">
+              NPR {(Number(stats.totalRevenue || 0) * 0.35).toFixed(0)}
+            </h3>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
             {secondaryCards.map((card, index) => (
               <div
@@ -405,7 +484,7 @@ export default function AdminDashboard() {
                             </p>
 
                             <p className="text-sm font-black text-gray-900">
-                              NPR {formatMoney(order.totalPrice)}
+                              NPR {formatMoney(order.grandTotal || order.totalPrice)}
                             </p>
                           </div>
 
