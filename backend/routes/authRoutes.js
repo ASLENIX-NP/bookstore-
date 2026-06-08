@@ -96,14 +96,18 @@ const sendOtpEmail = async ({ email, otp, role }) => {
   }
 
   const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: emailUser,
-      pass: emailPass,
-    },
-  });
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  family: 4, // force IPv4, fixes ENETUNREACH IPv6 issue
+  auth: {
+    user: emailUser,
+    pass: emailPass,
+  },
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
+});
 
   const roleLabel = role === "admin" ? "Admin" : "Customer";
 
