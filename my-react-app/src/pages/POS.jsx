@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import axios from "axios";
 import Scanner from "../components/Scanner";
+import Swal from "sweetalert2";
 import {
   ScanLine,
   ReceiptText,

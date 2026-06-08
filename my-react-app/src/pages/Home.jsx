@@ -548,7 +548,7 @@ export default function Home() {
           <LocalImageWithFallback
             src={product.image}
             alt={product.name}
-            className="w-full h-40 sm:h-64 object-cover group-hover:scale-110 transition-transform duration-700"
+            className="w-full h-40 sm:h-64 object-contain group-hover:scale-110 transition-transform duration-700"
           />
 
           <div
@@ -1040,7 +1040,7 @@ export default function Home() {
                         : CART_IMAGE_PLACEHOLDER
                     }
                     alt="Hero Image"
-                    className="w-full h-[500px] lg:h-[540px] xl:h-[570px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
+                  className="w-full h-[420px] lg:h-[470px] xl:h-[500px] object-cover rounded-[2.6rem] transition-transform duration-700 group-hover:scale-[1.03]"
                   />
 
                   <div className="absolute left-8 right-8 bottom-8 bg-white/95 border border-white rounded-3xl p-5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl">
