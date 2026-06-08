@@ -40,6 +40,17 @@ export default function AdminLayout() {
   const desktopSidebarScrollTopRef = useRef(0);
   const mobileSidebarScrollTopRef = useRef(0);
 
+  const adminUser = useMemo(() => {
+    try {
+      const storedAdmin = localStorage.getItem("adminUser");
+      return storedAdmin ? JSON.parse(storedAdmin) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const adminEmail = adminUser?.email || "admin@bookstore.com";
+
   const navGroups = [
     {
       label: "Overview",
@@ -169,7 +180,7 @@ export default function AdminLayout() {
     setIsDropdownOpen(false);
     setMobileSidebarOpen(false);
 
-    navigate("/login");
+    navigate("/login/admin", { replace: true });
   };
 
   const SidebarBrand = () => (
@@ -434,7 +445,7 @@ export default function AdminLayout() {
                     </p>
 
                     <p className="text-sm font-black text-gray-900 truncate mt-1">
-                      admin@bookstore.com
+                      {adminEmail}
                     </p>
                   </div>
 
