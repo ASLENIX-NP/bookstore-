@@ -100,14 +100,23 @@ const sendOtpEmail = async ({ email, otp, role }) => {
   port: 587,
   secure: false,
   requireTLS: true,
+
+  // Force IPv4 for Render because IPv6 SMTP is failing
   family: 4,
+  lookup: (hostname, options, callback) => {
+    return dns.lookup(hostname, { family: 4 }, callback);
+  },
+
   auth: {
     user: emailUser,
     pass: emailPass,
   },
+
   tls: {
     servername: "smtp.gmail.com",
+    rejectUnauthorized: true,
   },
+
   connectionTimeout: 30000,
   greetingTimeout: 30000,
   socketTimeout: 30000,
