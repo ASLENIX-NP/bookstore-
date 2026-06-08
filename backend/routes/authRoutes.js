@@ -83,12 +83,14 @@ const getAccountByRole = async (email, role) => {
 const sendOtpEmail = async ({ email, otp, role }) => {
   const resendApiKey = String(process.env.RESEND_API_KEY || "").trim();
 
+  
   const emailFrom =
+
     process.env.RESEND_FROM_EMAIL 
     
 
   if (!resendApiKey) {
-    throw new Error("RESEND_API_KEY is missing in Render environment variables.");
+    throw new Error("RESEND_API_KEY is missing in Render environment here variables.");
   }
 
   if (!emailFrom) {
