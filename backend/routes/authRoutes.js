@@ -1,10 +1,12 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 
 const User = require("../models/User");
 const Admin = require("../models/Admin");
+
+const RESEND_EMAIL_API_URL = "https://api.resend.com/emails";
+
 const authMiddleware = (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
@@ -28,6 +30,7 @@ const authMiddleware = (req, res, next) => {
     });
   }
 };
+
 const router = express.Router();
 
 const otpStore = new Map();
@@ -41,6 +44,7 @@ const createToken = (payload) => {
 const normalizeEmail = (email) => {
   return String(email || "").toLowerCase().trim();
 };
+
 const buildSafeUser = (user) => {
   return {
     id: user._id,
@@ -77,73 +81,67 @@ const getAccountByRole = async (email, role) => {
 };
 
 const sendOtpEmail = async ({ email, otp, role }) => {
-  const emailUser = String(process.env.EMAIL_USER || "").trim();
-  const emailPass = String(process.env.EMAIL_PASS || "").replace(/\s/g, "");
+  const resendApiKey = String(process.env.RESEND_API_KEY || "").trim();
+
   const emailFrom =
-    process.env.EMAIL_FROM || `PatraPatrika Center <${emailUser}>`;
+    process.env.RESEND_FROM_EMAIL 
+    
 
-  console.log("OTP sender email:", emailUser);
-  console.log("OTP app password length:", emailPass.length);
-
-  if (!emailUser || !emailPass) {
-    throw new Error("EMAIL_USER or EMAIL_PASS is missing in backend .env");
+  if (!resendApiKey) {
+    throw new Error("RESEND_API_KEY is missing in Render environment variables.");
   }
 
-  if (emailPass.length !== 16) {
+  if (!emailFrom) {
     throw new Error(
-      "Gmail App Password must be 16 characters. Remove spaces from EMAIL_PASS."
+      "RESEND_FROM_EMAIL is missing in Render environment variables."
     );
   }
 
-  const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  requireTLS: true,
-
-  // Force IPv4 for Render because IPv6 SMTP is failing
-  family: 4,
-  lookup: (hostname, options, callback) => {
-    return dns.lookup(hostname, { family: 4 }, callback);
-  },
-
-  auth: {
-    user: emailUser,
-    pass: emailPass,
-  },
-
-  tls: {
-    servername: "smtp.gmail.com",
-    rejectUnauthorized: true,
-  },
-
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-});
-
   const roleLabel = role === "admin" ? "Admin" : "Customer";
 
-  await transporter.sendMail({
-    from: emailFrom,
-    to: email,
-    subject: `PatraPatrika ${roleLabel} Password Reset OTP`,
-    html: `
-      <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
-        <div style="max-width:520px; margin:auto; background:#ffffff; border-radius:18px; padding:28px; border:1px solid #e5e7eb;">
-          <h2 style="margin:0; color:#0f172a;">PatraPatrika Center</h2>
-          <p style="color:#64748b;">Use this OTP to reset your ${roleLabel.toLowerCase()} password.</p>
+  const html = `
+    <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:24px;">
+      <div style="max-width:520px; margin:auto; background:#ffffff; border-radius:18px; padding:28px; border:1px solid #e5e7eb;">
+        <h2 style="margin:0; color:#0f172a;">PatraPatrika Center</h2>
+        <p style="color:#64748b;">Use this OTP to reset your ${roleLabel.toLowerCase()} password.</p>
 
-          <div style="font-size:34px; font-weight:900; letter-spacing:8px; color:#4f46e5; background:#eef2ff; padding:18px; border-radius:14px; text-align:center;">
-            ${otp}
-          </div>
-
-          <p style="color:#64748b; margin-top:18px;">This OTP expires in 10 minutes.</p>
-          <p style="color:#ef4444; font-size:13px;">If you did not request this, ignore this email.</p>
+        <div style="font-size:34px; font-weight:900; letter-spacing:8px; color:#4f46e5; background:#eef2ff; padding:18px; border-radius:14px; text-align:center;">
+          ${otp}
         </div>
+
+        <p style="color:#64748b; margin-top:18px;">This OTP expires in 10 minutes.</p>
+        <p style="color:#ef4444; font-size:13px;">If you did not request this, ignore this email.</p>
       </div>
-    `,
+    </div>
+  `;
+
+  const response = await fetch(RESEND_EMAIL_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: emailFrom,
+      to: [email],
+      subject: `PatraPatrika ${roleLabel} Password Reset OTP`,
+      html,
+    }),
   });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    console.error("Resend OTP email error:", result);
+
+    throw new Error(
+      result?.message ||
+        result?.error ||
+        "Failed to send OTP email using Resend."
+    );
+  }
+
+  console.log("OTP email sent using Resend:", result?.id || "sent");
 };
 
 // CUSTOMER SIGNUP
@@ -212,7 +210,6 @@ router.post("/signup", async (req, res) => {
 
 // LOGIN: ADMIN + CUSTOMER
 router.post("/login", async (req, res) => {
-
   console.log("========== LOGIN REQUEST ==========");
   console.log(req.body);
   console.log("ROLE RECEIVED:", req.body.role);
@@ -241,10 +238,7 @@ router.post("/login", async (req, res) => {
         });
       }
 
-      const isPasswordCorrect = await bcrypt.compare(
-        password,
-        admin.password
-      );
+      const isPasswordCorrect = await bcrypt.compare(password, admin.password);
 
       if (!isPasswordCorrect) {
         return res.status(401).json({
@@ -531,6 +525,7 @@ router.post("/reset-password", async (req, res) => {
     message: "This reset method is disabled. Please use email OTP reset.",
   });
 });
+
 router.put("/change-password", authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -571,10 +566,7 @@ router.put("/change-password", authMiddleware, async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(
-      currentPassword,
-      account.password
-    );
+    const isMatch = await bcrypt.compare(currentPassword, account.password);
 
     if (!isMatch) {
       return res.status(400).json({
@@ -600,6 +592,7 @@ router.put("/change-password", authMiddleware, async (req, res) => {
     });
   }
 });
+
 router.get("/profile", authMiddleware, async (req, res) => {
   try {
     if (req.user.role === "admin") {
@@ -689,4 +682,5 @@ router.put("/profile", authMiddleware, async (req, res) => {
     });
   }
 });
+
 module.exports = router;
