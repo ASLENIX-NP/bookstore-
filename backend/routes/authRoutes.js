@@ -97,12 +97,16 @@ const sendOtpEmail = async ({ email, otp, role }) => {
 
   const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  family: 4, // force IPv4, fixes ENETUNREACH IPv6 issue
+  port: 587,
+  secure: false,
+  requireTLS: true,
+  family: 4,
   auth: {
     user: emailUser,
     pass: emailPass,
+  },
+  tls: {
+    servername: "smtp.gmail.com",
   },
   connectionTimeout: 30000,
   greetingTimeout: 30000,
