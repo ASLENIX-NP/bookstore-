@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 import {
   PackageCheck,
   User,
@@ -214,11 +215,15 @@ export default function ManageOrders() {
   };
 
   const regenerateDeliveryUpdateLink = async (order) => {
-    const confirmRegenerate = window.confirm(
-      "Regenerating will disable the old delivery update link. Continue?"
-    );
-
-    if (!confirmRegenerate) return;
+    const result = await Swal.fire({
+      title: "Regenerate Invoice?",
+      text: "A new invoice will be generated.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Generate",
+    });
+    
+    if (!result.isConfirmed) return;
 
     try {
       setUpdatingId(order._id);
@@ -448,32 +453,36 @@ Please use this link to update only the delivery status.`;
   };
 
   const deleteOrder = async (orderId) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this order?"
-    );
-
-    if (!confirmDelete) return;
-
+    const result = await Swal.fire({
+      title: "Delete Order?",
+      text: "This order will be permanently removed.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Delete",
+    });
+  
+    if (!result.isConfirmed) return;
+  
     try {
       setUpdatingId(orderId);
-
+  
       const response = await fetch(
         `https://bookstore-f3if.onrender.com/api/orders/${orderId}`,
         {
           method: "DELETE",
         }
       );
-
+  
       if (!response.ok) {
         throw new Error("Failed to delete order");
       }
-
-      setOrders((prevOrders) => {
-        const safePreviousOrders = Array.isArray(prevOrders) ? prevOrders : [];
-
-        return safePreviousOrders.filter((order) => order._id !== orderId);
-      });
-
+  
+      setOrders((prevOrders) =>
+        prevOrders.filter((order) => order._id !== orderId)
+      );
+  
       toast.success("Order deleted successfully.");
     } catch (err) {
       toast.error("Error deleting order: " + err.message);

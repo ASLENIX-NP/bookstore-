@@ -87,9 +87,17 @@ export default function ManageMessages() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this message?')) {
-      return;
-    }
+    const result = await Swal.fire({
+      title: "Delete Message?",
+      text: "This message will be permanently deleted.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Delete",
+    });
+    
+    if (!result.isConfirmed) return;
 
     try {
       await axios.delete(`https://bookstore-f3if.onrender.com/api/admin/messages/${id}`);

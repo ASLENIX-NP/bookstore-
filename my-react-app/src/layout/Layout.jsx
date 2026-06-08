@@ -177,7 +177,21 @@ export default function Layout() {
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-20 flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-3 group shrink-0">
+          <Link
+  to="/"
+  onClick={(e) => {
+    if (location.pathname === "/") {
+      e.preventDefault();
+
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  }}
+  className="flex items-center gap-3 group shrink-0"
+>
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-950 text-white flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
                 <BookOpen className="w-6 h-6" />
               </div>

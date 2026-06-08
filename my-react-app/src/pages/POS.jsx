@@ -66,7 +66,7 @@ export default function POS() {
       if (availableStock <= 0) {
         const message = `${product.name} is out of stock`;
         setError(message);
-        alert(message);
+        toast.error(message);
         return;
       }
 
@@ -74,7 +74,12 @@ export default function POS() {
         availableStock <= Number(product.lowStockAlert || 5) ||
         availableStock <= 5
       ) {
-        alert("⚠ Low Stock Warning: " + product.name);
+        toast(
+          `⚠️ Low Stock Warning: ${product.name}`,
+          {
+            icon: "⚠️",
+          }
+        );
       }
 
       setCart((prev) => {
@@ -84,7 +89,7 @@ export default function POS() {
           const nextQuantity = Number(exists.quantity || 1) + 1;
 
           if (nextQuantity > availableStock) {
-            alert(`Only ${availableStock} stock available for ${product.name}`);
+            toast.error(`Only ${availableStock} stock available`);
             return prev;
           }
 
@@ -118,7 +123,7 @@ export default function POS() {
         "Product not found";
 
       setError(backendMessage);
-      alert(backendMessage);
+      toast.error(backendMessage);
     }
   };
 
@@ -176,11 +181,20 @@ export default function POS() {
     setCart((prev) => prev.filter((item) => item._id !== productId));
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
     if (cart.length === 0) return;
 
-    const confirmClear = window.confirm("Clear all products from POS cart?");
-    if (!confirmClear) return;
+    const result = await Swal.fire({
+      title: "Clear Cart?",
+      text: "All products will be removed from the POS cart.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Clear Cart",
+    });
+    
+    if (!result.isConfirmed) return;
 
     setCart([]);
     setError("");
@@ -204,7 +218,7 @@ export default function POS() {
   const checkout = async () => {
     try {
       if (cart.length === 0) {
-        alert("Cart is empty");
+        toast.error("Cart is empty");
         return;
       }
 
@@ -252,7 +266,7 @@ export default function POS() {
         "Checkout failed";
 
       setError(backendMessage);
-      alert(backendMessage);
+      toast.success(backendMessage);
     }
   };
 

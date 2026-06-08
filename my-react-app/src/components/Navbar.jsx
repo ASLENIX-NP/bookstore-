@@ -79,12 +79,25 @@ const Navbar = () => {
 
     navigate("/cart");
   };
-
+  const handleLogoClick = () => {
+    navigate("/");
+  
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }, 100);
+  };
   return (
     <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 shadow-sm">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
+        <button
+  type="button"
+  onClick={handleLogoClick}
+  className="flex items-center gap-3 group"
+>
           <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-slate-950 text-white flex items-center justify-center shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform">
             <BookOpen size={24} />
           </div>
@@ -98,7 +111,7 @@ const Navbar = () => {
               Center
             </p>
           </div>
-        </Link>
+          </button>
 
         {/* Desktop Navigation */}
         <div className="hidden lg:flex items-center gap-0.5 bg-slate-50 border border-slate-200 rounded-full px-1 py-1">
