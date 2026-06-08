@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import axios from "axios";
 import {
   BookOpen,
   ShoppingCart,
@@ -23,6 +24,9 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("token"));
+
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
+  const [reviewNotification, setReviewNotification] = useState(null);
 
   const [user, setUser] = useState(() => {
     try {
@@ -175,33 +179,33 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col text-slate-900">
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-20 flex items-center justify-between gap-4">
-          <Link
-  to="/"
-  onClick={(e) => {
-    if (location.pathname === "/") {
-      e.preventDefault();
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="h-20 flex items-center justify-between gap-2 sm:gap-4">
+            <Link
+              to="/"
+              onClick={(e) => {
+                if (location.pathname === "/") {
+                  e.preventDefault();
 
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: "auto",
-      });
-    }
-  }}
-  className="flex items-center gap-3 group shrink-0"
->
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-950 text-white flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
-                <BookOpen className="w-6 h-6" />
+                  window.scrollTo({
+                    top: 0,
+                    left: 0,
+                    behavior: "auto",
+                  });
+                }
+              }}
+              className="flex items-center gap-2 sm:gap-3 group shrink-0 min-w-0"
+            >
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-950 text-white flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform shrink-0">
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
 
-              <div className="leading-tight">
-                <p className="text-lg sm:text-xl font-black text-slate-950">
+              <div className="leading-tight min-w-0">
+                <p className="text-sm xs:text-base sm:text-xl font-black text-slate-950 truncate">
                   PatraPatrika
                 </p>
 
-                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-500">
+                <p className="text-[9px] sm:text-[11px] font-black uppercase tracking-[0.18em] sm:tracking-[0.22em] text-amber-500">
                   Center
                 </p>
               </div>
@@ -223,11 +227,11 @@ export default function Layout() {
               ))}
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               <button
                 type="button"
                 onClick={handleCartClick}
-                className="relative w-11 h-11 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all"
+                className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-950 hover:bg-indigo-700 text-white flex items-center justify-center shadow-md transition-all"
                 title="Cart"
               >
                 <ShoppingCart className="w-5 h-5" />
@@ -239,27 +243,28 @@ export default function Layout() {
                 )}
               </button>
 
-              <div className="hidden md:block relative">
+              <div className="relative">
                 {isAuthenticated ? (
                   <>
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center gap-2 bg-white border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50 text-slate-700 px-3 py-2 rounded-2xl transition-all shadow-sm"
+                      className="flex items-center gap-1.5 sm:gap-2 bg-white border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50 text-slate-700 px-2 sm:px-3 py-2 rounded-2xl transition-all shadow-sm"
+                      title="Account"
                     >
                       <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
                         <User className="w-4 h-4" />
                       </div>
 
-                      <span className="hidden xl:block text-sm font-black max-w-32 truncate">
+                      <span className="hidden sm:block text-sm font-black max-w-32 truncate">
                         {user?.name || user?.email || "User"}
                       </span>
 
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="hidden sm:block w-4 h-4" />
                     </button>
 
                     {userMenuOpen && (
-                      <div className="absolute right-0 mt-3 w-64 bg-white rounded-3xl shadow-2xl shadow-slate-200/80 py-3 border border-slate-100 z-50 overflow-hidden">
+                      <div className="absolute right-0 mt-3 w-64 max-w-[calc(100vw-1.5rem)] bg-white rounded-3xl shadow-2xl shadow-slate-200/80 py-3 border border-slate-100 z-50 overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
                           <p className="text-sm font-black text-slate-950 truncate">
                             {user?.name || "User"}
@@ -322,10 +327,11 @@ export default function Layout() {
                 ) : (
                   <Link
                     to="/login"
-                    className="hidden sm:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-2xl text-sm font-black shadow-md shadow-indigo-200 transition-all"
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-5 py-3 rounded-2xl text-sm font-black shadow-md shadow-indigo-200 transition-all"
+                    title="Login"
                   >
                     <LogIn className="w-4 h-4" />
-                    Login
+                    <span className="hidden sm:inline">Login</span>
                   </Link>
                 )}
               </div>
@@ -333,7 +339,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all"
+                className="lg:hidden w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-all"
               >
                 {mobileMenuOpen ? (
                   <X className="w-5 h-5" />
@@ -395,9 +401,11 @@ export default function Layout() {
           </div>
         )}
       </header>
-<main className="flex-1">
-  <Outlet />
-</main>
+
+      <main className="flex-1">
+        <Outlet />
+      </main>
+
       <footer className="bg-slate-950 text-white mt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 items-start">
